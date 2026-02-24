@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pOS Design System — Component Showcase</title>
+
+  <link rel="stylesheet" href="/dist/tokens/theme.css">
+
+  <style>
+    /* ── Reset ─────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Tenant theme overrides ─────────────────────────────────────────── */
+    [data-pos-theme="tenant-acme"] {
+      --pos-color-accent:       #e63946;
+      --pos-color-accent-hover: #c1121f;
+    }
+    [data-pos-theme="tenant-forest"] {
+      --pos-color-accent:       #2d6a4f;
+      --pos-color-accent-hover: #1b4332;
+      --pos-color-focus:        #52b788;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────────────────── */
+    body {
+      display: flex;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      background: var(--pos-color-bg);
+      color: var(--pos-color-fg);
+    }
+
+    /* Sidebar nav */
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--pos-color-border);
+      padding: 24px 0;
+      position: fixed;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      overflow-y: auto;
+      background: var(--pos-color-bg);
+    }
+    .sidebar-logo {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--pos-color-border);
+      margin-bottom: 12px;
+    }
+    .sidebar-logo strong { font-size: 15px; display: block; }
+    .sidebar-logo span   { font-size: 11px; color: var(--pos-color-muted); }
+    .nav-group { padding: 8px 20px 4px; }
+    .nav-group-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--pos-color-muted);
+      margin-bottom: 4px;
+    }
+    .nav-link {
+      display: block;
+      padding: 5px 8px;
+      border-radius: 5px;
+      font-size: 13px;
+      color: var(--pos-color-fg);
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .nav-link:hover { background: var(--pos-color-border); }
+    .nav-link.active {
+      background: var(--pos-color-accent);
+      color: var(--pos-color-bg);
+    }
+
+    /* Main content */
+    .main {
+      margin-left: 220px;
+      flex: 1;
+      padding: 40px 48px;
+      max-width: 900px;
+    }
+
+    /* ── Section styles ─────────────────────────────────────────────────── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .section-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .section-desc {
+      color: var(--pos-color-muted);
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+
+    /* Preview card */
+    .preview {
+      border: 1px solid var(--pos-color-border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 32px;
+    }
+    .preview-label {
+      padding: 10px 16px;
+      background: var(--pos-color-border);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--pos-color-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .preview-canvas {
+      padding: 28px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      background: var(--pos-color-bg);
+    }
+    .preview-canvas.col {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    /* Code block */
+    .code {
+      background: var(--pos-color-border);
+      border-radius: 6px;
+      padding: 14px 16px;
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--pos-color-fg);
+      overflow-x: auto;
+      margin-bottom: 32px;
+      white-space: pre;
+    }
+
+    /* Token table */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 32px; font-size: 13px; }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 2px solid var(--pos-color-border);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--pos-color-muted);
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--pos-color-border);
+      vertical-align: middle;
+    }
+    .token-swatch {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      border: 1px solid var(--pos-color-border);
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    code {
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 11px;
+      background: var(--pos-color-border);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    /* Theme switcher */
+    .theme-switcher {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+    .theme-btn {
+      padding: 6px 14px;
+      border: 1px solid var(--pos-color-border);
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      background: var(--pos-color-bg);
+      color: var(--pos-color-fg);
+      transition: all 0.15s;
+    }
+    .theme-btn:hover { border-color: var(--pos-color-accent); color: var(--pos-color-accent); }
+    .theme-btn.active { background: var(--pos-color-accent); color: var(--pos-color-bg); border-color: var(--pos-color-accent); }
+
+    /* Event log */
+    .event-log {
+      border: 1px solid var(--pos-color-border);
+      border-radius: 6px;
+      height: 160px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 11px;
+      background: var(--pos-color-bg);
+    }
+    .log-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      border-bottom: 1px solid var(--pos-color-border);
+    }
+    .log-line:last-child { border-bottom: none; }
+    .log-time { color: var(--pos-color-muted); min-width: 60px; }
+    .log-tag {
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .log-tag.native  { background: var(--pos-color-accent); color: var(--pos-color-bg); }
+    .log-tag.custom  { background: var(--pos-color-success); color: var(--pos-color-bg); }
+    .log-msg { color: var(--pos-color-fg); }
+    .log-empty { padding: 12px; color: var(--pos-color-muted); font-style: italic; }
+
+    /* Plugin card */
+    #plugin-mount { min-height: 80px; }
+    .plugin-loading { color: var(--pos-color-muted); font-style: italic; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <strong>pOS Design System</strong>
+      <span>v0 · Web Components</span>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Overview</div>
+      <a class="nav-link active" data-section="tokens">Design Tokens</a>
+      <a class="nav-link" data-section="theming">Theming</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Components</div>
+      <a class="nav-link" data-section="button">ui-button</a>
+      <a class="nav-link" data-section="input">ui-input</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Platform</div>
+      <a class="nav-link" data-section="plugins">Plugins</a>
+      <a class="nav-link" data-section="events">Events</a>
+    </div>
+  </aside>
+
+  <!-- ── Main ───────────────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- Design Tokens -->
+    <div class="section active" id="section-tokens">
+      <div class="section-title">Design Tokens</div>
+      <p class="section-desc">Two-tier token architecture. Raw tokens hold literal values; semantic tokens alias them by purpose. Components only consume semantic tokens — never raw values or hex codes.</p>
+
+      <div class="preview">
+        <div class="preview-label">Semantic Color Tokens</div>
+        <div class="preview-canvas col" style="gap: 0; padding: 0;">
+          <table>
+            <thead>
+              <tr>
+                <th>Token</th>
+                <th>Value (resolved)</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody id="token-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="code">/* Raw tokens — literal values */
+--pos-raw-color-blue-600: #228be6;
+--pos-raw-color-neutral-0: #ffffff;
+
+/* Semantic tokens — reference raw via var() */
+--pos-color-accent: var(--pos-raw-color-blue-600);
+--pos-color-bg:     var(--pos-raw-color-neutral-0);</div>
+    </div>
+
+    <!-- Theming -->
+    <div class="section" id="section-theming">
+      <div class="section-title">Theming</div>
+      <p class="section-desc">Switch themes by setting <code>data-pos-theme</code> on any ancestor element. CSS custom properties cascade through Shadow DOM boundaries automatically — components require no changes.</p>
+
+      <div class="theme-switcher">
+        <button class="theme-btn active" data-theme="light">Default (light)</button>
+        <button class="theme-btn" data-theme="tenant-acme">Acme tenant (red)</button>
+        <button class="theme-btn" data-theme="tenant-forest">Forest tenant (green)</button>
+      </div>
+
+      <div class="preview" id="theme-demo-box">
+        <div class="preview-label" id="theme-demo-label">data-pos-theme="light"</div>
+        <div class="preview-canvas">
+          <ui-button variant="solid">Primary action</ui-button>
+          <ui-button variant="outline">Secondary</ui-button>
+          <ui-button variant="ghost">Ghost</ui-button>
+          <ui-button variant="danger">Danger</ui-button>
+        </div>
+        <div class="preview-canvas">
+          <ui-input placeholder="Themed input…" style="width: 300px"></ui-input>
+        </div>
+      </div>
+
+      <div class="code">/* Default theme — set in dist/tokens/theme.css */
+:root, [data-pos-theme="light"] {
+  --pos-color-accent: var(--pos-raw-color-blue-600);
+}
+
+/* Tenant override — override semantic tokens only */
+[data-pos-theme="tenant-acme"] {
+  --pos-color-accent:       #e63946;
+  --pos-color-accent-hover: #c1121f;
+}</div>
+    </div>
+
+    <!-- ui-button -->
+    <div class="section" id="section-button">
+      <div class="section-title">ui-button</div>
+      <p class="section-desc">Native <code>&lt;button&gt;</code> inside Shadow DOM. All color values from <code>--pos-color-*</code> tokens. Native <code>click</code> events bubble through Shadow DOM automatically.</p>
+
+      <div class="preview">
+        <div class="preview-label">Variants</div>
+        <div class="preview-canvas">
+          <ui-button variant="solid">Solid</ui-button>
+          <ui-button variant="outline">Outline</ui-button>
+          <ui-button variant="ghost">Ghost</ui-button>
+          <ui-button variant="danger">Danger</ui-button>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">States</div>
+        <div class="preview-canvas">
+          <ui-button variant="solid">Default</ui-button>
+          <ui-button variant="solid" disabled>Disabled</ui-button>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-button variant="solid"&gt;Save&lt;/ui-button&gt;
+&lt;ui-button variant="outline"&gt;Cancel&lt;/ui-button&gt;
+&lt;ui-button variant="ghost"&gt;More&lt;/ui-button&gt;
+&lt;ui-button variant="danger"&gt;Delete&lt;/ui-button&gt;
+&lt;ui-button variant="solid" disabled&gt;Disabled&lt;/ui-button&gt;
+
+&lt;!-- Native click event — no custom wrapper needed --&gt;
+&lt;script&gt;
+  document.querySelector('ui-button').addEventListener('click', (e) => {
+    console.log('clicked', e.target); // e.target = &lt;ui-button&gt;
+  });
+&lt;/script&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>variant</code></td><td>solid · outline · ghost · danger</td><td>solid</td></tr>
+          <tr><td><code>disabled</code></td><td>boolean</td><td>false</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ui-input -->
+    <div class="section" id="section-input">
+      <div class="section-title">ui-input</div>
+      <p class="section-desc">Native <code>&lt;input&gt;</code> inside Shadow DOM. Native <code>input</code>, <code>change</code>, <code>focus</code>, <code>blur</code> events bubble through automatically. The <code>value</code> property syncs with the internal input.</p>
+
+      <div class="preview">
+        <div class="preview-label">Types</div>
+        <div class="preview-canvas col">
+          <ui-input type="text"     placeholder="Text input"       style="width:320px"></ui-input>
+          <ui-input type="email"    placeholder="email@example.com" style="width:320px"></ui-input>
+          <ui-input type="password" placeholder="Password"          style="width:320px"></ui-input>
+          <ui-input type="number"   placeholder="42"               style="width:320px"></ui-input>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">States</div>
+        <div class="preview-canvas col">
+          <ui-input placeholder="Default"  style="width:320px"></ui-input>
+          <ui-input placeholder="Disabled" disabled style="width:320px"></ui-input>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-input type="email" placeholder="you@example.com"&gt;&lt;/ui-input&gt;
+&lt;ui-input type="password" placeholder="Password"&gt;&lt;/ui-input&gt;
+&lt;ui-input disabled placeholder="Disabled"&gt;&lt;/ui-input&gt;
+
+&lt;!-- Read value programmatically --&gt;
+&lt;script&gt;
+  const input = document.querySelector('ui-input');
+  input.addEventListener('input', () => console.log(input.value));
+&lt;/script&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>type</code></td><td>text · email · password · number</td><td>text</td></tr>
+          <tr><td><code>value</code></td><td>string</td><td>""</td></tr>
+          <tr><td><code>placeholder</code></td><td>string</td><td>""</td></tr>
+          <tr><td><code>disabled</code></td><td>boolean</td><td>false</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Plugins -->
+    <div class="section" id="section-plugins">
+      <div class="section-title">Plugin Runtime</div>
+      <p class="section-desc">Plugins are dynamically imported ES modules that register a Custom Element. The host injects a <code>hostSDK</code> before the element connects — giving the plugin access to <code>getToken()</code> and <code>emit()</code>.</p>
+
+      <div class="preview">
+        <div class="preview-label">Live plugin — plugin-hello</div>
+        <div class="preview-canvas">
+          <div id="plugin-mount"><span class="plugin-loading">Loading plugin…</span></div>
+        </div>
+      </div>
+
+      <div class="code">import { loadPlugin, createHostSDK } from '/dist/pos-design-system.js';
+
+// 1. Load and register the custom element
+const { tagName } = await loadPlugin({
+  url: '/examples/plugins/hello-plugin.js',
+  tagName: 'plugin-hello',
+});
+
+// 2. Create element, inject SDK before connecting to DOM
+const el = document.createElement(tagName);
+el.hostSDK = createHostSDK(el);   // { emit, getToken }
+document.body.appendChild(el);
+
+// Inside the plugin, SDK is available in connectedCallback:
+//   this.hostSDK.getToken('--pos-color-accent') → '#228be6'
+//   this.hostSDK.emit('plugin:hello:action', { ... })</div>
+    </div>
+
+    <!-- Events -->
+    <div class="section" id="section-events">
+      <div class="section-title">Event Bubbling</div>
+      <p class="section-desc">Native DOM events from components bubble through Shadow DOM and are observable on any ancestor — no custom event wrappers needed. Interact with the components below to see events in real time.</p>
+
+      <div class="preview">
+        <div class="preview-label">Interact to see events</div>
+        <div class="preview-canvas" style="gap: 16px; flex-wrap: wrap;">
+          <ui-button variant="solid" id="evt-btn">Click me</ui-button>
+          <ui-button variant="outline" id="evt-btn2">Click me too</ui-button>
+          <ui-input placeholder="Type here…" id="evt-input" style="width: 240px"></ui-input>
+        </div>
+      </div>
+
+      <div class="event-log" id="event-log">
+        <div class="log-empty">Interact with components above to see events…</div>
+      </div>
+
+      <br>
+
+      <div class="code">// Native events bubble out of Shadow DOM automatically
+document.addEventListener('click', (e) => {
+  if (e.target.tagName === 'UI-BUTTON') {
+    console.log('Button clicked:', e.target);
+  }
+});
+
+document.addEventListener('input', (e) => {
+  if (e.target.tagName === 'UI-INPUT') {
+    console.log('Input value:', e.target.value);
+  }
+});</div>
+    </div>
+
+  </main><!-- /main -->
+
+  <script type="module">
+    import { loadPlugin, createHostSDK } from '/dist/pos-design-system.js';
+
+    // ── Navigation ───────────────────────────────────────────────────────
+    const navLinks = document.querySelectorAll('.nav-link');
+    const sections = document.querySelectorAll('.section');
+
+    function showSection(id) {
+      sections.forEach(s => s.classList.remove('active'));
+      navLinks.forEach(l => l.classList.remove('active'));
+      document.getElementById(`section-${id}`)?.classList.add('active');
+      document.querySelector(`[data-section="${id}"]`)?.classList.add('active');
+    }
+
+    navLinks.forEach(link => {
+      link.addEventListener('click', () => showSection(link.dataset.section));
+    });
+
+    // ── Token table ──────────────────────────────────────────────────────
+    const tokens = [
+      { name: '--pos-color-bg',           purpose: 'Page / component background' },
+      { name: '--pos-color-fg',           purpose: 'Primary text' },
+      { name: '--pos-color-muted',        purpose: 'Secondary / muted text' },
+      { name: '--pos-color-border',       purpose: 'Borders and dividers' },
+      { name: '--pos-color-accent',       purpose: 'Primary action color' },
+      { name: '--pos-color-accent-hover', purpose: 'Hover state of accent' },
+      { name: '--pos-color-danger',       purpose: 'Destructive / error' },
+      { name: '--pos-color-success',      purpose: 'Success state' },
+      { name: '--pos-color-focus',        purpose: 'Focus ring indicator' },
+    ];
+
+    const tbody = document.getElementById('token-table-body');
+    tokens.forEach(({ name, purpose }) => {
+      const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td><code>${name}</code></td>
+        <td>
+          <span class="token-swatch" style="background:${val}"></span>
+          <code>${val}</code>
+        </td>
+        <td style="color:var(--pos-color-muted)">${purpose}</td>
+      `;
+      tbody.appendChild(row);
+    });
+
+    // ── Theme switcher ───────────────────────────────────────────────────
+    const demoBox   = document.getElementById('theme-demo-box');
+    const demoLabel = document.getElementById('theme-demo-label');
+    document.querySelectorAll('.theme-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const theme = btn.dataset.theme;
+        demoBox.setAttribute('data-pos-theme', theme);
+        demoLabel.textContent = `data-pos-theme="${theme}"`;
+        document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // ── Event log ────────────────────────────────────────────────────────
+    const eventLog = document.getElementById('event-log');
+    let logEmpty = true;
+
+    function logEvent(type, message) {
+      if (logEmpty) { eventLog.innerHTML = ''; logEmpty = false; }
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      const time = new Date().toLocaleTimeString('en', { hour12: false });
+      line.innerHTML = `
+        <span class="log-time">${time}</span>
+        <span class="log-tag ${type}">${type}</span>
+        <span class="log-msg">${message}</span>
+      `;
+      eventLog.appendChild(line);
+      eventLog.scrollTop = eventLog.scrollHeight;
+    }
+
+    document.addEventListener('click', (e) => {
+      if (e.target.tagName === 'UI-BUTTON') {
+        logEvent('native', `click on &lt;ui-button&gt; — id="${e.target.id || 'none'}"`);
+      }
+    });
+    document.addEventListener('input', (e) => {
+      if (e.target.tagName === 'UI-INPUT') {
+        logEvent('native', `input on &lt;ui-input&gt; — value="${e.target.value}"`);
+      }
+    });
+    document.addEventListener('plugin:hello:action', (e) => {
+      logEvent('custom', `plugin:hello:action — ${JSON.stringify(e.detail)}`);
+    });
+
+    // ── Plugin ────────────────────────────────────────────────────────────
+    try {
+      const { tagName } = await loadPlugin({
+        url: '/examples/plugins/hello-plugin.js',
+        tagName: 'plugin-hello',
+      });
+      const el = document.createElement(tagName);
+      el.hostSDK = createHostSDK(el);
+      const mount = document.getElementById('plugin-mount');
+      mount.innerHTML = '';
+      mount.appendChild(el);
+    } catch (err) {
+      document.getElementById('plugin-mount').textContent = `Plugin error: ${err.message}`;
+    }
+  </script>
+
+</body>
+</html>

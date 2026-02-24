@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pOS Design System — v0 Validation</title>
+
+  <!-- Phase 1: Token cascade -->
+  <link rel="stylesheet" href="../dist/tokens/theme.css">
+
+  <!-- Inline tenant override — validates [data-pos-theme] scoping -->
+  <style>
+    [data-pos-theme="tenant-acme"] {
+      --pos-color-accent:       #e63946;
+      --pos-color-accent-hover: #c1121f;
+    }
+
+    /* Page chrome — hardcoded intentionally, not part of the token system */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      background: var(--pos-color-bg);
+      color: var(--pos-color-fg);
+      padding: 32px;
+      line-height: 1.5;
+    }
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+    h2 { font-size: 13px; font-weight: 600; text-transform: uppercase;
+         letter-spacing: 0.08em; color: var(--pos-color-muted); margin-bottom: 16px; }
+    .page-header { margin-bottom: 40px; }
+    .page-header p { color: var(--pos-color-muted); margin-top: 4px; }
+    section { margin-bottom: 40px; }
+    .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .theme-box {
+      border: 1px solid var(--pos-color-border);
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 12px;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: var(--pos-color-border);
+      color: var(--pos-color-muted);
+      margin-bottom: 12px;
+    }
+
+    /* Event log */
+    #event-log {
+      background: var(--pos-color-bg);
+      border: 1px solid var(--pos-color-border);
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-family: monospace;
+      font-size: 12px;
+      height: 180px;
+      overflow-y: auto;
+      color: var(--pos-color-fg);
+      white-space: pre-wrap;
+    }
+    #event-log .entry { margin-bottom: 4px; }
+    #event-log .entry .tag {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 700;
+      margin-right: 6px;
+    }
+    #event-log .entry.native .tag  { background: var(--pos-color-accent); color: var(--pos-color-bg); }
+    #event-log .entry.custom .tag  { background: var(--pos-color-success); color: var(--pos-color-bg); }
+    .log-empty { color: var(--pos-color-muted); font-style: italic; }
+
+    #plugin-slot { margin-top: 8px; }
+  </style>
+</head>
+<body>
+
+  <div class="page-header">
+    <h1>pOS Design System</h1>
+    <p>v0 validation — token cascading · native events · plugin loading · tenant theming</p>
+  </div>
+
+  <!-- ── Section 1: Token cascading + Components ─────────────────────── -->
+  <section>
+    <h2>1 · Token Cascading &amp; Components</h2>
+    <div class="theme-box">
+      <div class="badge">data-pos-theme="light" (default)</div>
+      <div class="row">
+        <ui-button variant="solid">Solid</ui-button>
+        <ui-button variant="outline">Outline</ui-button>
+        <ui-button variant="ghost">Ghost</ui-button>
+        <ui-button variant="danger">Danger</ui-button>
+        <ui-button variant="solid" disabled>Disabled</ui-button>
+      </div>
+      <div class="row">
+        <ui-input placeholder="Type something…" style="width:280px"></ui-input>
+        <ui-input type="email" placeholder="email@example.com" style="width:280px"></ui-input>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section 2: Tenant Theming ───────────────────────────────────── -->
+  <section>
+    <h2>2 · Tenant Theming Override</h2>
+    <div class="theme-box" data-pos-theme="tenant-acme">
+      <div class="badge">data-pos-theme="tenant-acme" — accent overridden to #e63946</div>
+      <div class="row">
+        <ui-button variant="solid">Solid</ui-button>
+        <ui-button variant="outline">Outline</ui-button>
+        <ui-button variant="ghost">Ghost</ui-button>
+        <ui-button variant="danger">Danger</ui-button>
+      </div>
+      <div class="row">
+        <ui-input placeholder="Tenant-styled input…" style="width:280px"></ui-input>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Section 3: Plugin ────────────────────────────────────────────── -->
+  <section>
+    <h2>3 · Plugin Runtime</h2>
+    <div class="theme-box">
+      <div class="badge">Dynamically loaded via loadPlugin()</div>
+      <div id="plugin-slot">Loading plugin…</div>
+    </div>
+  </section>
+
+  <!-- ── Section 4: Event Log ─────────────────────────────────────────── -->
+  <section>
+    <h2>4 · Event Log</h2>
+    <div id="event-log"><span class="log-empty">Events will appear here when you interact above…</span></div>
+  </section>
+
+  <!-- Phase 2+3: components + plugin runtime (ESM) -->
+  <script type="module">
+    import { loadPlugin, createHostSDK } from '../dist/pos-design-system.js';
+
+    // ── Event log ────────────────────────────────────────────────────────
+    const log = document.getElementById('event-log');
+    let logEmpty = true;
+
+    function addEntry(type, label, detail) {
+      if (logEmpty) { log.innerHTML = ''; logEmpty = false; }
+      const entry = document.createElement('div');
+      entry.className = `entry ${type}`;
+      const time = new Date().toLocaleTimeString('en', { hour12: false });
+      const detailStr = detail ? ` — ${JSON.stringify(detail)}` : '';
+      entry.innerHTML = `<span class="tag">${type}</span><span>${time} ${label}${detailStr}</span>`;
+      log.appendChild(entry);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // Capture native events bubbling from components
+    document.addEventListener('click', (e) => {
+      if (e.target.tagName?.startsWith('UI-') || e.target.tagName?.startsWith('PLUGIN-')) {
+        addEntry('native', `click on &lt;${e.target.tagName.toLowerCase()}&gt;`);
+      }
+    });
+    document.addEventListener('input', (e) => {
+      if (e.target.tagName?.startsWith('UI-')) {
+        addEntry('native', `input on &lt;${e.target.tagName.toLowerCase()}&gt;`, { value: e.target.value });
+      }
+    });
+
+    // Capture any custom plugin events
+    document.addEventListener('plugin:hello:action', (e) => {
+      addEntry('custom', 'plugin:hello:action', e.detail);
+    });
+
+    // ── Plugin loading ────────────────────────────────────────────────────
+    try {
+      const { tagName } = await loadPlugin({
+        url: './plugins/hello-plugin.js',
+        tagName: 'plugin-hello',
+      });
+
+      const el = document.createElement(tagName);
+      el.hostSDK = createHostSDK(el);
+
+      const slot = document.getElementById('plugin-slot');
+      slot.innerHTML = '';
+      slot.appendChild(el);
+    } catch (err) {
+      document.getElementById('plugin-slot').textContent = `Plugin failed to load: ${err.message}`;
+    }
+  </script>
+
+</body>
+</html>

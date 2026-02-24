@@ -1,0 +1,15 @@
+{
+  "name": "pos-design-system",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Browser-native UI platform using Web Components. v0 experimental.",
+  "scripts": {
+    "build:tokens": "node tokens/build-tokens.js",
+    "build:js": "node esbuild.config.js",
+    "build": "npm run build:tokens && npm run build:js",
+    "preview": "npm run build && node server.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0"
+  }
+}

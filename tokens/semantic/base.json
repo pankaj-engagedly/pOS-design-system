@@ -1,0 +1,15 @@
+{
+  "pos": {
+    "color": {
+      "bg":           { "$value": "{color.neutral.0}" },
+      "fg":           { "$value": "{color.neutral.900}" },
+      "muted":        { "$value": "{color.neutral.600}" },
+      "border":       { "$value": "{color.neutral.400}" },
+      "accent":       { "$value": "{color.blue.600}" },
+      "accent-hover": { "$value": "{color.blue.700}" },
+      "danger":       { "$value": "{color.red.600}" },
+      "success":      { "$value": "{color.green.600}" },
+      "focus":        { "$value": "{color.blue.500}" }
+    }
+  }
+}
