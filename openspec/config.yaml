@@ -1,0 +1,28 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Plain JavaScript (no TypeScript), Web Components, Shadow DOM, CSS Custom Properties
+  Build: esbuild (minimal config)
+  Domain: Browser-native UI design system (pOS Design System) — v0 experimental
+  Conventions:
+    - Zero runtime dependencies, no frameworks
+    - Two-tier design tokens: raw → semantic (minimal set)
+    - Components extend PosBaseElement (HTMLElement subclass)
+    - Shadow DOM open mode for style isolation
+    - Native DOM events bubble naturally — do NOT suppress or replace them
+    - Custom events only when absolutely necessary, always { bubbles: true, composed: true }
+    - CSS variables prefixed --pos-*
+    - Theming via data-pos-theme attribute
+    - Single .js file per component (styles inline)
+    - No test scaffolding in v0
+    - Goal: validate token cascading, plugin loading, event bubbling, minimal viable architecture
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
