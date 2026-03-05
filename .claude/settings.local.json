@@ -19,7 +19,16 @@
       "Bash(npm view:*)",
       "mcp__figma__get_figma_data",
       "Bash(python3:*)",
-      "Bash(lsof:*)"
+      "Bash(lsof:*)",
+      "Bash(git mv:*)",
+      "Bash(npm install:*)",
+      "Bash(npm test:*)",
+      "Bash(mkdir:*)",
+      "Bash(chmod +x:*)",
+      "Bash(make test-ds:*)",
+      "Bash(bash:*)",
+      "Bash(curl:*)",
+      "Bash(git status:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

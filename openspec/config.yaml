@@ -1,28 +1,34 @@
 schema: spec-driven
 
 context: |
-  Tech stack: Plain JavaScript (no TypeScript), Web Components, Shadow DOM, CSS Custom Properties
-  Build: esbuild (minimal config)
-  Domain: Browser-native UI design system (pOS Design System) — v0 experimental
-  Conventions:
+  Project: pOS — Personal Operating System (self-hosted personal hub)
+  Monorepo with four layers: design-system, frontend, backend, infra
+
+  Design System (design-system/):
+    - Plain JavaScript (no TypeScript), Web Components, Shadow DOM, CSS Custom Properties
+    - Build: esbuild (minimal config)
     - Zero runtime dependencies, no frameworks
-    - Two-tier design tokens: raw → semantic (minimal set)
-    - Components extend PosBaseElement (HTMLElement subclass)
-    - Shadow DOM open mode for style isolation
-    - Native DOM events bubble naturally — do NOT suppress or replace them
-    - Custom events only when absolutely necessary, always { bubbles: true, composed: true }
-    - CSS variables prefixed --pos-*
+    - Two-tier design tokens: raw → semantic, CSS variables prefixed --pos-*
+    - Components extend PosBaseElement (HTMLElement subclass), Shadow DOM open mode
     - Theming via data-pos-theme attribute
     - Single .js file per component (styles inline)
-    - No test scaffolding in v0
-    - Goal: validate token cascading, plugin loading, event bubbling, minimal viable architecture
+    - Tests: @web/test-runner + Playwright Chromium
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Frontend (frontend/):
+    - Vanilla JavaScript + Web Components, no frameworks
+    - Atomic Design: design system = atoms, app builds molecules → organisms → templates → pages
+    - Micro-frontend modules loaded dynamically by app shell
+    - Hash-based routing, global event bus (CustomEvents on shared EventTarget)
+    - Modules: todos, notes, knowledge-base, vault, feed-watcher, documents, photos, settings
+
+  Backend (backend/):
+    - Python 3.12+, FastAPI, async SQLAlchemy 2.0, Alembic
+    - Microservices with shared library (pos_common)
+    - Single PostgreSQL instance, user_id scoped (all entities have user_id FK)
+    - RabbitMQ for event-driven communication (topic exchange: pos.events)
+    - API gateway with JWT auth middleware
+
+  Infrastructure (infra/):
+    - Docker Compose for dev (PostgreSQL 16, RabbitMQ 3.13)
+    - Makefile as universal dev interface
+    - Kubernetes (EKS) and AWS for production (future)

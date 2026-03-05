@@ -1,0 +1,7 @@
+{
+  "name": "pos-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "pOS frontend app shell and micro-frontend modules."
+}
