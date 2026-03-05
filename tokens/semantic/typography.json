@@ -1,0 +1,47 @@
+{
+  "pos": {
+    "font": {
+      "family": {
+        "default":   { "$value": "{font.family.default}" },
+        "secondary": { "$value": "{font.family.secondary}" },
+        "mono":      { "$value": "{font.family.mono}" }
+      },
+      "size": {
+        "sm": { "$value": "{font.size.sm}" },
+        "md": { "$value": "{font.size.md}" },
+        "lg": { "$value": "{font.size.lg}" }
+      },
+      "weight": {
+        "regular": { "$value": "{font.weight.regular}" },
+        "medium":  { "$value": "{font.weight.medium}" },
+        "bold":    { "$value": "{font.weight.bold}" }
+      }
+    },
+    "line-height": {
+      "tight":  { "$value": "{line-height.tight}" },
+      "normal": { "$value": "{line-height.normal}" }
+    },
+    "text": {
+      "heading": {
+        "size":    { "$value": "{font.size.2xl}" },
+        "weight":  { "$value": "{font.weight.bold}" },
+        "leading": { "$value": "{line-height.tight}" }
+      },
+      "body": {
+        "size":    { "$value": "{font.size.md}" },
+        "weight":  { "$value": "{font.weight.regular}" },
+        "leading": { "$value": "{line-height.normal}" }
+      },
+      "caption": {
+        "size":    { "$value": "{font.size.xs}" },
+        "weight":  { "$value": "{font.weight.regular}" },
+        "leading": { "$value": "{line-height.normal}" }
+      },
+      "label": {
+        "size":    { "$value": "{font.size.sm}" },
+        "weight":  { "$value": "{font.weight.medium}" },
+        "leading": { "$value": "{line-height.tight}" }
+      }
+    }
+  }
+}

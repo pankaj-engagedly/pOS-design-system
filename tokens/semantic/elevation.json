@@ -1,0 +1,9 @@
+{
+  "pos": {
+    "shadow": {
+      "sm": { "$value": "{shadow.sm}" },
+      "md": { "$value": "{shadow.md}" },
+      "lg": { "$value": "{shadow.lg}" }
+    }
+  }
+}

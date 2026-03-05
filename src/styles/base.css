@@ -1,0 +1,89 @@
+@import '../../dist/tokens/theme.css';
+
+/* === Reset === */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body,
+h1, h2, h3, h4, h5, h6,
+p, ul, ol {
+  margin: 0;
+}
+
+/* === Base typography === */
+
+body {
+  font-family: var(--pos-font-family-default);
+  font-size: var(--pos-font-size-md);
+  line-height: var(--pos-line-height-normal);
+  color: var(--pos-color-text-primary);
+  background-color: var(--pos-color-background-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* === Links === */
+
+a {
+  color: var(--pos-color-action-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* === Focus ring === */
+
+:focus-visible {
+  outline: 2px solid var(--pos-color-action-primary);
+  outline-offset: 2px;
+}
+
+/* === Typography utilities === */
+
+.pos-heading {
+  font-family: var(--pos-font-family-default);
+  font-size: var(--pos-text-heading-size);
+  font-weight: var(--pos-text-heading-weight);
+  line-height: var(--pos-text-heading-leading);
+}
+
+.pos-body {
+  font-family: var(--pos-font-family-default);
+  font-size: var(--pos-text-body-size);
+  font-weight: var(--pos-text-body-weight);
+  line-height: var(--pos-text-body-leading);
+}
+
+.pos-caption {
+  font-family: var(--pos-font-family-default);
+  font-size: var(--pos-text-caption-size);
+  font-weight: var(--pos-text-caption-weight);
+  line-height: var(--pos-text-caption-leading);
+}
+
+.pos-label {
+  font-family: var(--pos-font-family-default);
+  font-size: var(--pos-text-label-size);
+  font-weight: var(--pos-text-label-weight);
+  line-height: var(--pos-text-label-leading);
+}
+
+/* === Text color utilities === */
+
+.pos-text-primary {
+  color: var(--pos-color-text-primary);
+}
+
+.pos-text-secondary {
+  color: var(--pos-color-text-secondary);
+}
+
+.pos-text-disabled {
+  color: var(--pos-color-text-disabled);
+}

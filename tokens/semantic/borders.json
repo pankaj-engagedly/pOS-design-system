@@ -1,0 +1,10 @@
+{
+  "pos": {
+    "radius": {
+      "sm":   { "$value": "{radius.sm}" },
+      "md":   { "$value": "{radius.md}" },
+      "lg":   { "$value": "{radius.lg}" },
+      "full": { "$value": "{radius.full}" }
+    }
+  }
+}

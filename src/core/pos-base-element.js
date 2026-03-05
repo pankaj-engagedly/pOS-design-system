@@ -3,12 +3,15 @@
  *
  * Provides:
  *   - Open-mode Shadow DOM attached in the constructor
- *   - adoptStyles(css) for performant stylesheet adoption
+ *   - adoptStyles(css) for performant stylesheet adoption with caching
  *
  * Intentionally has NO emit() helper. Native DOM events (click, input,
  * change, focus, blur) bubble through Shadow DOM naturally when emitted
  * by native elements inside. Custom events are created inline when needed.
  */
+
+const sheetCache = new Map();
+
 export class PosBaseElement extends HTMLElement {
   constructor() {
     super();
@@ -17,12 +20,16 @@ export class PosBaseElement extends HTMLElement {
 
   /**
    * Adopt a CSS string into the Shadow DOM via CSSStyleSheet.
-   * Parsed once, shared across all instances.
+   * Parsed once per unique CSS string, shared across all instances.
    * @param {string} css
    */
   adoptStyles(css) {
-    const sheet = new CSSStyleSheet();
-    sheet.replaceSync(css);
+    let sheet = sheetCache.get(css);
+    if (!sheet) {
+      sheet = new CSSStyleSheet();
+      sheet.replaceSync(css);
+      sheetCache.set(css, sheet);
+    }
     this.shadow.adoptedStyleSheets = [sheet];
   }
 }

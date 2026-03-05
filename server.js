@@ -24,6 +24,7 @@ const MIME = {
 http.createServer((req, res) => {
   let urlPath = req.url.split('?')[0];
   if (urlPath === '/') urlPath = '/examples/showcase.html';
+  if (urlPath === '/demo') urlPath = '/examples/showcase.html';
 
   const filePath = path.join(ROOT, urlPath);
   const ext = path.extname(filePath);
@@ -40,7 +41,6 @@ http.createServer((req, res) => {
 }).listen(PORT, () => {
   console.log(`\n  pOS Design System`);
   console.log(`  ──────────────────────────────────`);
-  console.log(`  Showcase  → http://localhost:${PORT}/`);
-  console.log(`  Validation→ http://localhost:${PORT}/examples/index.html`);
+  console.log(`  Showcase → http://localhost:${PORT}/`);
   console.log(`  Press Ctrl+C to stop\n`);
 });

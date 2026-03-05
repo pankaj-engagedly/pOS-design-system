@@ -1,0 +1,8 @@
+{
+  "z": {
+    "base":    { "$value": 0,   "$type": "number" },
+    "raised":  { "$value": 100, "$type": "number" },
+    "overlay": { "$value": 400, "$type": "number" },
+    "top":     { "$value": 700, "$type": "number" }
+  }
+}

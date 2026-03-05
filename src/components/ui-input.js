@@ -9,33 +9,45 @@ const CSS = `
   .wrapper {
     display: flex;
     align-items: center;
-    border: 1px solid var(--pos-color-border);
-    border-radius: 6px;
-    background-color: var(--pos-color-bg);
+    border: 1px solid var(--pos-color-border-default);
+    border-radius: var(--pos-radius-md);
+    background-color: var(--pos-color-background-primary);
     transition: border-color 0.15s ease;
     overflow: hidden;
   }
 
   .wrapper:focus-within {
-    border-color: var(--pos-color-focus);
-    outline: 2px solid var(--pos-color-focus);
+    border-color: var(--pos-color-action-primary);
+    outline: 2px solid var(--pos-color-action-primary);
     outline-offset: 1px;
   }
 
   input {
     flex: 1;
-    padding: 8px 12px;
-    font-family: inherit;
-    font-size: 14px;
-    color: var(--pos-color-fg);
+    font-family: var(--pos-font-family-default);
+    color: var(--pos-color-text-primary);
     background: transparent;
     border: none;
     outline: none;
     min-width: 0;
   }
 
+  /* Sizes */
+  :host([size="sm"]) input {
+    padding: var(--pos-space-xs) var(--pos-space-sm);
+    font-size: var(--pos-raw-font-size-xs);
+  }
+  input {
+    padding: var(--pos-space-sm) var(--pos-space-md);
+    font-size: var(--pos-font-size-sm);
+  }
+  :host([size="lg"]) input {
+    padding: var(--pos-space-sm) var(--pos-space-md);
+    font-size: var(--pos-font-size-md);
+  }
+
   input::placeholder {
-    color: var(--pos-color-muted);
+    color: var(--pos-color-text-disabled);
   }
 
   input:disabled {
@@ -45,13 +57,13 @@ const CSS = `
 
   :host([disabled]) .wrapper {
     opacity: 0.45;
-    background-color: var(--pos-color-border);
+    background-color: var(--pos-color-background-secondary);
   }
 `;
 
 class UiInput extends PosBaseElement {
   static get observedAttributes() {
-    return ['type', 'value', 'placeholder', 'disabled'];
+    return ['type', 'value', 'placeholder', 'disabled', 'size'];
   }
 
   connectedCallback() {
@@ -59,9 +71,13 @@ class UiInput extends PosBaseElement {
     this.shadow.innerHTML = `<div class="wrapper"><input /></div>`;
     this._input = this.shadow.querySelector('input');
     this._syncAttributes();
+
+    this._input.addEventListener('change', () => {
+      this.dispatchEvent(new Event('change', { bubbles: true }));
+    });
   }
 
-  attributeChangedCallback(name, _old, next) {
+  attributeChangedCallback() {
     if (!this._input) return;
     this._syncAttributes();
   }
@@ -72,17 +88,12 @@ class UiInput extends PosBaseElement {
     input.placeholder = this.getAttribute('placeholder') || '';
     input.disabled    = this.hasAttribute('disabled');
 
-    // Sync value attribute only on initial set, not on every keystroke
     const attrVal = this.getAttribute('value');
     if (attrVal !== null && input.value !== attrVal) {
       input.value = attrVal;
     }
   }
 
-  /**
-   * value property — reads from / writes to the internal input.
-   * Native input/change events already bubble out of Shadow DOM.
-   */
   get value() {
     return this._input ? this._input.value : '';
   }

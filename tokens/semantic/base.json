@@ -1,15 +1,28 @@
 {
   "pos": {
     "color": {
-      "bg":           { "$value": "{color.neutral.0}" },
-      "fg":           { "$value": "{color.neutral.900}" },
-      "muted":        { "$value": "{color.neutral.600}" },
-      "border":       { "$value": "{color.neutral.400}" },
-      "accent":       { "$value": "{color.blue.600}" },
-      "accent-hover": { "$value": "{color.blue.700}" },
-      "danger":       { "$value": "{color.red.600}" },
-      "success":      { "$value": "{color.green.600}" },
-      "focus":        { "$value": "{color.blue.500}" }
+      "background": {
+        "primary":   { "$value": "{color.neutral.0}" },
+        "secondary": { "$value": "{color.neutral.200}" }
+      },
+      "text": {
+        "primary":   { "$value": "{color.neutral.900}" },
+        "secondary": { "$value": "{color.neutral.700}" },
+        "disabled":  { "$value": "{color.neutral.600}" }
+      },
+      "border": {
+        "default": { "$value": "{color.neutral.400}" },
+        "strong":  { "$value": "{color.neutral.700}" }
+      },
+      "action": {
+        "primary":       { "$value": "{color.blue.500}" },
+        "primary-hover": { "$value": "{color.blue.600}" },
+        "focus":         { "$value": "{color.blue.400}" }
+      },
+      "accent": {
+        "purple": { "$value": "{color.purple.500}" },
+        "orange": { "$value": "{color.orange.300}" }
+      }
     }
   }
 }

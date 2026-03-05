@@ -24,12 +24,12 @@ const CSS = `
 
   .card {
     padding: 16px 20px;
-    border: 1px solid var(--pos-color-border);
+    border: 1px solid var(--pos-color-border-default);
     border-radius: 8px;
-    background: var(--pos-color-bg);
+    background: var(--pos-color-background-primary);
     font-family: inherit;
     font-size: 14px;
-    color: var(--pos-color-fg);
+    color: var(--pos-color-text-primary);
   }
 
   .label {
@@ -37,15 +37,15 @@ const CSS = `
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--pos-color-muted);
+    color: var(--pos-color-text-secondary);
     margin-bottom: 8px;
   }
 
   button {
     margin-top: 12px;
     padding: 6px 14px;
-    background: var(--pos-color-accent);
-    color: var(--pos-color-bg);
+    background: var(--pos-color-action-primary);
+    color: var(--pos-color-background-primary);
     border: none;
     border-radius: 5px;
     font-size: 13px;
@@ -53,18 +53,18 @@ const CSS = `
   }
 
   button:hover {
-    background: var(--pos-color-accent-hover);
+    background: var(--pos-color-action-primary-hover);
   }
 
   button:focus-visible {
-    outline: 2px solid var(--pos-color-focus);
+    outline: 2px solid var(--pos-color-action-focus);
     outline-offset: 2px;
   }
 
   .token-val {
     font-family: monospace;
     font-size: 12px;
-    color: var(--pos-color-accent);
+    color: var(--pos-color-action-primary);
   }
 `;
 
@@ -81,7 +81,7 @@ class HelloPlugin extends HTMLElement {
 
     // Read host theme token — proves CSS var inheritance through Shadow DOM
     const accentToken = this.hostSDK
-      ? this.hostSDK.getToken('--pos-color-accent')
+      ? this.hostSDK.getToken('--pos-color-action-primary')
       : '(no SDK)';
 
     this._shadow.innerHTML = `
@@ -96,7 +96,7 @@ class HelloPlugin extends HTMLElement {
       if (this.hostSDK) {
         this.hostSDK.emit('plugin:hello:action', {
           source: 'plugin-hello',
-          token: this.hostSDK.getToken('--pos-color-accent'),
+          token: this.hostSDK.getToken('--pos-color-action-primary'),
         });
       }
     });

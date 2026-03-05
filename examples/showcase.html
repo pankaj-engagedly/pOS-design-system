@@ -1,64 +1,57 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-pos-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>pOS Design System — Component Showcase</title>
+  <title>pOS Design System</title>
 
-  <link rel="stylesheet" href="/dist/tokens/theme.css">
+  <link rel="stylesheet" href="/dist/base.css">
 
   <style>
-    /* ── Reset ─────────────────────────────────────────────────────────── */
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    /* ── Tenant theme overrides ─────────────────────────────────────────── */
+    /* ── Tenant theme overrides (example) ────────────────────────────── */
     [data-pos-theme="tenant-acme"] {
-      --pos-color-accent:       #e63946;
-      --pos-color-accent-hover: #c1121f;
+      --pos-color-action-primary:       #e63946;
+      --pos-color-action-primary-hover: #c1121f;
     }
     [data-pos-theme="tenant-forest"] {
-      --pos-color-accent:       #2d6a4f;
-      --pos-color-accent-hover: #1b4332;
-      --pos-color-focus:        #52b788;
+      --pos-color-action-primary:       #2d6a4f;
+      --pos-color-action-primary-hover: #1b4332;
+      --pos-color-action-focus:         #52b788;
     }
 
-    /* ── Layout ─────────────────────────────────────────────────────────── */
+    /* ── Layout ──────────────────────────────────────────────────────── */
     body {
       display: flex;
       min-height: 100vh;
-      font-family: system-ui, -apple-system, sans-serif;
-      font-size: 14px;
-      background: var(--pos-color-bg);
-      color: var(--pos-color-fg);
     }
 
     /* Sidebar nav */
     .sidebar {
       width: 220px;
       flex-shrink: 0;
-      border-right: 1px solid var(--pos-color-border);
+      border-right: 1px solid var(--pos-color-border-default);
       padding: 24px 0;
       position: fixed;
       top: 0;
       left: 0;
       bottom: 0;
       overflow-y: auto;
-      background: var(--pos-color-bg);
+      background: var(--pos-color-background-primary);
     }
     .sidebar-logo {
       padding: 0 20px 20px;
-      border-bottom: 1px solid var(--pos-color-border);
+      border-bottom: 1px solid var(--pos-color-border-default);
       margin-bottom: 12px;
     }
     .sidebar-logo strong { font-size: 15px; display: block; }
-    .sidebar-logo span   { font-size: 11px; color: var(--pos-color-muted); }
+    .sidebar-logo span   { font-size: 11px; color: var(--pos-color-text-secondary); }
     .nav-group { padding: 8px 20px 4px; }
     .nav-group-label {
       font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.1em;
-      color: var(--pos-color-muted);
+      color: var(--pos-color-text-secondary);
       margin-bottom: 4px;
     }
     .nav-link {
@@ -66,16 +59,32 @@
       padding: 5px 8px;
       border-radius: 5px;
       font-size: 13px;
-      color: var(--pos-color-fg);
+      color: var(--pos-color-text-primary);
       text-decoration: none;
       cursor: pointer;
       transition: background 0.1s;
     }
-    .nav-link:hover { background: var(--pos-color-border); }
+    .nav-link:hover { background: var(--pos-color-background-secondary); text-decoration: none; }
     .nav-link.active {
-      background: var(--pos-color-accent);
-      color: var(--pos-color-bg);
+      background: var(--pos-color-action-primary);
+      color: var(--pos-color-background-primary);
     }
+
+    /* Dark mode toggle */
+    .dark-toggle {
+      margin: 16px 20px 0;
+      padding: 6px 12px;
+      border: 1px solid var(--pos-color-border-default);
+      border-radius: var(--pos-raw-radius-full);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      background: var(--pos-color-background-secondary);
+      color: var(--pos-color-text-primary);
+      width: calc(100% - 40px);
+      transition: all 0.15s;
+    }
+    .dark-toggle:hover { border-color: var(--pos-color-action-primary); }
 
     /* Main content */
     .main {
@@ -85,7 +94,7 @@
       max-width: 900px;
     }
 
-    /* ── Section styles ─────────────────────────────────────────────────── */
+    /* ── Section styles ──────────────────────────────────────────────── */
     .section { display: none; }
     .section.active { display: block; }
 
@@ -95,24 +104,24 @@
       margin-bottom: 4px;
     }
     .section-desc {
-      color: var(--pos-color-muted);
+      color: var(--pos-color-text-secondary);
       margin-bottom: 32px;
       line-height: 1.6;
     }
 
     /* Preview card */
     .preview {
-      border: 1px solid var(--pos-color-border);
+      border: 1px solid var(--pos-color-border-default);
       border-radius: 10px;
       overflow: hidden;
       margin-bottom: 32px;
     }
     .preview-label {
       padding: 10px 16px;
-      background: var(--pos-color-border);
+      background: var(--pos-color-background-secondary);
       font-size: 11px;
       font-weight: 600;
-      color: var(--pos-color-muted);
+      color: var(--pos-color-text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
@@ -122,7 +131,7 @@
       flex-wrap: wrap;
       gap: 12px;
       align-items: center;
-      background: var(--pos-color-bg);
+      background: var(--pos-color-background-primary);
     }
     .preview-canvas.col {
       flex-direction: column;
@@ -131,48 +140,48 @@
 
     /* Code block */
     .code {
-      background: var(--pos-color-border);
+      background: var(--pos-color-background-secondary);
       border-radius: 6px;
       padding: 14px 16px;
-      font-family: 'Menlo', 'Consolas', monospace;
+      font-family: var(--pos-font-family-mono);
       font-size: 12px;
       line-height: 1.7;
-      color: var(--pos-color-fg);
+      color: var(--pos-color-text-primary);
       overflow-x: auto;
       margin-bottom: 32px;
       white-space: pre;
     }
 
-    /* Token table */
+    /* Token/attribute table */
     table { width: 100%; border-collapse: collapse; margin-bottom: 32px; font-size: 13px; }
     th {
       text-align: left;
       padding: 8px 12px;
-      border-bottom: 2px solid var(--pos-color-border);
+      border-bottom: 2px solid var(--pos-color-border-default);
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: var(--pos-color-muted);
+      color: var(--pos-color-text-secondary);
     }
     td {
       padding: 10px 12px;
-      border-bottom: 1px solid var(--pos-color-border);
+      border-bottom: 1px solid var(--pos-color-border-default);
       vertical-align: middle;
     }
     .token-swatch {
       width: 20px;
       height: 20px;
       border-radius: 4px;
-      border: 1px solid var(--pos-color-border);
+      border: 1px solid var(--pos-color-border-default);
       display: inline-block;
       vertical-align: middle;
       margin-right: 8px;
     }
     code {
-      font-family: 'Menlo', 'Consolas', monospace;
+      font-family: var(--pos-font-family-mono);
       font-size: 11px;
-      background: var(--pos-color-border);
+      background: var(--pos-color-background-secondary);
       padding: 2px 6px;
       border-radius: 3px;
     }
@@ -182,60 +191,63 @@
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
-      margin-bottom: 32px;
+      margin-bottom: 24px;
     }
     .theme-btn {
       padding: 6px 14px;
-      border: 1px solid var(--pos-color-border);
+      border: 1px solid var(--pos-color-border-default);
       border-radius: 99px;
       font-size: 12px;
       font-weight: 500;
       cursor: pointer;
-      background: var(--pos-color-bg);
-      color: var(--pos-color-fg);
+      background: var(--pos-color-background-primary);
+      color: var(--pos-color-text-primary);
       transition: all 0.15s;
     }
-    .theme-btn:hover { border-color: var(--pos-color-accent); color: var(--pos-color-accent); }
-    .theme-btn.active { background: var(--pos-color-accent); color: var(--pos-color-bg); border-color: var(--pos-color-accent); }
+    .theme-btn:hover { border-color: var(--pos-color-action-primary); color: var(--pos-color-action-primary); }
+    .theme-btn.active { background: var(--pos-color-action-primary); color: var(--pos-color-background-primary); border-color: var(--pos-color-action-primary); }
 
     /* Event log */
     .event-log {
-      border: 1px solid var(--pos-color-border);
+      border: 1px solid var(--pos-color-border-default);
       border-radius: 6px;
       height: 160px;
       overflow-y: auto;
-      font-family: monospace;
+      font-family: var(--pos-font-family-mono);
       font-size: 11px;
-      background: var(--pos-color-bg);
+      background: var(--pos-color-background-primary);
     }
     .log-line {
       display: flex;
       align-items: center;
       gap: 8px;
       padding: 5px 12px;
-      border-bottom: 1px solid var(--pos-color-border);
+      border-bottom: 1px solid var(--pos-color-border-default);
     }
     .log-line:last-child { border-bottom: none; }
-    .log-time { color: var(--pos-color-muted); min-width: 60px; }
+    .log-time { color: var(--pos-color-text-secondary); min-width: 60px; }
     .log-tag {
       padding: 1px 6px;
       border-radius: 3px;
       font-size: 10px;
       font-weight: 700;
     }
-    .log-tag.native  { background: var(--pos-color-accent); color: var(--pos-color-bg); }
-    .log-tag.custom  { background: var(--pos-color-success); color: var(--pos-color-bg); }
-    .log-msg { color: var(--pos-color-fg); }
-    .log-empty { padding: 12px; color: var(--pos-color-muted); font-style: italic; }
+    .log-tag.native  { background: var(--pos-color-action-primary); color: var(--pos-color-background-primary); }
+    .log-tag.custom   { background: var(--pos-color-accent-purple); color: var(--pos-color-background-primary); }
+    .log-msg { color: var(--pos-color-text-primary); }
+    .log-empty { padding: 12px; color: var(--pos-color-text-secondary); font-style: italic; }
 
-    /* Plugin card */
-    #plugin-mount { min-height: 80px; }
-    .plugin-loading { color: var(--pos-color-muted); font-style: italic; font-size: 13px; }
+    /* Plugin */
+    #plugin-mount { min-height: 60px; }
+    .plugin-loading { color: var(--pos-color-text-secondary); font-style: italic; font-size: 13px; }
+
+    /* Demo grid for cards */
+    .demo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
   </style>
 </head>
 <body>
 
-  <!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+  <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
   <aside class="sidebar">
     <div class="sidebar-logo">
       <strong>pOS Design System</strong>
@@ -243,15 +255,39 @@
     </div>
 
     <div class="nav-group">
-      <div class="nav-group-label">Overview</div>
+      <div class="nav-group-label">Foundation</div>
       <a class="nav-link active" data-section="tokens">Design Tokens</a>
       <a class="nav-link" data-section="theming">Theming</a>
+      <a class="nav-link" data-section="typography">Typography</a>
     </div>
 
     <div class="nav-group">
       <div class="nav-group-label">Components</div>
       <a class="nav-link" data-section="button">ui-button</a>
       <a class="nav-link" data-section="input">ui-input</a>
+      <a class="nav-link" data-section="badge">ui-badge</a>
+      <a class="nav-link" data-section="tag">ui-tag</a>
+      <a class="nav-link" data-section="spinner">ui-spinner</a>
+      <a class="nav-link" data-section="icon">ui-icon</a>
+      <a class="nav-link" data-section="card">ui-card</a>
+      <a class="nav-link" data-section="divider">ui-divider</a>
+      <a class="nav-link" data-section="dialog">ui-dialog</a>
+      <a class="nav-link" data-section="tooltip">ui-tooltip</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Forms</div>
+      <a class="nav-link" data-section="checkbox">ui-checkbox</a>
+      <a class="nav-link" data-section="radio">ui-radio</a>
+      <a class="nav-link" data-section="toggle">ui-toggle</a>
+      <a class="nav-link" data-section="select">ui-select</a>
+      <a class="nav-link" data-section="textarea">ui-textarea</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Feedback</div>
+      <a class="nav-link" data-section="alert">ui-alert</a>
+      <a class="nav-link" data-section="progress">ui-progress</a>
     </div>
 
     <div class="nav-group">
@@ -259,26 +295,24 @@
       <a class="nav-link" data-section="plugins">Plugins</a>
       <a class="nav-link" data-section="events">Events</a>
     </div>
+
+    <button class="dark-toggle" onclick="toggleDark()">Toggle Dark Mode</button>
   </aside>
 
-  <!-- ── Main ───────────────────────────────────────────────────────────── -->
+  <!-- ── Main ─────────────────────────────────────────────────────────── -->
   <main class="main">
 
-    <!-- Design Tokens -->
+    <!-- ═══ Design Tokens ═══ -->
     <div class="section active" id="section-tokens">
       <div class="section-title">Design Tokens</div>
-      <p class="section-desc">Two-tier token architecture. Raw tokens hold literal values; semantic tokens alias them by purpose. Components only consume semantic tokens — never raw values or hex codes.</p>
+      <p class="section-desc">Two-tier token architecture. Raw tokens hold literal values; semantic tokens alias them by purpose. Components only consume semantic tokens.</p>
 
       <div class="preview">
         <div class="preview-label">Semantic Color Tokens</div>
         <div class="preview-canvas col" style="gap: 0; padding: 0;">
           <table>
             <thead>
-              <tr>
-                <th>Token</th>
-                <th>Value (resolved)</th>
-                <th>Purpose</th>
-              </tr>
+              <tr><th>Token</th><th>Value</th><th>Purpose</th></tr>
             </thead>
             <tbody id="token-table-body"></tbody>
           </table>
@@ -286,132 +320,165 @@
       </div>
 
       <div class="code">/* Raw tokens — literal values */
---pos-raw-color-blue-600: #228be6;
---pos-raw-color-neutral-0: #ffffff;
+--pos-raw-color-blue-500: #0067DD;
+--pos-raw-color-neutral-0: #FFFFFF;
 
 /* Semantic tokens — reference raw via var() */
---pos-color-accent: var(--pos-raw-color-blue-600);
---pos-color-bg:     var(--pos-raw-color-neutral-0);</div>
+--pos-color-action-primary:      var(--pos-raw-color-blue-500);
+--pos-color-background-primary:  var(--pos-raw-color-neutral-0);</div>
     </div>
 
-    <!-- Theming -->
+    <!-- ═══ Theming ═══ -->
     <div class="section" id="section-theming">
       <div class="section-title">Theming</div>
-      <p class="section-desc">Switch themes by setting <code>data-pos-theme</code> on any ancestor element. CSS custom properties cascade through Shadow DOM boundaries automatically — components require no changes.</p>
+      <p class="section-desc">Switch themes by setting <code>data-pos-theme</code> on any ancestor. CSS custom properties cascade through Shadow DOM automatically — components require no changes.</p>
 
       <div class="theme-switcher">
-        <button class="theme-btn active" data-theme="light">Default (light)</button>
-        <button class="theme-btn" data-theme="tenant-acme">Acme tenant (red)</button>
-        <button class="theme-btn" data-theme="tenant-forest">Forest tenant (green)</button>
+        <button class="theme-btn active" data-theme="light">Light (default)</button>
+        <button class="theme-btn" data-theme="dark">Dark</button>
+        <button class="theme-btn" data-theme="tenant-acme">Acme tenant</button>
+        <button class="theme-btn" data-theme="tenant-forest">Forest tenant</button>
       </div>
 
       <div class="preview" id="theme-demo-box">
         <div class="preview-label" id="theme-demo-label">data-pos-theme="light"</div>
         <div class="preview-canvas">
-          <ui-button variant="solid">Primary action</ui-button>
-          <ui-button variant="outline">Secondary</ui-button>
-          <ui-button variant="ghost">Ghost</ui-button>
-          <ui-button variant="danger">Danger</ui-button>
-        </div>
-        <div class="preview-canvas">
-          <ui-input placeholder="Themed input…" style="width: 300px"></ui-input>
-        </div>
-      </div>
-
-      <div class="code">/* Default theme — set in dist/tokens/theme.css */
-:root, [data-pos-theme="light"] {
-  --pos-color-accent: var(--pos-raw-color-blue-600);
-}
-
-/* Tenant override — override semantic tokens only */
-[data-pos-theme="tenant-acme"] {
-  --pos-color-accent:       #e63946;
-  --pos-color-accent-hover: #c1121f;
-}</div>
-    </div>
-
-    <!-- ui-button -->
-    <div class="section" id="section-button">
-      <div class="section-title">ui-button</div>
-      <p class="section-desc">Native <code>&lt;button&gt;</code> inside Shadow DOM. All color values from <code>--pos-color-*</code> tokens. Native <code>click</code> events bubble through Shadow DOM automatically.</p>
-
-      <div class="preview">
-        <div class="preview-label">Variants</div>
-        <div class="preview-canvas">
-          <ui-button variant="solid">Solid</ui-button>
+          <ui-button>Primary</ui-button>
           <ui-button variant="outline">Outline</ui-button>
           <ui-button variant="ghost">Ghost</ui-button>
           <ui-button variant="danger">Danger</ui-button>
         </div>
-      </div>
-
-      <div class="preview">
-        <div class="preview-label">States</div>
         <div class="preview-canvas">
-          <ui-button variant="solid">Default</ui-button>
-          <ui-button variant="solid" disabled>Disabled</ui-button>
+          <ui-input placeholder="Themed input..." style="width: 300px"></ui-input>
+          <ui-badge variant="primary">Badge</ui-badge>
+          <ui-spinner size="sm"></ui-spinner>
         </div>
       </div>
 
-      <div class="code">&lt;ui-button variant="solid"&gt;Save&lt;/ui-button&gt;
-&lt;ui-button variant="outline"&gt;Cancel&lt;/ui-button&gt;
-&lt;ui-button variant="ghost"&gt;More&lt;/ui-button&gt;
-&lt;ui-button variant="danger"&gt;Delete&lt;/ui-button&gt;
-&lt;ui-button variant="solid" disabled&gt;Disabled&lt;/ui-button&gt;
+      <div class="code">/* Built-in themes in dist/tokens/theme.css */
+:root, [data-pos-theme="light"] { ... }
+[data-pos-theme="dark"] { ... }
 
-&lt;!-- Native click event — no custom wrapper needed --&gt;
-&lt;script&gt;
-  document.querySelector('ui-button').addEventListener('click', (e) => {
-    console.log('clicked', e.target); // e.target = &lt;ui-button&gt;
-  });
-&lt;/script&gt;</div>
+/* Tenant override — only re-declare semantic tokens */
+[data-pos-theme="tenant-acme"] {
+  --pos-color-action-primary:       #e63946;
+  --pos-color-action-primary-hover: #c1121f;
+}</div>
+    </div>
+
+    <!-- ═══ Typography ═══ -->
+    <div class="section" id="section-typography">
+      <div class="section-title">Typography</div>
+      <p class="section-desc">Utility classes for consistent text styling. All values are token-driven and respond to theme changes.</p>
+
+      <div class="preview">
+        <div class="preview-label">Type Scale</div>
+        <div class="preview-canvas col">
+          <p class="pos-heading">Heading — 24px bold</p>
+          <p class="pos-body">Body — 16px regular, the default reading text</p>
+          <p class="pos-caption">Caption — 12px regular, small helper text</p>
+          <p class="pos-label">Label — 14px medium, form labels and UI labels</p>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Text Colors</div>
+        <div class="preview-canvas col">
+          <p class="pos-body pos-text-primary">Primary text color</p>
+          <p class="pos-body pos-text-secondary">Secondary text color</p>
+          <p class="pos-body pos-text-disabled">Disabled text color</p>
+        </div>
+      </div>
+
+      <div class="code">&lt;p class="pos-heading"&gt;Title&lt;/p&gt;
+&lt;p class="pos-body"&gt;Paragraph text&lt;/p&gt;
+&lt;p class="pos-caption pos-text-secondary"&gt;Hint text&lt;/p&gt;
+&lt;p class="pos-label"&gt;Form label&lt;/p&gt;</div>
+
+      <table>
+        <thead><tr><th>Class</th><th>Size</th><th>Weight</th></tr></thead>
+        <tbody>
+          <tr><td><code>.pos-heading</code></td><td>24px</td><td>Bold</td></tr>
+          <tr><td><code>.pos-body</code></td><td>16px</td><td>Regular</td></tr>
+          <tr><td><code>.pos-caption</code></td><td>12px</td><td>Regular</td></tr>
+          <tr><td><code>.pos-label</code></td><td>14px</td><td>Medium</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-button ═══ -->
+    <div class="section" id="section-button">
+      <div class="section-title">ui-button</div>
+      <p class="section-desc">Native <code>&lt;button&gt;</code> inside Shadow DOM. All colors from semantic tokens. Native <code>click</code> events bubble through Shadow DOM automatically.</p>
+
+      <div class="preview">
+        <div class="preview-label">Variants</div>
+        <div class="preview-canvas">
+          <ui-button>Solid</ui-button>
+          <ui-button variant="outline">Outline</ui-button>
+          <ui-button variant="ghost">Ghost</ui-button>
+          <ui-button variant="danger">Danger</ui-button>
+          <ui-button disabled>Disabled</ui-button>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Sizes</div>
+        <div class="preview-canvas">
+          <ui-button size="sm">Small</ui-button>
+          <ui-button size="md">Medium</ui-button>
+          <ui-button size="lg">Large</ui-button>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-button&gt;Solid&lt;/ui-button&gt;
+&lt;ui-button variant="outline"&gt;Outline&lt;/ui-button&gt;
+&lt;ui-button variant="ghost"&gt;Ghost&lt;/ui-button&gt;
+&lt;ui-button variant="danger"&gt;Danger&lt;/ui-button&gt;
+&lt;ui-button size="sm"&gt;Small&lt;/ui-button&gt;
+&lt;ui-button disabled&gt;Disabled&lt;/ui-button&gt;</div>
 
       <table>
         <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
         <tbody>
           <tr><td><code>variant</code></td><td>solid · outline · ghost · danger</td><td>solid</td></tr>
+          <tr><td><code>size</code></td><td>sm · md · lg</td><td>md</td></tr>
           <tr><td><code>disabled</code></td><td>boolean</td><td>false</td></tr>
         </tbody>
       </table>
     </div>
 
-    <!-- ui-input -->
+    <!-- ═══ ui-input ═══ -->
     <div class="section" id="section-input">
       <div class="section-title">ui-input</div>
       <p class="section-desc">Native <code>&lt;input&gt;</code> inside Shadow DOM. Native <code>input</code>, <code>change</code>, <code>focus</code>, <code>blur</code> events bubble through automatically. The <code>value</code> property syncs with the internal input.</p>
 
       <div class="preview">
-        <div class="preview-label">Types</div>
+        <div class="preview-label">Types & Sizes</div>
         <div class="preview-canvas col">
-          <ui-input type="text"     placeholder="Text input"       style="width:320px"></ui-input>
-          <ui-input type="email"    placeholder="email@example.com" style="width:320px"></ui-input>
-          <ui-input type="password" placeholder="Password"          style="width:320px"></ui-input>
-          <ui-input type="number"   placeholder="42"               style="width:320px"></ui-input>
+          <ui-input size="sm" placeholder="Small input" style="width:320px"></ui-input>
+          <ui-input placeholder="Medium input (default)" style="width:320px"></ui-input>
+          <ui-input size="lg" placeholder="Large input" style="width:320px"></ui-input>
+          <ui-input type="password" placeholder="Password" style="width:320px"></ui-input>
+          <ui-input disabled placeholder="Disabled" style="width:320px"></ui-input>
         </div>
       </div>
 
-      <div class="preview">
-        <div class="preview-label">States</div>
-        <div class="preview-canvas col">
-          <ui-input placeholder="Default"  style="width:320px"></ui-input>
-          <ui-input placeholder="Disabled" disabled style="width:320px"></ui-input>
-        </div>
-      </div>
-
-      <div class="code">&lt;ui-input type="email" placeholder="you@example.com"&gt;&lt;/ui-input&gt;
+      <div class="code">&lt;ui-input placeholder="Text input"&gt;&lt;/ui-input&gt;
 &lt;ui-input type="password" placeholder="Password"&gt;&lt;/ui-input&gt;
-&lt;ui-input disabled placeholder="Disabled"&gt;&lt;/ui-input&gt;
+&lt;ui-input size="lg" placeholder="Large"&gt;&lt;/ui-input&gt;
+&lt;ui-input disabled&gt;&lt;/ui-input&gt;
 
-&lt;!-- Read value programmatically --&gt;
 &lt;script&gt;
   const input = document.querySelector('ui-input');
-  input.addEventListener('input', () => console.log(input.value));
+  input.addEventListener('input', () =&gt; console.log(input.value));
 &lt;/script&gt;</div>
 
       <table>
         <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
         <tbody>
           <tr><td><code>type</code></td><td>text · email · password · number</td><td>text</td></tr>
+          <tr><td><code>size</code></td><td>sm · md · lg</td><td>md</td></tr>
           <tr><td><code>value</code></td><td>string</td><td>""</td></tr>
           <tr><td><code>placeholder</code></td><td>string</td><td>""</td></tr>
           <tr><td><code>disabled</code></td><td>boolean</td><td>false</td></tr>
@@ -419,7 +486,644 @@
       </table>
     </div>
 
-    <!-- Plugins -->
+    <!-- ═══ ui-badge ═══ -->
+    <div class="section" id="section-badge">
+      <div class="section-title">ui-badge</div>
+      <p class="section-desc">Inline status indicator with full-radius pill shape. Color variants and three sizes.</p>
+
+      <div class="preview">
+        <div class="preview-label">Variants</div>
+        <div class="preview-canvas">
+          <ui-badge>Neutral</ui-badge>
+          <ui-badge variant="primary">Primary</ui-badge>
+          <ui-badge variant="success">Success</ui-badge>
+          <ui-badge variant="warning">Warning</ui-badge>
+          <ui-badge variant="danger">Danger</ui-badge>
+          <ui-badge variant="purple">Purple</ui-badge>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Sizes</div>
+        <div class="preview-canvas">
+          <ui-badge size="sm">Small</ui-badge>
+          <ui-badge size="md">Medium</ui-badge>
+          <ui-badge size="lg">Large</ui-badge>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-badge&gt;Neutral&lt;/ui-badge&gt;
+&lt;ui-badge variant="primary"&gt;Primary&lt;/ui-badge&gt;
+&lt;ui-badge variant="success"&gt;Success&lt;/ui-badge&gt;
+&lt;ui-badge size="sm"&gt;Small&lt;/ui-badge&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>variant</code></td><td>neutral · primary · success · warning · danger · purple</td><td>neutral</td></tr>
+          <tr><td><code>size</code></td><td>sm · md · lg</td><td>md</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-tag ═══ -->
+    <div class="section" id="section-tag">
+      <div class="section-title">ui-tag</div>
+      <p class="section-desc">Removable label with optional close button. Dispatches a <code>remove</code> CustomEvent when the close button is clicked.</p>
+
+      <div class="preview">
+        <div class="preview-label">Variants</div>
+        <div class="preview-canvas">
+          <ui-tag>Neutral</ui-tag>
+          <ui-tag variant="primary">Primary</ui-tag>
+          <ui-tag variant="purple">Purple</ui-tag>
+          <ui-tag variant="orange">Orange</ui-tag>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Removable</div>
+        <div class="preview-canvas" id="tag-demo">
+          <ui-tag removable>Remove me</ui-tag>
+          <ui-tag variant="primary" removable>Primary</ui-tag>
+          <ui-tag variant="purple" removable>Purple</ui-tag>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-tag&gt;Label&lt;/ui-tag&gt;
+&lt;ui-tag variant="primary" removable&gt;Removable&lt;/ui-tag&gt;
+
+&lt;script&gt;
+  document.addEventListener('remove', (e) =&gt; {
+    if (e.target.tagName === 'UI-TAG') e.target.remove();
+  });
+&lt;/script&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>variant</code></td><td>neutral · primary · purple · orange</td><td>neutral</td></tr>
+          <tr><td><code>size</code></td><td>sm · md</td><td>md</td></tr>
+          <tr><td><code>removable</code></td><td>boolean</td><td>false</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-spinner ═══ -->
+    <div class="section" id="section-spinner">
+      <div class="section-title">ui-spinner</div>
+      <p class="section-desc">CSS-only loading indicator. Accessible with <code>role="status"</code> and <code>aria-label="Loading"</code>.</p>
+
+      <div class="preview">
+        <div class="preview-label">Sizes</div>
+        <div class="preview-canvas">
+          <ui-spinner size="sm"></ui-spinner>
+          <ui-spinner></ui-spinner>
+          <ui-spinner size="lg"></ui-spinner>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-spinner size="sm"&gt;&lt;/ui-spinner&gt;
+&lt;ui-spinner&gt;&lt;/ui-spinner&gt;
+&lt;ui-spinner size="lg"&gt;&lt;/ui-spinner&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>size</code></td><td>sm (16px) · md (24px) · lg (32px)</td><td>md</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-icon ═══ -->
+    <div class="section" id="section-icon">
+      <div class="section-title">ui-icon</div>
+      <p class="section-desc">Inline-flex centered container for icon content. Supports token-based color override. Defaults to <code>currentColor</code>.</p>
+
+      <div class="preview">
+        <div class="preview-label">Sizes & Colors</div>
+        <div class="preview-canvas">
+          <ui-icon size="sm"><span>S</span></ui-icon>
+          <ui-icon size="md"><span>M</span></ui-icon>
+          <ui-icon size="lg"><span>L</span></ui-icon>
+          <ui-icon color="action"><span>A</span></ui-icon>
+          <ui-icon color="accent-purple"><span>P</span></ui-icon>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-icon size="sm"&gt;&lt;i class="fa-solid fa-star"&gt;&lt;/i&gt;&lt;/ui-icon&gt;
+&lt;ui-icon size="lg" color="action"&gt;&lt;i class="fa-solid fa-check"&gt;&lt;/i&gt;&lt;/ui-icon&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>size</code></td><td>sm (16px) · md (20px) · lg (24px)</td><td>md</td></tr>
+          <tr><td><code>color</code></td><td>action · secondary · disabled · accent-purple · accent-orange</td><td>currentColor</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-card ═══ -->
+    <div class="section" id="section-card">
+      <div class="section-title">ui-card</div>
+      <p class="section-desc">Visual container with radius, shadow, and border. Named slots for <code>header</code>, default body, and <code>footer</code>. No internal layout imposed.</p>
+
+      <div class="demo-grid">
+        <ui-card>
+          <span slot="header" class="pos-label">Card with header</span>
+          <p class="pos-body">Body content with header and footer slots.</p>
+          <span slot="footer" class="pos-caption pos-text-secondary">Footer text</span>
+        </ui-card>
+        <ui-card>
+          <p class="pos-body">Simple card, body only. No header or footer.</p>
+        </ui-card>
+        <ui-card padding="lg">
+          <span slot="header" class="pos-label">Large padding</span>
+          <p class="pos-body">More breathing room with padding="lg".</p>
+        </ui-card>
+        <ui-card padding="none">
+          <div style="background: var(--pos-color-background-secondary); padding: 24px; text-align: center;">
+            <p class="pos-body">No padding — full bleed content</p>
+          </div>
+        </ui-card>
+      </div>
+
+      <div class="code">&lt;ui-card&gt;
+  &lt;span slot="header"&gt;Title&lt;/span&gt;
+  &lt;p&gt;Body content&lt;/p&gt;
+  &lt;span slot="footer"&gt;Footer&lt;/span&gt;
+&lt;/ui-card&gt;
+
+&lt;ui-card padding="lg"&gt;
+  &lt;p&gt;Spacious card&lt;/p&gt;
+&lt;/ui-card&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>padding</code></td><td>none · sm · md · lg</td><td>md</td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>Slot</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>header</code></td><td>Top section with bottom border</td></tr>
+          <tr><td>(default)</td><td>Main body content</td></tr>
+          <tr><td><code>footer</code></td><td>Bottom section with top border</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-divider ═══ -->
+    <div class="section" id="section-divider">
+      <div class="section-title">ui-divider</div>
+      <p class="section-desc">Horizontal or vertical separator. Uses token-based border color.</p>
+
+      <div class="preview">
+        <div class="preview-label">Horizontal (default)</div>
+        <div class="preview-canvas col" style="gap: 0;">
+          <p class="pos-body">Content above</p>
+          <ui-divider></ui-divider>
+          <p class="pos-body">Content below</p>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Vertical</div>
+        <div class="preview-canvas" style="height: 60px;">
+          <span>Left</span>
+          <ui-divider orientation="vertical"></ui-divider>
+          <span>Right</span>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-divider&gt;&lt;/ui-divider&gt;
+&lt;ui-divider orientation="vertical"&gt;&lt;/ui-divider&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>orientation</code></td><td>horizontal · vertical</td><td>horizontal</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-dialog ═══ -->
+    <div class="section" id="section-dialog">
+      <div class="section-title">ui-dialog</div>
+      <p class="section-desc">Modal dialog wrapping native <code>&lt;dialog&gt;</code> with <code>showModal()</code>. Browser provides focus trapping and Escape-to-close. Header/body/footer slots.</p>
+
+      <div class="preview">
+        <div class="preview-label">Interactive Demo</div>
+        <div class="preview-canvas">
+          <ui-button onclick="document.getElementById('demo-dialog').open()">Open Dialog</ui-button>
+        </div>
+      </div>
+
+      <ui-dialog id="demo-dialog" closable>
+        <span slot="header" class="pos-label">Confirm Action</span>
+        <p class="pos-body">Are you sure you want to proceed? This action cannot be undone.</p>
+        <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
+          <ui-button variant="ghost" onclick="document.getElementById('demo-dialog').close()">Cancel</ui-button>
+          <ui-button onclick="document.getElementById('demo-dialog').close()">Confirm</ui-button>
+        </div>
+      </ui-dialog>
+
+      <div class="code">&lt;ui-dialog id="my-dialog" closable&gt;
+  &lt;span slot="header"&gt;Title&lt;/span&gt;
+  &lt;p&gt;Dialog body content&lt;/p&gt;
+  &lt;div slot="footer"&gt;
+    &lt;ui-button variant="ghost" onclick="..."&gt;Cancel&lt;/ui-button&gt;
+    &lt;ui-button onclick="..."&gt;Confirm&lt;/ui-button&gt;
+  &lt;/div&gt;
+&lt;/ui-dialog&gt;
+
+&lt;script&gt;
+  document.getElementById('my-dialog').open();
+  document.getElementById('my-dialog').close();
+&lt;/script&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>closable</code></td><td>boolean (shows close button)</td><td>false</td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>Method</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>open()</code></td><td>Opens the dialog as a modal</td></tr>
+          <tr><td><code>close()</code></td><td>Closes the dialog</td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>Event</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>close</code></td><td>Fired when the dialog closes (CustomEvent, bubbles + composed)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-tooltip ═══ -->
+    <div class="section" id="section-tooltip">
+      <div class="section-title">ui-tooltip</div>
+      <p class="section-desc">Positioned hint text on hover/focus. Accessible with <code>role="tooltip"</code> and <code>aria-describedby</code>.</p>
+
+      <div class="preview">
+        <div class="preview-label">Positions</div>
+        <div class="preview-canvas" style="padding: 40px 24px;">
+          <ui-tooltip text="Tooltip on top" position="top">
+            <ui-button variant="outline">Top</ui-button>
+          </ui-tooltip>
+          <ui-tooltip text="Tooltip on bottom" position="bottom">
+            <ui-button variant="outline">Bottom</ui-button>
+          </ui-tooltip>
+          <ui-tooltip text="Tooltip on left" position="left">
+            <ui-button variant="outline">Left</ui-button>
+          </ui-tooltip>
+          <ui-tooltip text="Tooltip on right" position="right">
+            <ui-button variant="outline">Right</ui-button>
+          </ui-tooltip>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-tooltip text="Save changes" position="top"&gt;
+  &lt;ui-button&gt;Save&lt;/ui-button&gt;
+&lt;/ui-tooltip&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>text</code></td><td>string</td><td>""</td></tr>
+          <tr><td><code>position</code></td><td>top · bottom · left · right</td><td>top</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-checkbox ═══ -->
+    <div class="section" id="section-checkbox">
+      <div class="section-title">ui-checkbox</div>
+      <p class="section-desc">Native checkbox with styled indicator and label. Supports checked, indeterminate, and disabled states.</p>
+
+      <div class="preview">
+        <div class="preview-label">States</div>
+        <div class="preview-canvas col">
+          <ui-checkbox>Unchecked</ui-checkbox>
+          <ui-checkbox checked>Checked</ui-checkbox>
+          <ui-checkbox disabled>Disabled</ui-checkbox>
+          <ui-checkbox checked disabled>Checked & Disabled</ui-checkbox>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Indeterminate</div>
+        <div class="preview-canvas">
+          <ui-checkbox id="cb-indeterminate">Select all</ui-checkbox>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-checkbox&gt;Accept terms&lt;/ui-checkbox&gt;
+&lt;ui-checkbox checked&gt;Opted in&lt;/ui-checkbox&gt;
+&lt;ui-checkbox disabled&gt;Locked&lt;/ui-checkbox&gt;
+
+&lt;script&gt;
+  const cb = document.querySelector('ui-checkbox');
+  cb.indeterminate = true;  // shows dash indicator
+  cb.addEventListener('change', () =&gt; console.log(cb.checked));
+&lt;/script&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>checked</code></td><td>boolean</td><td>false</td></tr>
+          <tr><td><code>indeterminate</code></td><td>boolean (property)</td><td>false</td></tr>
+          <tr><td><code>disabled</code></td><td>boolean</td><td>false</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-radio ═══ -->
+    <div class="section" id="section-radio">
+      <div class="section-title">ui-radio</div>
+      <p class="section-desc">Radio button with label. Group by shared <code>name</code> attribute for mutual exclusion.</p>
+
+      <div class="preview">
+        <div class="preview-label">Radio Group</div>
+        <div class="preview-canvas col">
+          <ui-radio name="fruit" value="apple" checked>Apple</ui-radio>
+          <ui-radio name="fruit" value="banana">Banana</ui-radio>
+          <ui-radio name="fruit" value="cherry">Cherry</ui-radio>
+          <ui-radio name="fruit" value="disabled" disabled>Disabled option</ui-radio>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-radio name="size" value="sm"&gt;Small&lt;/ui-radio&gt;
+&lt;ui-radio name="size" value="md" checked&gt;Medium&lt;/ui-radio&gt;
+&lt;ui-radio name="size" value="lg"&gt;Large&lt;/ui-radio&gt;
+
+&lt;script&gt;
+  document.querySelectorAll('ui-radio[name="size"]').forEach(r =&gt; {
+    r.addEventListener('change', () =&gt; console.log(r.value, r.checked));
+  });
+&lt;/script&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>name</code></td><td>string (group identifier)</td><td>""</td></tr>
+          <tr><td><code>value</code></td><td>string</td><td>""</td></tr>
+          <tr><td><code>checked</code></td><td>boolean</td><td>false</td></tr>
+          <tr><td><code>disabled</code></td><td>boolean</td><td>false</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-toggle ═══ -->
+    <div class="section" id="section-toggle">
+      <div class="section-title">ui-toggle</div>
+      <p class="section-desc">On/off switch control using <code>role="switch"</code>. Wraps a hidden checkbox with a styled track and thumb.</p>
+
+      <div class="preview">
+        <div class="preview-label">States</div>
+        <div class="preview-canvas col">
+          <ui-toggle>Notifications</ui-toggle>
+          <ui-toggle checked>Dark mode</ui-toggle>
+          <ui-toggle disabled>Locked off</ui-toggle>
+          <ui-toggle checked disabled>Locked on</ui-toggle>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Sizes</div>
+        <div class="preview-canvas">
+          <ui-toggle size="sm">Small</ui-toggle>
+          <ui-toggle size="md">Medium</ui-toggle>
+          <ui-toggle size="lg">Large</ui-toggle>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-toggle&gt;Enable feature&lt;/ui-toggle&gt;
+&lt;ui-toggle checked&gt;Already on&lt;/ui-toggle&gt;
+&lt;ui-toggle size="sm"&gt;Compact&lt;/ui-toggle&gt;
+
+&lt;script&gt;
+  const toggle = document.querySelector('ui-toggle');
+  toggle.addEventListener('change', () =&gt; console.log(toggle.checked));
+&lt;/script&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>checked</code></td><td>boolean</td><td>false</td></tr>
+          <tr><td><code>size</code></td><td>sm · md · lg</td><td>md</td></tr>
+          <tr><td><code>disabled</code></td><td>boolean</td><td>false</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-select ═══ -->
+    <div class="section" id="section-select">
+      <div class="section-title">ui-select</div>
+      <p class="section-desc">Styled wrapper around native <code>&lt;select&gt;</code>. Options are passed as light DOM <code>&lt;option&gt;</code> children. Visual consistency with <code>&lt;ui-input&gt;</code>.</p>
+
+      <div class="preview">
+        <div class="preview-label">Variants</div>
+        <div class="preview-canvas col">
+          <ui-select placeholder="Choose a color..." style="width: 320px;">
+            <option value="red">Red</option>
+            <option value="green">Green</option>
+            <option value="blue">Blue</option>
+          </ui-select>
+          <ui-select disabled style="width: 320px;">
+            <option>Disabled select</option>
+          </ui-select>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Sizes</div>
+        <div class="preview-canvas col">
+          <ui-select size="sm" placeholder="Small" style="width: 320px;"><option>Option</option></ui-select>
+          <ui-select placeholder="Medium (default)" style="width: 320px;"><option>Option</option></ui-select>
+          <ui-select size="lg" placeholder="Large" style="width: 320px;"><option>Option</option></ui-select>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-select placeholder="Pick one..."&gt;
+  &lt;option value="a"&gt;Alpha&lt;/option&gt;
+  &lt;option value="b"&gt;Beta&lt;/option&gt;
+&lt;/ui-select&gt;
+
+&lt;script&gt;
+  const sel = document.querySelector('ui-select');
+  sel.addEventListener('change', () =&gt; console.log(sel.value));
+&lt;/script&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>placeholder</code></td><td>string</td><td>""</td></tr>
+          <tr><td><code>size</code></td><td>sm · md · lg</td><td>md</td></tr>
+          <tr><td><code>disabled</code></td><td>boolean</td><td>false</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-textarea ═══ -->
+    <div class="section" id="section-textarea">
+      <div class="section-title">ui-textarea</div>
+      <p class="section-desc">Multi-line text input matching <code>&lt;ui-input&gt;</code> visual styling. Supports resize control and row count.</p>
+
+      <div class="preview">
+        <div class="preview-label">Variants</div>
+        <div class="preview-canvas col">
+          <ui-textarea placeholder="Write something..." style="width: 400px;"></ui-textarea>
+          <ui-textarea placeholder="5 rows" rows="5" style="width: 400px;"></ui-textarea>
+          <ui-textarea placeholder="No resize" resize="none" style="width: 400px;"></ui-textarea>
+          <ui-textarea placeholder="Disabled" disabled style="width: 400px;"></ui-textarea>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Sizes</div>
+        <div class="preview-canvas col">
+          <ui-textarea size="sm" placeholder="Small" style="width: 400px;"></ui-textarea>
+          <ui-textarea placeholder="Medium (default)" style="width: 400px;"></ui-textarea>
+          <ui-textarea size="lg" placeholder="Large" style="width: 400px;"></ui-textarea>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-textarea placeholder="Your message..." rows="4"&gt;&lt;/ui-textarea&gt;
+&lt;ui-textarea resize="none"&gt;&lt;/ui-textarea&gt;
+&lt;ui-textarea size="lg"&gt;&lt;/ui-textarea&gt;
+
+&lt;script&gt;
+  const ta = document.querySelector('ui-textarea');
+  ta.addEventListener('input', () =&gt; console.log(ta.value));
+&lt;/script&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>placeholder</code></td><td>string</td><td>""</td></tr>
+          <tr><td><code>rows</code></td><td>number</td><td>3</td></tr>
+          <tr><td><code>resize</code></td><td>none · vertical · horizontal · both</td><td>vertical</td></tr>
+          <tr><td><code>size</code></td><td>sm · md · lg</td><td>md</td></tr>
+          <tr><td><code>disabled</code></td><td>boolean</td><td>false</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-alert ═══ -->
+    <div class="section" id="section-alert">
+      <div class="section-title">ui-alert</div>
+      <p class="section-desc">Inline feedback banner with left border accent. Supports semantic variants and optional dismiss button.</p>
+
+      <div class="preview">
+        <div class="preview-label">Variants</div>
+        <div class="preview-canvas col" style="gap: 16px;">
+          <ui-alert variant="info">This is an informational message.</ui-alert>
+          <ui-alert variant="success">Operation completed successfully.</ui-alert>
+          <ui-alert variant="warning">Please review before continuing.</ui-alert>
+          <ui-alert variant="danger">Something went wrong. Please try again.</ui-alert>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">With Header & Dismissible</div>
+        <div class="preview-canvas col" style="gap: 16px;">
+          <ui-alert variant="info" dismissible>
+            <span slot="header">Heads up</span>
+            This alert has a title and can be dismissed.
+          </ui-alert>
+          <ui-alert variant="danger" dismissible>
+            <span slot="header">Error</span>
+            Failed to save changes. Click dismiss to acknowledge.
+          </ui-alert>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-alert variant="success"&gt;Saved!&lt;/ui-alert&gt;
+
+&lt;ui-alert variant="warning" dismissible&gt;
+  &lt;span slot="header"&gt;Warning&lt;/span&gt;
+  Check your input before submitting.
+&lt;/ui-alert&gt;
+
+&lt;script&gt;
+  document.addEventListener('dismiss', (e) =&gt; {
+    console.log('Alert dismissed');
+  });
+&lt;/script&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>variant</code></td><td>info · success · warning · danger</td><td>info</td></tr>
+          <tr><td><code>dismissible</code></td><td>boolean</td><td>false</td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>Slot</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>header</code></td><td>Bold title above body content</td></tr>
+          <tr><td>(default)</td><td>Alert body text</td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>Event</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>dismiss</code></td><td>Fired when close button is clicked (CustomEvent, bubbles + composed)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ ui-progress ═══ -->
+    <div class="section" id="section-progress">
+      <div class="section-title">ui-progress</div>
+      <p class="section-desc">Progress bar with determinate and indeterminate modes. Accessible with <code>role="progressbar"</code> and ARIA value attributes.</p>
+
+      <div class="preview">
+        <div class="preview-label">Determinate</div>
+        <div class="preview-canvas col" style="gap: 16px;">
+          <ui-progress value="25" style="width: 100%;"></ui-progress>
+          <ui-progress value="50" style="width: 100%;"></ui-progress>
+          <ui-progress value="75" style="width: 100%;"></ui-progress>
+          <ui-progress value="100" style="width: 100%;"></ui-progress>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Indeterminate</div>
+        <div class="preview-canvas">
+          <ui-progress style="width: 100%;"></ui-progress>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Sizes</div>
+        <div class="preview-canvas col" style="gap: 16px;">
+          <ui-progress value="60" size="sm" style="width: 100%;"></ui-progress>
+          <ui-progress value="60" size="md" style="width: 100%;"></ui-progress>
+          <ui-progress value="60" size="lg" style="width: 100%;"></ui-progress>
+        </div>
+      </div>
+
+      <div class="code">&lt;ui-progress value="50" max="100"&gt;&lt;/ui-progress&gt;
+&lt;ui-progress&gt;&lt;/ui-progress&gt;  &lt;!-- indeterminate --&gt;
+&lt;ui-progress value="60" size="lg"&gt;&lt;/ui-progress&gt;</div>
+
+      <table>
+        <thead><tr><th>Attribute</th><th>Values</th><th>Default</th></tr></thead>
+        <tbody>
+          <tr><td><code>value</code></td><td>number (omit for indeterminate)</td><td>—</td></tr>
+          <tr><td><code>max</code></td><td>number</td><td>100</td></tr>
+          <tr><td><code>size</code></td><td>sm (4px) · md (8px) · lg (12px)</td><td>md</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ═══ Plugins ═══ -->
     <div class="section" id="section-plugins">
       <div class="section-title">Plugin Runtime</div>
       <p class="section-desc">Plugins are dynamically imported ES modules that register a Custom Element. The host injects a <code>hostSDK</code> before the element connects — giving the plugin access to <code>getToken()</code> and <code>emit()</code>.</p>
@@ -427,68 +1131,127 @@
       <div class="preview">
         <div class="preview-label">Live plugin — plugin-hello</div>
         <div class="preview-canvas">
-          <div id="plugin-mount"><span class="plugin-loading">Loading plugin…</span></div>
+          <div id="plugin-mount"><span class="plugin-loading">Loading plugin...</span></div>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Plugin Event Log</div>
+        <div class="preview-canvas" style="padding: 0;">
+          <div class="event-log" id="plugin-event-log" style="width: 100%; border: none; border-radius: 0;">
+            <div class="log-empty">Click "Emit event" in the plugin above...</div>
+          </div>
         </div>
       </div>
 
       <div class="code">import { loadPlugin, createHostSDK } from '/dist/pos-design-system.js';
 
-// 1. Load and register the custom element
 const { tagName } = await loadPlugin({
   url: '/examples/plugins/hello-plugin.js',
   tagName: 'plugin-hello',
 });
 
-// 2. Create element, inject SDK before connecting to DOM
 const el = document.createElement(tagName);
-el.hostSDK = createHostSDK(el);   // { emit, getToken }
-document.body.appendChild(el);
-
-// Inside the plugin, SDK is available in connectedCallback:
-//   this.hostSDK.getToken('--pos-color-accent') → '#228be6'
-//   this.hostSDK.emit('plugin:hello:action', { ... })</div>
+el.hostSDK = createHostSDK(el);
+document.body.appendChild(el);</div>
     </div>
 
-    <!-- Events -->
+    <!-- ═══ Events ═══ -->
     <div class="section" id="section-events">
       <div class="section-title">Event Bubbling</div>
-      <p class="section-desc">Native DOM events from components bubble through Shadow DOM and are observable on any ancestor — no custom event wrappers needed. Interact with the components below to see events in real time.</p>
+      <p class="section-desc">Native DOM events bubble through Shadow DOM automatically. <code>change</code> events are forwarded from internal form elements. Custom events (<code>remove</code>, <code>dismiss</code>) use <code>{ bubbles: true, composed: true }</code>. Interact with every component below to see events in real time.</p>
 
       <div class="preview">
-        <div class="preview-label">Interact to see events</div>
+        <div class="preview-label">Buttons & Tags</div>
+        <div class="preview-canvas" style="gap: 12px;">
+          <ui-button id="evt-btn">Click me</ui-button>
+          <ui-button variant="outline" id="evt-btn2">Outline</ui-button>
+          <ui-tag removable id="evt-tag">Remove tag</ui-tag>
+          <ui-tag variant="primary" removable id="evt-tag2">Primary tag</ui-tag>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Text Inputs</div>
+        <div class="preview-canvas col" style="gap: 12px;">
+          <ui-input placeholder="Type in input..." id="evt-input" style="width: 320px"></ui-input>
+          <ui-textarea placeholder="Type in textarea..." id="evt-textarea" rows="2" style="width: 320px"></ui-textarea>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Selection Controls</div>
         <div class="preview-canvas" style="gap: 16px; flex-wrap: wrap;">
-          <ui-button variant="solid" id="evt-btn">Click me</ui-button>
-          <ui-button variant="outline" id="evt-btn2">Click me too</ui-button>
-          <ui-input placeholder="Type here…" id="evt-input" style="width: 240px"></ui-input>
+          <ui-checkbox id="evt-cb">Checkbox</ui-checkbox>
+          <ui-radio name="evt-radio" value="A" id="evt-r1">Radio A</ui-radio>
+          <ui-radio name="evt-radio" value="B" id="evt-r2">Radio B</ui-radio>
+          <ui-toggle id="evt-toggle">Toggle</ui-toggle>
+          <ui-select id="evt-select" placeholder="Select..." style="width: 180px;">
+            <option value="one">One</option>
+            <option value="two">Two</option>
+            <option value="three">Three</option>
+          </ui-select>
+        </div>
+      </div>
+
+      <div class="preview">
+        <div class="preview-label">Feedback</div>
+        <div class="preview-canvas col" style="gap: 12px;">
+          <ui-alert variant="info" dismissible id="evt-alert">Dismiss me to see the event</ui-alert>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <ui-button variant="outline" size="sm" id="evt-dialog-btn" onclick="document.getElementById('evt-dialog').open()">Open Dialog</ui-button>
+            <span class="pos-caption pos-text-secondary">Dialog close event logged on dismiss</span>
+          </div>
+          <ui-dialog id="evt-dialog" closable>
+            <span slot="header" class="pos-label">Event Demo Dialog</span>
+            <p class="pos-body">Close this to see the event logged.</p>
+            <div slot="footer" style="display: flex; gap: 8px; justify-content: flex-end;">
+              <ui-button variant="ghost" onclick="document.getElementById('evt-dialog').close()">Close</ui-button>
+            </div>
+          </ui-dialog>
         </div>
       </div>
 
       <div class="event-log" id="event-log">
-        <div class="log-empty">Interact with components above to see events…</div>
+        <div class="log-empty">Interact with components above to see events...</div>
       </div>
 
       <br>
 
-      <div class="code">// Native events bubble out of Shadow DOM automatically
-document.addEventListener('click', (e) => {
-  if (e.target.tagName === 'UI-BUTTON') {
-    console.log('Button clicked:', e.target);
-  }
-});
+      <div class="code">// Native events — bubble through Shadow DOM automatically
+document.addEventListener('click', (e) =&gt; { ... });    // ui-button
+document.addEventListener('input', (e) =&gt; { ... });    // ui-input, ui-textarea
+document.addEventListener('change', (e) =&gt; { ... });   // ui-checkbox, ui-radio, ui-toggle,
+                                                        // ui-select, ui-input, ui-textarea
 
-document.addEventListener('input', (e) => {
-  if (e.target.tagName === 'UI-INPUT') {
-    console.log('Input value:', e.target.value);
-  }
-});</div>
+// Custom events — { bubbles: true, composed: true }
+document.addEventListener('remove', (e) =&gt; { ... });   // ui-tag (removable)
+document.addEventListener('dismiss', (e) =&gt; { ... });  // ui-alert (dismissible)
+document.addEventListener('close', (e) =&gt; { ... });    // ui-dialog</div>
+
+      <table>
+        <thead><tr><th>Component</th><th>Events</th><th>Type</th></tr></thead>
+        <tbody>
+          <tr><td><code>ui-button</code></td><td>click</td><td>native</td></tr>
+          <tr><td><code>ui-input</code></td><td>input, change</td><td>native</td></tr>
+          <tr><td><code>ui-textarea</code></td><td>input, change</td><td>native</td></tr>
+          <tr><td><code>ui-checkbox</code></td><td>change</td><td>native</td></tr>
+          <tr><td><code>ui-radio</code></td><td>change</td><td>native</td></tr>
+          <tr><td><code>ui-toggle</code></td><td>change</td><td>native</td></tr>
+          <tr><td><code>ui-select</code></td><td>change</td><td>native</td></tr>
+          <tr><td><code>ui-tag</code></td><td>remove</td><td>custom</td></tr>
+          <tr><td><code>ui-alert</code></td><td>dismiss</td><td>custom</td></tr>
+          <tr><td><code>ui-dialog</code></td><td>close</td><td>custom</td></tr>
+        </tbody>
+      </table>
     </div>
 
-  </main><!-- /main -->
+  </main>
 
   <script type="module">
     import { loadPlugin, createHostSDK } from '/dist/pos-design-system.js';
 
-    // ── Navigation ───────────────────────────────────────────────────────
+    // ── Navigation ──────────────────────────────────────────────────────
     const navLinks = document.querySelectorAll('.nav-link');
     const sections = document.querySelectorAll('.section');
 
@@ -503,17 +1266,20 @@ document.addEventListener('input', (e) => {
       link.addEventListener('click', () => showSection(link.dataset.section));
     });
 
-    // ── Token table ──────────────────────────────────────────────────────
+    // ── Token table ─────────────────────────────────────────────────────
     const tokens = [
-      { name: '--pos-color-bg',           purpose: 'Page / component background' },
-      { name: '--pos-color-fg',           purpose: 'Primary text' },
-      { name: '--pos-color-muted',        purpose: 'Secondary / muted text' },
-      { name: '--pos-color-border',       purpose: 'Borders and dividers' },
-      { name: '--pos-color-accent',       purpose: 'Primary action color' },
-      { name: '--pos-color-accent-hover', purpose: 'Hover state of accent' },
-      { name: '--pos-color-danger',       purpose: 'Destructive / error' },
-      { name: '--pos-color-success',      purpose: 'Success state' },
-      { name: '--pos-color-focus',        purpose: 'Focus ring indicator' },
+      { name: '--pos-color-background-primary',    purpose: 'Page / component background' },
+      { name: '--pos-color-background-secondary',  purpose: 'Subtle background, secondary surfaces' },
+      { name: '--pos-color-text-primary',          purpose: 'Primary text' },
+      { name: '--pos-color-text-secondary',        purpose: 'Secondary / muted text' },
+      { name: '--pos-color-text-disabled',         purpose: 'Disabled state text' },
+      { name: '--pos-color-border-default',        purpose: 'Borders and dividers' },
+      { name: '--pos-color-border-strong',         purpose: 'Emphasized borders' },
+      { name: '--pos-color-action-primary',        purpose: 'Primary action / CTA color' },
+      { name: '--pos-color-action-primary-hover',  purpose: 'Hover state of primary action' },
+      { name: '--pos-color-action-focus',          purpose: 'Focus ring indicator' },
+      { name: '--pos-color-accent-purple',         purpose: 'Purple accent' },
+      { name: '--pos-color-accent-orange',         purpose: 'Orange accent' },
     ];
 
     const tbody = document.getElementById('token-table-body');
@@ -523,15 +1289,15 @@ document.addEventListener('input', (e) => {
       row.innerHTML = `
         <td><code>${name}</code></td>
         <td>
-          <span class="token-swatch" style="background:${val}"></span>
-          <code>${val}</code>
+          <span class="token-swatch" style="background:var(${name})"></span>
+          <code>${val || '(alias)'}</code>
         </td>
-        <td style="color:var(--pos-color-muted)">${purpose}</td>
+        <td style="color:var(--pos-color-text-secondary)">${purpose}</td>
       `;
       tbody.appendChild(row);
     });
 
-    // ── Theme switcher ───────────────────────────────────────────────────
+    // ── Theme switcher (scoped to demo box) ──────────────────────────
     const demoBox   = document.getElementById('theme-demo-box');
     const demoLabel = document.getElementById('theme-demo-label');
     document.querySelectorAll('.theme-btn').forEach(btn => {
@@ -544,7 +1310,7 @@ document.addEventListener('input', (e) => {
       });
     });
 
-    // ── Event log ────────────────────────────────────────────────────────
+    // ── Event log ───────────────────────────────────────────────────────
     const eventLog = document.getElementById('event-log');
     let logEmpty = true;
 
@@ -562,21 +1328,83 @@ document.addEventListener('input', (e) => {
       eventLog.scrollTop = eventLog.scrollHeight;
     }
 
-    document.addEventListener('click', (e) => {
+    // Scope event logging to the events section only
+    const evtSection = document.getElementById('section-events');
+
+    evtSection?.addEventListener('click', (e) => {
       if (e.target.tagName === 'UI-BUTTON') {
-        logEvent('native', `click on &lt;ui-button&gt; — id="${e.target.id || 'none'}"`);
+        logEvent('native', `click &lt;ui-button&gt; — "${e.target.textContent.trim()}"`);
       }
     });
-    document.addEventListener('input', (e) => {
-      if (e.target.tagName === 'UI-INPUT') {
-        logEvent('native', `input on &lt;ui-input&gt; — value="${e.target.value}"`);
+    evtSection?.addEventListener('input', (e) => {
+      const tag = e.target.tagName;
+      if (tag === 'UI-INPUT') {
+        logEvent('native', `input &lt;ui-input&gt; — value="${e.target.value}"`);
+      } else if (tag === 'UI-TEXTAREA') {
+        logEvent('native', `input &lt;ui-textarea&gt; — value="${e.target.value.slice(0, 40)}"`);
+      }
+    });
+    evtSection?.addEventListener('change', (e) => {
+      const tag = e.target.tagName;
+      if (tag === 'UI-CHECKBOX') {
+        logEvent('native', `change &lt;ui-checkbox&gt; — checked=${e.target.checked}`);
+      } else if (tag === 'UI-RADIO') {
+        logEvent('native', `change &lt;ui-radio&gt; — value="${e.target.value}"`);
+      } else if (tag === 'UI-TOGGLE') {
+        logEvent('native', `change &lt;ui-toggle&gt; — checked=${e.target.checked}`);
+      } else if (tag === 'UI-SELECT') {
+        logEvent('native', `change &lt;ui-select&gt; — value="${e.target.value}"`);
+      } else if (tag === 'UI-INPUT') {
+        logEvent('native', `change &lt;ui-input&gt; — value="${e.target.value}"`);
+      } else if (tag === 'UI-TEXTAREA') {
+        logEvent('native', `change &lt;ui-textarea&gt; — value="${e.target.value.slice(0, 40)}"`);
+      }
+    });
+    evtSection?.addEventListener('remove', (e) => {
+      if (e.target.tagName === 'UI-TAG') {
+        logEvent('custom', `remove &lt;ui-tag&gt; — "${e.target.textContent.trim()}"`);
+        e.target.remove();
+      }
+    });
+    evtSection?.addEventListener('dismiss', (e) => {
+      if (e.target.tagName === 'UI-ALERT') {
+        logEvent('custom', `dismiss &lt;ui-alert&gt;`);
+      }
+    });
+    evtSection?.addEventListener('close', (e) => {
+      if (e.target.tagName === 'UI-DIALOG') {
+        logEvent('custom', `close &lt;ui-dialog&gt;`);
       }
     });
     document.addEventListener('plugin:hello:action', (e) => {
       logEvent('custom', `plugin:hello:action — ${JSON.stringify(e.detail)}`);
+      // Also log to the plugin section's log
+      const pluginLog = document.getElementById('plugin-event-log');
+      if (pluginLog) {
+        if (pluginLog.querySelector('.log-empty')) pluginLog.innerHTML = '';
+        const line = document.createElement('div');
+        line.className = 'log-line';
+        const time = new Date().toLocaleTimeString('en', { hour12: false });
+        line.innerHTML = `
+          <span class="log-time">${time}</span>
+          <span class="log-tag custom">custom</span>
+          <span class="log-msg">plugin:hello:action — ${JSON.stringify(e.detail)}</span>
+        `;
+        pluginLog.appendChild(line);
+        pluginLog.scrollTop = pluginLog.scrollHeight;
+      }
     });
 
-    // ── Plugin ────────────────────────────────────────────────────────────
+    // ── Tag remove behavior ────────────────────────────────────────────
+    document.getElementById('tag-demo')?.addEventListener('remove', (e) => {
+      if (e.target.tagName === 'UI-TAG') e.target.remove();
+    });
+
+    // ── Indeterminate checkbox demo ────────────────────────────────────
+    const cbIndet = document.getElementById('cb-indeterminate');
+    if (cbIndet) cbIndet.indeterminate = true;
+
+    // ── Plugin ─────────────────────────────────────────────────────────
     try {
       const { tagName } = await loadPlugin({
         url: '/examples/plugins/hello-plugin.js',
@@ -589,6 +1417,14 @@ document.addEventListener('input', (e) => {
       mount.appendChild(el);
     } catch (err) {
       document.getElementById('plugin-mount').textContent = `Plugin error: ${err.message}`;
+    }
+  </script>
+
+  <script>
+    function toggleDark() {
+      const html = document.documentElement;
+      const current = html.getAttribute('data-pos-theme');
+      html.setAttribute('data-pos-theme', current === 'dark' ? 'light' : 'dark');
     }
   </script>
 

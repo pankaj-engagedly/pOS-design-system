@@ -1,0 +1,10 @@
+{
+  "pos": {
+    "z": {
+      "base":    { "$value": "{z.base}" },
+      "raised":  { "$value": "{z.raised}" },
+      "overlay": { "$value": "{z.overlay}" },
+      "top":     { "$value": "{z.top}" }
+    }
+  }
+}
