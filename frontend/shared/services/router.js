@@ -22,7 +22,9 @@ export function getRouteConfig(path) {
 }
 
 export function getAllRoutes() {
-  return [...routes.entries()].map(([path, config]) => ({ path, ...config }));
+  return [...routes.entries()]
+    .filter(([, config]) => !config.hidden)
+    .map(([path, config]) => ({ path, ...config }));
 }
 
 function handleHashChange() {
@@ -51,6 +53,11 @@ export function initRouter() {
 }
 
 // Register all app routes
+// Auth routes (hidden from nav)
+registerRoute('/login', { module: 'auth', page: 'pos-auth-login', label: 'Login', hidden: true, public: true });
+registerRoute('/register', { module: 'auth', page: 'pos-auth-register', label: 'Register', hidden: true, public: true });
+
+// App routes
 registerRoute('/todos', { module: 'todos', label: 'Todos', icon: 'check-square' });
 registerRoute('/notes', { module: 'notes', label: 'Notes', icon: 'file-text' });
 registerRoute('/knowledge-base', { module: 'knowledge-base', label: 'Knowledge Base', icon: 'book-open' });

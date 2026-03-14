@@ -1,8 +1,13 @@
 // Auth store — Token management, login state, session refresh
-// Implementation will be added in Phase 1 (Auth + Todos)
+
+import { emit } from './event-bus.js';
+
+const API_BASE = 'http://localhost:8000';
+const REFRESH_TOKEN_KEY = 'pos_refresh_token';
 
 let accessToken = null;
 let user = null;
+let refreshPromise = null;
 
 export function getAccessToken() {
   return accessToken;
@@ -16,12 +21,124 @@ export function isAuthenticated() {
   return accessToken !== null;
 }
 
-export function setAuth(token, userData) {
-  accessToken = token;
-  user = userData;
+export async function login(email, password) {
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || 'Invalid email or password');
+  }
+
+  const data = await res.json();
+  _setTokens(data.access_token, data.refresh_token, data.user);
 }
 
-export function clearAuth() {
+export async function register(name, email, password) {
+  const res = await fetch(`${API_BASE}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || 'Registration failed');
+  }
+
+  const data = await res.json();
+  _setTokens(data.access_token, data.refresh_token, data.user);
+}
+
+export async function logout() {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (refreshToken) {
+    // Best-effort revoke
+    try {
+      await fetch(`${API_BASE}/api/auth/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+    } catch {
+      // Ignore — token will expire naturally
+    }
+  }
+  _clearTokens();
+}
+
+export async function refreshAccessToken() {
+  // Deduplicate concurrent refresh attempts
+  if (refreshPromise) return refreshPromise;
+
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!refreshToken) {
+    _clearTokens();
+    throw new Error('No refresh token');
+  }
+
+  refreshPromise = _doRefresh(refreshToken);
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+async function _doRefresh(refreshToken) {
+  const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+
+  if (!res.ok) {
+    _clearTokens();
+    throw new Error('Token refresh failed');
+  }
+
+  const data = await res.json();
+  accessToken = data.access_token;
+  localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
+  return data.access_token;
+}
+
+export async function tryRestoreSession() {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!refreshToken) return false;
+
+  try {
+    await refreshAccessToken();
+    // Fetch user profile
+    const res = await fetch(`${API_BASE}/api/auth/me`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (res.ok) {
+      user = await res.json();
+      emit('auth:changed', { authenticated: true, user });
+      return true;
+    }
+  } catch {
+    // Silent fail — user will see login page
+  }
+  _clearTokens();
+  return false;
+}
+
+function _setTokens(newAccessToken, refreshToken, userData) {
+  accessToken = newAccessToken;
+  user = userData;
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  emit('auth:changed', { authenticated: true, user });
+}
+
+function _clearTokens() {
   accessToken = null;
   user = null;
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  emit('auth:changed', { authenticated: false, user: null });
 }

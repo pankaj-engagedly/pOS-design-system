@@ -24,6 +24,9 @@ import './components/ui-select.js';
 import './components/ui-textarea.js';
 import './components/ui-alert.js';
 import './components/ui-progress.js';
+import './components/ui-nav-item.js';
+import './components/ui-side-panel.js';
+import './components/ui-app-layout.js';
 
 // Plugin runtime — re-exported for consumers
 export { loadPlugin, createHostSDK } from './plugins/loader.js';

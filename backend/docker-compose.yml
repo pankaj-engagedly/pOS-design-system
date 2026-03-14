@@ -1,20 +1,17 @@
 services:
-  postgres:
-    image: postgres:16
-    container_name: pos-postgres
-    environment:
-      POSTGRES_USER: pos
-      POSTGRES_PASSWORD: pos
-      POSTGRES_DB: pos
-    ports:
-      - "5432:5432"
-    volumes:
-      - pos-pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U pos"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+  # PostgreSQL: Using local Homebrew installation (postgresql@17)
+  # If you need Docker Postgres instead, uncomment below and change port to 5433
+  # postgres:
+  #   image: postgres:16
+  #   container_name: pos-postgres
+  #   environment:
+  #     POSTGRES_USER: pos
+  #     POSTGRES_PASSWORD: pos
+  #     POSTGRES_DB: pos
+  #   ports:
+  #     - "5433:5432"
+  #   volumes:
+  #     - pos-pgdata:/var/lib/postgresql/data
 
   rabbitmq:
     image: rabbitmq:3.13-management
@@ -34,5 +31,4 @@ services:
       retries: 5
 
 volumes:
-  pos-pgdata:
   pos-rabbitmq-data:

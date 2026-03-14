@@ -1,186 +1,178 @@
-# pOS Design System
+# pOS — Personal Operating System
 
-Browser-native UI platform using Web Components, Shadow DOM, and CSS Custom Properties. No frameworks. Zero runtime dependencies.
+A self-hosted personal hub with modular micro-services and a browser-native frontend. Built with Web Components (no framework), Python/FastAPI micro-services, and JWT authentication.
 
-**Status:** v0 — experimental architecture validation
+**Status:** Phase 1 complete — auth + todos working end-to-end
 
 ---
 
-## What This Validates
+## Quick Start
 
-1. **Token cascading** — CSS custom properties flowing through Shadow DOM boundaries
-2. **Native event bubbling** — `click`, `input`, `change` events crossing Shadow DOM without suppression
-3. **Plugin loading** — Dynamic `import()` with SDK injection via property assignment
-4. **Tenant theming** — `[data-pos-theme]` attribute overrides scoping to DOM subtrees
+### Prerequisites
+
+- Python 3.10+ (Homebrew `postgresql@17` recommended)
+- Node.js 18+
+- Docker (for RabbitMQ)
+- PostgreSQL (local Homebrew install)
+
+### First-time setup
+
+```bash
+make setup     # installs deps, builds design system, pulls Docker images
+```
+
+### Start everything
+
+```bash
+make dev       # checks Postgres, starts RabbitMQ, runs migrations, starts all services
+```
+
+### Stop everything
+
+```bash
+make stop      # stops all services, frontend, and Docker containers
+```
+
+---
+
+## Services & Ports
+
+| Service | Port | URL | Description |
+|---------|------|-----|-------------|
+| **Frontend** | 3001 | http://localhost:3001 | App UI — open this in your browser |
+| Gateway | 8000 | http://localhost:8000 | API gateway, JWT auth middleware |
+| Auth API | 8001 | http://localhost:8001 | Registration, login, token management |
+| Todo API | 8002 | http://localhost:8002 | Lists, tasks, subtasks CRUD |
+| RabbitMQ | 5672 / 15672 | http://localhost:15672 | Message broker (management UI) |
+| PostgreSQL | 5432 | — | Local Homebrew install |
+
+API docs (Swagger): http://localhost:8000/docs
+
+Logs: `/tmp/pos-logs/*.log`
 
 ---
 
 ## Architecture
 
 ```
-Raw Tokens (JSON)  →  Semantic Tokens (JSON)  →  CSS Custom Properties (theme.css)
-                                                        ↓
-                                              Shadow DOM Components
-                                              (inherit --pos-* vars)
-                                                        ↓
-                                              Native Events Bubble Up
+Browser (:3001)
+  │
+  ├── frontend/shell/        App shell (sidebar, routing, auth guards)
+  ├── frontend/modules/      Feature modules (auth, todos, notes, ...)
+  ├── frontend/shared/       Shared molecules, organisms, services
+  └── design-system/dist/    Web Component atoms (ui-button, ui-input, ...)
+        │
+        │  /api/* proxied
+        ▼
+Gateway (:8000)              JWT validation, request proxying
+  ├── /api/auth/* ──► Auth Service (:8001)    users, tokens
+  └── /api/todos/* ─► Todo Service (:8002)    lists, tasks, subtasks
+                          │
+                     PostgreSQL (:5432)    shared database, per-service tables
+                     RabbitMQ (:5672)      domain events (best-effort)
 ```
 
-- **Two-tier tokens:** raw literal values → semantic purpose-driven aliases
-- **9 semantic tokens:** bg, fg, muted, border, accent, accent-hover, danger, success, focus
-- **2 components:** `ui-button`, `ui-input` (native elements inside Shadow DOM)
-- **Plugin runtime:** `loadPlugin()` + `createHostSDK()` — no registry, no manifests
+### Key Design Decisions
+
+- **Web Components + Shadow DOM** — no React/Vue/Angular, zero framework runtime
+- **Atomic Design** — atoms (design system) → molecules/organisms (shared) → pages (modules)
+- **Micro-services** — each service owns its domain, shares a database with separate Alembic version tables
+- **JWT auth** — access token in memory, refresh token in localStorage, gateway validates
+- **API gateway** — single entry point, proxies to services, injects `X-User-Id` header
 
 ---
 
-## Implementation Phases
-
-### Phase 1: Foundation & Tokens
-> Minimal token pipeline — raw colors → semantic aliases → CSS custom properties
-
-| Artifact | Path |
-|----------|------|
-| Proposal | [proposal.md](openspec/changes/phase-1-foundation-and-tokens/proposal.md) |
-| Design   | [design.md](openspec/changes/phase-1-foundation-and-tokens/design.md) |
-| Tasks    | [tasks.md](openspec/changes/phase-1-foundation-and-tokens/tasks.md) |
-| Spec: Raw Tokens | [specs/raw-tokens/spec.md](openspec/changes/phase-1-foundation-and-tokens/specs/raw-tokens/spec.md) |
-| Spec: Semantic Tokens | [specs/semantic-tokens/spec.md](openspec/changes/phase-1-foundation-and-tokens/specs/semantic-tokens/spec.md) |
-| Spec: Token Build | [specs/token-build/spec.md](openspec/changes/phase-1-foundation-and-tokens/specs/token-build/spec.md) |
-
-### Phase 2: Core & Components
-> Base element class, `ui-button`, `ui-input` — validate Shadow DOM + token cascading + native events
-
-| Artifact | Path |
-|----------|------|
-| Proposal | [proposal.md](openspec/changes/phase-2-core-infrastructure/proposal.md) |
-| Design   | [design.md](openspec/changes/phase-2-core-infrastructure/design.md) |
-| Tasks    | [tasks.md](openspec/changes/phase-2-core-infrastructure/tasks.md) |
-| Spec: Base Element | [specs/base-element/spec.md](openspec/changes/phase-2-core-infrastructure/specs/base-element/spec.md) |
-| Spec: Element Registration | [specs/element-registration/spec.md](openspec/changes/phase-2-core-infrastructure/specs/element-registration/spec.md) |
-| Spec: ui-button | [specs/ui-button/spec.md](openspec/changes/phase-2-core-infrastructure/specs/ui-button/spec.md) |
-| Spec: ui-input | [specs/ui-input/spec.md](openspec/changes/phase-2-core-infrastructure/specs/ui-input/spec.md) |
-
-### Phase 3: Plugin Runtime
-> Thin plugin loader — dynamic import, custom element registration, host SDK injection
-
-| Artifact | Path |
-|----------|------|
-| Proposal | [proposal.md](openspec/changes/phase-3-plugin-runtime/proposal.md) |
-| Design   | [design.md](openspec/changes/phase-3-plugin-runtime/design.md) |
-| Tasks    | [tasks.md](openspec/changes/phase-3-plugin-runtime/tasks.md) |
-| Spec: Plugin Loader | [specs/plugin-loader/spec.md](openspec/changes/phase-3-plugin-runtime/specs/plugin-loader/spec.md) |
-| Spec: Host SDK | [specs/host-sdk/spec.md](openspec/changes/phase-3-plugin-runtime/specs/host-sdk/spec.md) |
-
-### Phase 4: Validation
-> Single HTML page proving tokens + components + plugins + tenant theming work end-to-end
-
-| Artifact | Path |
-|----------|------|
-| Proposal | [proposal.md](openspec/changes/phase-4-validation/proposal.md) |
-| Design   | [design.md](openspec/changes/phase-4-validation/design.md) |
-| Tasks    | [tasks.md](openspec/changes/phase-4-validation/tasks.md) |
-| Spec: Validation Page | [specs/validation-page/spec.md](openspec/changes/phase-4-validation/specs/validation-page/spec.md) |
-| Spec: Build Pipeline | [specs/build-pipeline/spec.md](openspec/changes/phase-4-validation/specs/build-pipeline/spec.md) |
-
----
-
-## Folder Structure
+## Project Structure
 
 ```
 pOS-design-system/
-├── README.md
-├── package.json
-├── esbuild.config.js
-├── .gitignore
+├── frontend/                    Browser app
+│   ├── shell/                   App shell + index.html
+│   ├── modules/                 Feature modules
+│   │   ├── auth/pages/          Login & register pages
+│   │   ├── todos/               Todo app (pages, services, store, tests)
+│   │   ├── notes/               Placeholder
+│   │   ├── knowledge-base/      Placeholder
+│   │   ├── vault/               Placeholder
+│   │   └── ...                  (feeds, documents, photos, settings)
+│   ├── shared/
+│   │   ├── molecules/           Reusable UI pieces (task-item, task-form, ...)
+│   │   ├── organisms/           Composed UI (task-list, list-sidebar)
+│   │   └── services/            Auth store, API client, router, event bus
+│   └── server.js                Dev server with API proxy
 │
-├── tokens/
-│   ├── raw/
-│   │   └── colors.json                   ← raw color palette
-│   ├── semantic/
-│   │   └── base.json                     ← 9 semantic token aliases
-│   └── build-tokens.js                   ← JSON → CSS build script
+├── backend/
+│   ├── gateway/                 API gateway (FastAPI)
+│   │   └── app/                 Routes, proxy, auth middleware
+│   ├── services/
+│   │   ├── auth/                Auth service (FastAPI)
+│   │   │   ├── app/             Models, routes, service logic
+│   │   │   └── migrations/      Alembic (alembic_version_auth)
+│   │   └── todos/               Todo service (FastAPI)
+│   │       ├── app/             Models, routes, service logic, events
+│   │       └── migrations/      Alembic (alembic_version_todos)
+│   ├── shared/                  pos_common library (auth, database, config, events)
+│   ├── .env                     Local dev config
+│   └── docker-compose.yml       RabbitMQ (Postgres via Homebrew)
 │
-├── src/
-│   ├── core/
-│   │   ├── pos-base-element.js           ← base class (Shadow DOM + adoptStyles)
-│   │   └── define.js                     ← safe customElements.define wrapper
-│   ├── components/
-│   │   ├── ui-button.js                  ← button (single file, styles inline)
-│   │   └── ui-input.js                   ← input (single file, styles inline)
-│   ├── plugins/
-│   │   ├── host-sdk.js                   ← createHostSDK(element) → { emit, getToken }
-│   │   └── loader.js                     ← loadPlugin({ url, tagName })
-│   └── index.js                          ← barrel export
+├── design-system/               Web Component library
+│   ├── src/components/          17 components (button, input, card, dialog, ...)
+│   ├── src/core/                PosBaseElement, define helper
+│   ├── src/plugins/             Plugin loader + host SDK
+│   ├── tokens/                  Raw + semantic design tokens
+│   ├── dist/                    Built CSS + JS bundle
+│   └── test/                    @web/test-runner + Playwright tests
 │
-├── examples/
-│   ├── index.html                        ← validation page (all hypotheses)
-│   └── plugins/
-│       └── hello-plugin.js               ← example plugin
+├── infra/
+│   └── scripts/                 dev-start.sh, dev-stop.sh, setup-dev.sh
 │
-├── dist/                                  ← build output (gitignored)
-│   ├── tokens/
-│   │   └── theme.css                     ← generated CSS custom properties
-│   └── pos-design-system.js              ← ESM bundle
+├── openspec/                    Specs & change tracking
+│   ├── specs/                   Main capability specs
+│   └── changes/                 Active & archived changes
 │
-└── openspec/                              ← specs & change tracking
-    ├── config.yaml
-    └── changes/
-        ├── phase-1-foundation-and-tokens/
-        │   ├── proposal.md
-        │   ├── design.md
-        │   ├── tasks.md
-        │   └── specs/
-        │       ├── raw-tokens/spec.md
-        │       ├── semantic-tokens/spec.md
-        │       └── token-build/spec.md
-        ├── phase-2-core-infrastructure/
-        │   ├── proposal.md
-        │   ├── design.md
-        │   ├── tasks.md
-        │   └── specs/
-        │       ├── base-element/spec.md
-        │       ├── element-registration/spec.md
-        │       ├── ui-button/spec.md
-        │       └── ui-input/spec.md
-        ├── phase-3-plugin-runtime/
-        │   ├── proposal.md
-        │   ├── design.md
-        │   ├── tasks.md
-        │   └── specs/
-        │       ├── plugin-loader/spec.md
-        │       └── host-sdk/spec.md
-        └── phase-4-validation/
-            ├── proposal.md
-            ├── design.md
-            ├── tasks.md
-            └── specs/
-                ├── validation-page/spec.md
-                └── build-pipeline/spec.md
+└── Makefile                     Dev commands
 ```
 
 ---
 
-## Semantic Tokens (v0)
+## Make Targets
 
-| Token | Purpose |
-|-------|---------|
-| `--pos-color-bg` | Page/component background |
-| `--pos-color-fg` | Primary text |
-| `--pos-color-muted` | Secondary/muted text |
-| `--pos-color-border` | Borders and dividers |
-| `--pos-color-accent` | Primary action color |
-| `--pos-color-accent-hover` | Hover state of accent |
-| `--pos-color-danger` | Error/destructive actions |
-| `--pos-color-success` | Success states |
-| `--pos-color-focus` | Focus ring indicator |
+| Command | Description |
+|---------|-------------|
+| `make setup` | First-time setup (deps, build, Docker images) |
+| `make dev` | Start full stack (Postgres check → RabbitMQ → migrations → services) |
+| `make stop` | Stop all services and Docker containers |
+| `make dev-ds` | Start design system preview only |
+| `make dev-frontend` | Start frontend server only |
+| `make test` | Run all tests (design system + backend) |
+| `make test-ds` | Run design system tests |
+| `make test-backend` | Run backend pytest tests |
+| `make build` | Build design system |
+| `make db-migrate` | Run Alembic migrations for all services |
 
 ---
 
-## Key Constraints
+## Design System
 
-- **Plain JavaScript** — no TypeScript, no build-time types
-- **No event suppression** — native DOM events bubble naturally through Shadow DOM
-- **No hardcoded colors** — components use `var(--pos-color-*)` exclusively
-- **Single file per component** — styles inline, no separate `.styles.js`
-- **No tests in v0** — focus on architecture validation
-- **No dark theme in v0** — single light theme
+17 Web Components built on `PosBaseElement` with Shadow DOM and `adoptedStyleSheets`:
+
+`ui-button` · `ui-input` · `ui-card` · `ui-dialog` · `ui-alert` · `ui-badge` · `ui-tag` · `ui-checkbox` · `ui-radio` · `ui-toggle` · `ui-select` · `ui-textarea` · `ui-progress` · `ui-spinner` · `ui-divider` · `ui-icon` · `ui-tooltip`
+
+Two-tier token system: raw values (`colors.json`, `spacing.json`, ...) → semantic aliases (`base.json`, `dark.json`, ...) → CSS custom properties (`--pos-*`).
+
+Light + dark themes via `[data-pos-theme]` attribute.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Web Components, Shadow DOM, ES Modules |
+| Design System | Custom elements, CSS Custom Properties |
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2.0 (async) |
+| Database | PostgreSQL 17 |
+| Messaging | RabbitMQ (domain events, best-effort) |
+| Auth | JWT (HS256), bcrypt password hashing |
+| Testing | @web/test-runner + Playwright, pytest |
+| Dev Tooling | Makefile, esbuild, Alembic |

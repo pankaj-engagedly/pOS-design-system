@@ -7,12 +7,8 @@ setup:
 
 # ─── Development ─────────────────────────────────────────
 
-dev: dev-infra
-	@echo "Starting pOS development stack..."
-	@trap 'make stop' INT TERM; \
-	cd backend/gateway && ../.venv/bin/uvicorn app.main:app --reload --port 8000 & \
-	node frontend/server.js & \
-	wait
+dev:
+	@bash infra/scripts/dev-start.sh
 
 dev-infra:
 	docker compose -f backend/docker-compose.yml up -d
@@ -23,15 +19,11 @@ dev-ds:
 dev-frontend:
 	node frontend/server.js
 
-dev-backend: dev-infra
-	cd backend/gateway && ../.venv/bin/uvicorn app.main:app --reload --port 8000
+dev-backend:
+	@bash infra/scripts/dev-start.sh
 
 stop:
-	@echo "Stopping all services..."
-	-@pkill -f "uvicorn app.main:app" 2>/dev/null || true
-	-@pkill -f "node frontend/server.js" 2>/dev/null || true
-	-@docker compose -f backend/docker-compose.yml down 2>/dev/null || true
-	@echo "All services stopped."
+	@bash infra/scripts/dev-stop.sh
 
 # ─── Testing ─────────────────────────────────────────────
 

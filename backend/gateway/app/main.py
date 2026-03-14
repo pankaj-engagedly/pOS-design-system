@@ -9,17 +9,26 @@ from pos_common.config import BaseServiceConfig
 from pos_common.schemas import HealthResponse
 
 from .middleware.auth import AuthMiddleware
-from .routes import router
+from .routes import AUTH_SERVICE_URL, TODO_SERVICE_URL, router
 
-config = BaseServiceConfig(SERVICE_NAME="pos-gateway")
+
+class GatewayConfig(BaseServiceConfig):
+    SERVICE_NAME: str = "pos-gateway"
+    AUTH_SERVICE_URL: str = "http://localhost:8001"
+    TODO_SERVICE_URL: str = "http://localhost:8002"
+
+
+config = GatewayConfig()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
-    # Startup: initialize connections if needed
+    # Configure service URLs from environment
+    from . import routes as routes_module
+    routes_module.AUTH_SERVICE_URL = config.AUTH_SERVICE_URL
+    routes_module.TODO_SERVICE_URL = config.TODO_SERVICE_URL
     yield
-    # Shutdown: cleanup
 
 
 app = FastAPI(

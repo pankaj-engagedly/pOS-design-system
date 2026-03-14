@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const PORT = 3001;
+const GATEWAY_URL = 'http://127.0.0.1:8000';
 const ROOT = path.resolve(import.meta.dirname, '..');
 
 const MIME_TYPES = {
@@ -17,9 +18,32 @@ const MIME_TYPES = {
 };
 
 const server = http.createServer((req, res) => {
-  let urlPath = new URL(req.url, `http://localhost:${PORT}`).pathname;
+  const url = new URL(req.url, `http://localhost:${PORT}`);
 
-  // SPA fallback: serve index.html for root and non-file paths
+  // Proxy /api/* and /health to the gateway
+  if (url.pathname.startsWith('/api/') || url.pathname === '/health') {
+    const proxyReq = http.request(
+      `${GATEWAY_URL}${url.pathname}${url.search}`,
+      {
+        method: req.method,
+        headers: { ...req.headers, host: '127.0.0.1:8000' },
+      },
+      (proxyRes) => {
+        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+        proxyRes.pipe(res);
+      },
+    );
+    proxyReq.on('error', () => {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end('{"detail":"Gateway unavailable"}');
+    });
+    req.pipe(proxyReq);
+    return;
+  }
+
+  let urlPath = url.pathname;
+
+  // SPA fallback: serve index.html for root
   if (urlPath === '/' || urlPath === '/index.html') {
     urlPath = '/frontend/shell/index.html';
   }
@@ -35,8 +59,6 @@ const server = http.createServer((req, res) => {
 
   fs.readFile(filePath, (err, data) => {
     if (err) {
-      // SPA fallback for unmatched routes (hash routing handles this client-side,
-      // but just in case someone hits a path directly)
       if (err.code === 'ENOENT') {
         fs.readFile(path.join(ROOT, 'frontend/shell/index.html'), (fallbackErr, fallbackData) => {
           if (fallbackErr) {

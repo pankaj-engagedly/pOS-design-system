@@ -10,8 +10,10 @@ from pos_common.exceptions import AuthenticationError
 # Paths that don't require authentication
 PUBLIC_PATHS = {
     "/health",
+    "/api/",
     "/api/auth/login",
     "/api/auth/register",
+    "/api/auth/refresh",
     "/docs",
     "/openapi.json",
     "/redoc",

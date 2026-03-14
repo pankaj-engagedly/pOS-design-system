@@ -22,7 +22,14 @@
     },
     "orange": {
       "200": { "$value": "#FFD39B", "$type": "color" },
-      "300": { "$value": "#FCBA78", "$type": "color" }
+      "300": { "$value": "#FCBA78", "$type": "color" },
+      "500": { "$value": "#F97316", "$type": "color" }
+    },
+    "yellow": {
+      "500": { "$value": "#EAB308", "$type": "color" }
+    },
+    "red": {
+      "500": { "$value": "#EF4444", "$type": "color" }
     },
 
     "_comment_surface": "Figma surface tints used for category card backgrounds - include when implementing cards",
