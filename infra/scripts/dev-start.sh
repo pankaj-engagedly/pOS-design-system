@@ -157,6 +157,9 @@ cd "$ROOT_DIR/backend/services/todos"
 cd "$ROOT_DIR/backend/services/attachments"
 "$VENV/uvicorn" app.main:app --reload --port 8003 > "$LOG_DIR/attachments.log" 2>&1 &
 
+cd "$ROOT_DIR/backend/services/notes"
+"$VENV/uvicorn" app.main:app --reload --port 8004 > "$LOG_DIR/notes.log" 2>&1 &
+
 cd "$ROOT_DIR/backend/gateway"
 "$VENV/uvicorn" app.main:app --reload --port 8000 > "$LOG_DIR/gateway.log" 2>&1 &
 
@@ -174,6 +177,7 @@ all_ok=true
 wait_for_port 8001 "auth"        || all_ok=false
 wait_for_port 8002 "todos"       || all_ok=false
 wait_for_port 8003 "attachments" || all_ok=false
+wait_for_port 8004 "notes"       || all_ok=false
 wait_for_port 8000 "gateway"     || all_ok=false
 
 # Frontend and design system don't have /health, just check the port
@@ -204,7 +208,8 @@ echo -e "  ${CYAN}Design System${NC}  http://localhost:3000"
 echo -e "  ${DIM}Gateway        http://localhost:8000${NC}"
 echo -e "  ${DIM}Auth API       http://localhost:8001${NC}"
 echo -e "  ${DIM}Todo API       http://localhost:8002${NC}"
-echo -e "  ${DIM}Attachment API http://localhost:8003${NC}"
+echo -e "  ${DIM}Attachment API http://localhost:8003${NC}
+  ${DIM}Notes API     http://localhost:8004${NC}"
 echo -e "  ${DIM}RabbitMQ       http://localhost:15672${NC}"
 echo ""
 echo -e "  ${DIM}Logs       $LOG_DIR/*.log${NC}"

@@ -17,7 +17,7 @@ echo ""
 
 # Stop Python services
 if pkill -f "uvicorn app.main:app" 2>/dev/null; then
-    ok "Stopped backend services (auth, todos, attachments, gateway)"
+    ok "Stopped backend services (auth, todos, attachments, notes, gateway)"
 else
     ok "No backend services running"
 fi

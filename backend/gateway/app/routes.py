@@ -11,6 +11,7 @@ router = APIRouter()
 AUTH_SERVICE_URL = "http://localhost:8001"
 TODO_SERVICE_URL = "http://localhost:8002"
 ATTACHMENT_SERVICE_URL = "http://localhost:8003"
+NOTES_SERVICE_URL = "http://localhost:8004"
 
 
 @router.get("/api/")
@@ -21,7 +22,7 @@ async def api_root():
         "routes": {
             "/api/auth": "Authentication service",
             "/api/todos": "Todo service",
-            "/api/notes": "Notes service (Phase 2)",
+            "/api/notes": "Notes service",
             "/api/kb": "Knowledge Base service (Phase 2)",
             "/api/vault": "Vault service (Phase 3)",
             "/api/feeds": "Feed Watcher service (Phase 3)",
@@ -50,3 +51,10 @@ async def proxy_todos(request: Request, path: str):
 @router.api_route("/api/attachments/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
 async def proxy_attachments(request: Request, path: str):
     return await proxy_request(request, ATTACHMENT_SERVICE_URL, f"/api/attachments/{path}")
+
+
+# --- Notes service proxy ---
+
+@router.api_route("/api/notes/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
+async def proxy_notes(request: Request, path: str):
+    return await proxy_request(request, NOTES_SERVICE_URL, f"/api/notes/{path}")

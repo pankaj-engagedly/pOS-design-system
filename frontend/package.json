@@ -3,5 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "pOS frontend app shell and micro-frontend modules."
+  "description": "pOS frontend app shell and micro-frontend modules.",
+  "scripts": {
+    "build:editor": "node build-editor.js"
+  },
+  "dependencies": {
+    "@tiptap/core": "^3.20.1",
+    "@tiptap/extension-link": "^3.20.1",
+    "@tiptap/extension-placeholder": "^3.20.1",
+    "@tiptap/starter-kit": "^3.20.1"
+  }
 }

@@ -52,7 +52,8 @@
       "Bash(make:*)",
       "Bash(source:*)",
       "Bash(cp:*)",
-      "Bash(../../.venv/bin/alembic revision:*)"
+      "Bash(../../.venv/bin/alembic revision:*)",
+      "Bash(find:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
