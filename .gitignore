@@ -1,19 +1,23 @@
 # Node
 node_modules/
 dist/
+build/
 
 # Python
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 .venv/
 *.egg-info/
 .eggs/
+*.db
 
 # Environment
 .env
 .env.local
 .env.*.local
+*.local
 
 # Docker
 docker-volumes/
@@ -28,7 +32,16 @@ docker-volumes/
 .DS_Store
 Thumbs.db
 
+# Logs (safety net — runtime logs go to /tmp/pos-logs/ but just in case)
+*.log
+
 # Test / Coverage
 .coverage
 htmlcov/
+coverage/
 .pytest_cache/
+playwright-report/
+test-results/
+
+# Claude Code — local machine settings (commands/ and skills/ are project config, keep those)
+.claude/settings.local.json
