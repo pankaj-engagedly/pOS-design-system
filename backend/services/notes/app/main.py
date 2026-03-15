@@ -1,19 +1,18 @@
 """Notes service — folders, notes, tags management."""
 
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from pos_common.config import BaseServiceConfig
-from pos_common.database import close_db, init_db
-from pos_common.events import close_events, init_events
-from pos_common.schemas import HealthResponse
+from pos_contracts.config import BaseServiceConfig
+from pos_contracts.logging import setup_logging
+from pos_contracts.schemas import HealthResponse
+from pos_events import event_bus
 
+from .db import close_db, init_db
 from .routes import router
-
-logger = logging.getLogger(__name__)
 
 
 class UserIdMiddleware(BaseHTTPMiddleware):
@@ -36,15 +35,15 @@ config = NotesConfig()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown."""
+    setup_logging(config.SERVICE_NAME, config.LOG_LEVEL)
     init_db(config.DATABASE_URL, echo=config.DEBUG)
     app.state.config = config
-    try:
-        await init_events(config.RABBITMQ_URL)
-    except Exception as e:
-        logger.warning("RabbitMQ unavailable, events disabled: %s", e)
+    await event_bus.init(config.RABBITMQ_URL)
+    logger.info("Notes service ready")
     yield
-    await close_events()
+    await event_bus.close()
     await close_db()
+    logger.info("Notes service stopped")
 
 
 app = FastAPI(

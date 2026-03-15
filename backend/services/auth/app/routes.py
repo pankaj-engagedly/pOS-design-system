@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pos_common.database import get_async_session
+from .db import get_session as get_async_session
 
 from . import service
 from .schemas import (

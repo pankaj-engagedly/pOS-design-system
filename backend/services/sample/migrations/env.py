@@ -8,7 +8,7 @@ from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.models import SampleItem  # noqa: F401 — registers model metadata
-from pos_common.database import UserScopedBase
+from pos_contracts.models import UserScopedBase
 
 config = context.config
 if config.config_file_name is not None:

@@ -7,8 +7,20 @@ setup:
 
 # ─── Development ─────────────────────────────────────────
 
+# Log level control (default: INFO for all)
+# Examples:
+#   make dev                          — all INFO
+#   make dev LOG_LEVEL=TRACE          — all services at TRACE
+#   make dev notes=TRACE              — just notes at TRACE
+#   make dev notes=TRACE todos=DEBUG  — mixed per-service levels
+LOG_LEVEL ?= INFO
+auth     ?= $(LOG_LEVEL)
+todos    ?= $(LOG_LEVEL)
+notes    ?= $(LOG_LEVEL)
+gateway  ?= $(LOG_LEVEL)
+
 dev:
-	@bash infra/scripts/dev-start.sh
+	@auth=$(auth) todos=$(todos) notes=$(notes) gateway=$(gateway) bash infra/scripts/dev-start.sh
 
 dev-infra:
 	docker compose -f backend/docker-compose.yml up -d

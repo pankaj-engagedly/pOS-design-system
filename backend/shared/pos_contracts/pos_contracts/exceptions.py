@@ -1,4 +1,8 @@
-"""Common exception classes with HTTP status code mappings."""
+"""Common exception hierarchy with HTTP status code mappings.
+
+All pOS domain exceptions extend PosError. Each carries a status_code so
+FastAPI exception handlers can return the correct HTTP response.
+"""
 
 
 class PosError(Exception):

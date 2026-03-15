@@ -5,11 +5,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pos_common.database import get_async_session
-from pos_common.exceptions import NotFoundError
+from pos_contracts.exceptions import NotFoundError
+
+from .db import get_session as get_async_session
 
 from . import service
-from .events import publish_note_event
+from .events import publish_folder_event, publish_note_event, publish_tag_event
 from .schemas import (
     FolderCreate,
     FolderResponse,
@@ -56,6 +57,7 @@ async def create_folder(
 ):
     try:
         folder = await service.create_folder(session, user_id, data)
+        await publish_folder_event("folder.created", folder)
         return {**service._model_to_dict(folder), "note_count": 0}
     except Exception as e:
         if "uq_folders_user_name" in str(e):
@@ -72,6 +74,7 @@ async def update_folder(
 ):
     try:
         folder = await service.update_folder(session, user_id, folder_id, data)
+        await publish_folder_event("folder.updated", folder)
         return {**service._model_to_dict(folder), "note_count": 0}
     except NotFoundError as e:
         _handle_not_found(e)
@@ -84,7 +87,9 @@ async def delete_folder(
     session: AsyncSession = Depends(get_async_session),
 ):
     try:
+        folder = await service._get_folder(session, user_id, folder_id)
         await service.delete_folder(session, user_id, folder_id)
+        await publish_folder_event("folder.deleted", folder)
     except NotFoundError as e:
         _handle_not_found(e)
 
@@ -232,7 +237,12 @@ async def add_tag(
     session: AsyncSession = Depends(get_async_session),
 ):
     try:
-        return await service.add_tag_to_note(session, user_id, note_id, data)
+        note = await service.add_tag_to_note(session, user_id, note_id, data)
+        # Find the tag we just added by name to publish its event
+        tag = next((t for t in note.tags if t.name == data.name), None)
+        if tag:
+            await publish_tag_event("tag.added", tag, note_id=str(note_id))
+        return note
     except NotFoundError as e:
         _handle_not_found(e)
 
@@ -245,6 +255,15 @@ async def remove_tag(
     session: AsyncSession = Depends(get_async_session),
 ):
     try:
+        # Fetch tag before removal so we can publish its identity
+        from .models import Tag
+        from sqlalchemy import select
+        tag_result = await session.execute(
+            select(Tag).where(Tag.id == tag_id, Tag.user_id == user_id)
+        )
+        tag = tag_result.scalar_one_or_none()
         await service.remove_tag_from_note(session, user_id, note_id, tag_id)
+        if tag:
+            await publish_tag_event("tag.removed", tag, note_id=str(note_id))
     except NotFoundError as e:
         _handle_not_found(e)

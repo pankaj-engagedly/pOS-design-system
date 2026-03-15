@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 
-from pos_common.database import Base
+from pos_contracts.models import Base
 
 
 class User(Base):

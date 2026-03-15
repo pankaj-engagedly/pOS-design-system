@@ -1,7 +1,6 @@
-"""Shared Pydantic schemas used across services."""
+"""Shared Pydantic response schemas used across all pOS services."""
 
 from typing import Generic, TypeVar
-from uuid import UUID
 
 from pydantic import BaseModel
 

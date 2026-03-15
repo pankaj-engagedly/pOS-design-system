@@ -4,9 +4,11 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from loguru import logger
 
-from pos_common.config import BaseServiceConfig
-from pos_common.schemas import HealthResponse
+from pos_contracts.config import BaseServiceConfig
+from pos_contracts.logging import setup_logging
+from pos_contracts.schemas import HealthResponse
 
 from .middleware.auth import AuthMiddleware
 from .routes import AUTH_SERVICE_URL, TODO_SERVICE_URL, router
@@ -24,11 +26,14 @@ config = GatewayConfig()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown events."""
+    setup_logging(config.SERVICE_NAME, config.LOG_LEVEL)
     # Configure service URLs from environment
     from . import routes as routes_module
     routes_module.AUTH_SERVICE_URL = config.AUTH_SERVICE_URL
     routes_module.TODO_SERVICE_URL = config.TODO_SERVICE_URL
+    logger.info("Gateway ready")
     yield
+    logger.info("Gateway stopped")
 
 
 app = FastAPI(

@@ -146,22 +146,29 @@ sleep 1
 
 # ─── 5. Start services ──────────────────────────────────
 
-info "Starting services..."
+# Per-service log levels — set by Makefile vars, default to INFO
+# Usage: make dev notes=TRACE  or  make dev LOG_LEVEL=TRACE
+AUTH_LOG="${auth:-INFO}"
+TODOS_LOG="${todos:-INFO}"
+NOTES_LOG="${notes:-INFO}"
+GATEWAY_LOG="${gateway:-INFO}"
+
+info "Starting services (auth=${AUTH_LOG} todos=${TODOS_LOG} notes=${NOTES_LOG} gateway=${GATEWAY_LOG})..."
 
 cd "$ROOT_DIR/backend/services/auth"
-"$VENV/uvicorn" app.main:app --reload --port 8001 > "$LOG_DIR/auth.log" 2>&1 &
+LOG_LEVEL="$AUTH_LOG" "$VENV/uvicorn" app.main:app --reload --port 8001 > "$LOG_DIR/auth.log" 2>&1 &
 
 cd "$ROOT_DIR/backend/services/todos"
-"$VENV/uvicorn" app.main:app --reload --port 8002 > "$LOG_DIR/todos.log" 2>&1 &
+LOG_LEVEL="$TODOS_LOG" "$VENV/uvicorn" app.main:app --reload --port 8002 > "$LOG_DIR/todos.log" 2>&1 &
 
 cd "$ROOT_DIR/backend/services/attachments"
 "$VENV/uvicorn" app.main:app --reload --port 8003 > "$LOG_DIR/attachments.log" 2>&1 &
 
 cd "$ROOT_DIR/backend/services/notes"
-"$VENV/uvicorn" app.main:app --reload --port 8004 > "$LOG_DIR/notes.log" 2>&1 &
+LOG_LEVEL="$NOTES_LOG" "$VENV/uvicorn" app.main:app --reload --port 8004 > "$LOG_DIR/notes.log" 2>&1 &
 
 cd "$ROOT_DIR/backend/gateway"
-"$VENV/uvicorn" app.main:app --reload --port 8000 > "$LOG_DIR/gateway.log" 2>&1 &
+LOG_LEVEL="$GATEWAY_LOG" "$VENV/uvicorn" app.main:app --reload --port 8000 > "$LOG_DIR/gateway.log" 2>&1 &
 
 cd "$ROOT_DIR"
 node frontend/server.js > "$LOG_DIR/frontend.log" 2>&1 &

@@ -5,10 +5,10 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pos_common.database import get_async_session
+from .db import get_session as get_async_session
 
 from . import service
-from .events import publish_task_event
+from .events import publish_list_event, publish_task_event
 from .schemas import (
     ListCreate,
     ListResponse,
@@ -51,6 +51,7 @@ async def create_list(
     session: AsyncSession = Depends(get_async_session),
 ):
     lst = await service.create_list(session, user_id, data)
+    await publish_list_event("list.created", lst)
     return {**service._model_to_dict(lst), "task_count": 0}
 
 
@@ -62,6 +63,7 @@ async def update_list(
     session: AsyncSession = Depends(get_async_session),
 ):
     lst = await service.update_list(session, user_id, list_id, data)
+    await publish_list_event("list.updated", lst)
     return {**service._model_to_dict(lst), "task_count": 0}
 
 
@@ -71,7 +73,9 @@ async def delete_list(
     user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
 ):
+    lst = await service._get_list(session, user_id, list_id)
     await service.delete_list(session, user_id, list_id)
+    await publish_list_event("list.deleted", lst)
 
 
 @router.patch("/lists/reorder", status_code=204)

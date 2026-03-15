@@ -7,7 +7,8 @@ from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from pos_common.exceptions import NotFoundError
+from pos_contracts.exceptions import NotFoundError
+from pos_contracts.logging import trace
 
 from .models import Folder, Note, Tag, note_tags
 from .schemas import (
@@ -24,6 +25,7 @@ from .utils import extract_preview_text
 # --- Folders ---
 
 
+@trace
 async def get_folders(session: AsyncSession, user_id: UUID) -> list[dict]:
     """Get all folders for user, ordered by position, with note counts."""
     result = await session.execute(
@@ -45,6 +47,7 @@ async def get_folders(session: AsyncSession, user_id: UUID) -> list[dict]:
     ]
 
 
+@trace
 async def create_folder(
     session: AsyncSession, user_id: UUID, data: FolderCreate
 ) -> Folder:
@@ -60,6 +63,7 @@ async def create_folder(
     return folder
 
 
+@trace
 async def update_folder(
     session: AsyncSession, user_id: UUID, folder_id: UUID, data: FolderUpdate
 ) -> Folder:
@@ -71,6 +75,7 @@ async def update_folder(
     return folder
 
 
+@trace
 async def delete_folder(session: AsyncSession, user_id: UUID, folder_id: UUID) -> None:
     folder = await _get_folder(session, user_id, folder_id)
     # Nullify folder_id on owned notes
@@ -99,6 +104,7 @@ async def reorder_folders(
 # --- Notes ---
 
 
+@trace
 async def get_notes(
     session: AsyncSession,
     user_id: UUID,
@@ -142,6 +148,7 @@ async def get_notes(
     return list(result.scalars().all())
 
 
+@trace
 async def create_note(
     session: AsyncSession, user_id: UUID, data: NoteCreate
 ) -> Note:
@@ -170,6 +177,7 @@ async def create_note(
     return await get_note(session, user_id, note.id)
 
 
+@trace
 async def get_note(session: AsyncSession, user_id: UUID, note_id: UUID) -> Note:
     result = await session.execute(
         select(Note)
@@ -182,6 +190,7 @@ async def get_note(session: AsyncSession, user_id: UUID, note_id: UUID) -> Note:
     return note
 
 
+@trace
 async def update_note(
     session: AsyncSession, user_id: UUID, note_id: UUID, data: NoteUpdate
 ) -> Note:
@@ -212,6 +221,7 @@ async def reorder_notes(
     await session.commit()
 
 
+@trace
 async def soft_delete_note(
     session: AsyncSession, user_id: UUID, note_id: UUID
 ) -> None:
@@ -221,6 +231,7 @@ async def soft_delete_note(
     await session.commit()
 
 
+@trace
 async def restore_note(session: AsyncSession, user_id: UUID, note_id: UUID) -> Note:
     result = await session.execute(
         select(Note)
@@ -237,6 +248,7 @@ async def restore_note(session: AsyncSession, user_id: UUID, note_id: UUID) -> N
     return note
 
 
+@trace
 async def permanent_delete_note(
     session: AsyncSession, user_id: UUID, note_id: UUID
 ) -> None:
@@ -275,6 +287,7 @@ async def get_tags(session: AsyncSession, user_id: UUID) -> list[dict]:
     ]
 
 
+@trace
 async def add_tag_to_note(
     session: AsyncSession, user_id: UUID, note_id: UUID, data: TagCreate
 ) -> Note:
@@ -297,6 +310,7 @@ async def add_tag_to_note(
     return await get_note(session, user_id, note_id)
 
 
+@trace
 async def remove_tag_from_note(
     session: AsyncSession, user_id: UUID, note_id: UUID, tag_id: UUID
 ) -> None:

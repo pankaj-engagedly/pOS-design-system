@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pos-events"
+version = "0.1.0"
+description = "pOS event bus — BaseEvent envelope, pluggable Transport, EventBus singleton."
+requires-python = ">=3.12"
+dependencies = [
+    # aio-pika for RabbitMQ transport (default backend)
+    "aio-pika>=9.0",
+    # pos-contracts for BaseEvent UUIDv7 generation and shared types
+    "pos-contracts",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pos_events*"]

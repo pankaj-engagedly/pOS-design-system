@@ -6,7 +6,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from pos_common.exceptions import NotFoundError
+from pos_contracts.exceptions import NotFoundError
+from pos_contracts.logging import trace
 
 from .models import Subtask, Task, TodoList
 from .schemas import (
@@ -23,6 +24,7 @@ from .schemas import (
 # --- Lists ---
 
 
+@trace
 async def get_lists(session: AsyncSession, user_id: UUID) -> list[dict]:
     """Get all lists for user, ordered by position, with task counts."""
     result = await session.execute(
@@ -60,6 +62,7 @@ async def ensure_inbox(session: AsyncSession, user_id: UUID) -> TodoList:
     return inbox
 
 
+@trace
 async def create_list(
     session: AsyncSession, user_id: UUID, data: ListCreate
 ) -> TodoList:
@@ -76,6 +79,7 @@ async def create_list(
     return lst
 
 
+@trace
 async def update_list(
     session: AsyncSession, user_id: UUID, list_id: UUID, data: ListUpdate
 ) -> TodoList:
@@ -87,6 +91,7 @@ async def update_list(
     return lst
 
 
+@trace
 async def delete_list(session: AsyncSession, user_id: UUID, list_id: UUID) -> None:
     lst = await _get_list(session, user_id, list_id)
     await session.delete(lst)
@@ -109,6 +114,7 @@ async def reorder_lists(
 # --- Tasks ---
 
 
+@trace
 async def get_tasks(
     session: AsyncSession, user_id: UUID, list_id: UUID
 ) -> list[dict]:
@@ -130,6 +136,7 @@ async def get_tasks(
     ]
 
 
+@trace
 async def create_task(
     session: AsyncSession, user_id: UUID, data: TaskCreate
 ) -> Task:
@@ -158,6 +165,7 @@ async def create_task(
     return await get_task(session, user_id, task.id)
 
 
+@trace
 async def get_task(session: AsyncSession, user_id: UUID, task_id: UUID) -> Task:
     """Get a single task with subtasks."""
     result = await session.execute(
@@ -171,6 +179,7 @@ async def get_task(session: AsyncSession, user_id: UUID, task_id: UUID) -> Task:
     return task
 
 
+@trace
 async def update_task(
     session: AsyncSession, user_id: UUID, task_id: UUID, data: TaskUpdate
 ) -> Task:
@@ -190,6 +199,7 @@ async def update_task(
     return updated
 
 
+@trace
 async def delete_task(session: AsyncSession, user_id: UUID, task_id: UUID) -> None:
     task = await get_task(session, user_id, task_id)
     await session.delete(task)

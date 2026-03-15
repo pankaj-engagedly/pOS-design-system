@@ -3,12 +3,14 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from pos_common.config import BaseServiceConfig
-from pos_common.database import close_db, init_db
-from pos_common.schemas import HealthResponse
+from pos_contracts.config import BaseServiceConfig
+from pos_contracts.logging import setup_logging
+from pos_contracts.schemas import HealthResponse
 
+from .db import close_db, init_db
 from .routes import router
 
 
@@ -32,10 +34,13 @@ config = AuthConfig()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown."""
+    setup_logging(config.SERVICE_NAME, config.LOG_LEVEL)
     init_db(config.DATABASE_URL, echo=config.DEBUG)
     app.state.config = config
+    logger.info("Auth service ready")
     yield
     await close_db()
+    logger.info("Auth service stopped")
 
 
 app = FastAPI(

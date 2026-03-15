@@ -4,7 +4,7 @@ from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import relationship
 
-from pos_common.database import UserScopedBase
+from pos_contracts.models import UserScopedBase
 
 
 class TodoList(UserScopedBase):

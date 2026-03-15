@@ -2,7 +2,7 @@
 
 from sqlalchemy import Column, String, Text
 
-from pos_common.database import UserScopedBase
+from pos_contracts.models import UserScopedBase
 
 
 class SampleItem(UserScopedBase):

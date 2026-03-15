@@ -16,7 +16,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
-from pos_common.database import UserScopedBase
+from pos_contracts.models import UserScopedBase
 
 # Association table — no extra columns, just the join
 note_tags = Table(

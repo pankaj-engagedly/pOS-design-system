@@ -1,6 +1,6 @@
 """Sample event publishers — demonstrates RabbitMQ integration."""
 
-from pos_common.events import publish_event
+from pos_events import event_bus
 
 
 async def emit_item_created(item_id: str, title: str):

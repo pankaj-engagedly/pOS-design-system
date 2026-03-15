@@ -8,8 +8,10 @@ import bcrypt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pos_common.auth import create_access_token, create_refresh_token, validate_token
-from pos_common.exceptions import AuthenticationError, NotFoundError, ValidationError
+from pos_contracts.exceptions import AuthenticationError, NotFoundError, ValidationError
+from pos_contracts.logging import trace
+
+from .tokens import create_access_token, create_refresh_token, validate_token
 
 from .models import RefreshToken, User
 from .schemas import ChangePasswordRequest, RegisterRequest, UserUpdateRequest
@@ -30,6 +32,7 @@ def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+@trace
 async def register_user(
     session: AsyncSession,
     data: RegisterRequest,
@@ -72,6 +75,7 @@ async def register_user(
     return {"user": user, "access_token": access_token, "refresh_token": refresh_token}
 
 
+@trace
 async def authenticate_user(
     session: AsyncSession,
     email: str,
@@ -105,6 +109,7 @@ async def authenticate_user(
     return {"user": user, "access_token": access_token, "refresh_token": refresh_token}
 
 
+@trace
 async def refresh_token(
     session: AsyncSession,
     token: str,
@@ -160,6 +165,7 @@ async def revoke_token(session: AsyncSession, token: str) -> None:
         await session.commit()
 
 
+@trace
 async def get_user(session: AsyncSession, user_id: UUID) -> User:
     """Get user by ID."""
     result = await session.execute(

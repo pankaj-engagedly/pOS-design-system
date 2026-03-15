@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pos-contracts"
+version = "0.1.0"
+description = "pOS shared contracts — types, schemas, base models. No runtime infrastructure."
+requires-python = ">=3.12"
+dependencies = [
+    # SQLAlchemy for column type declarations in base models only
+    "sqlalchemy>=2.0",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    # UUIDv7 — time-ordered UUIDs for B-tree friendly primary keys
+    # RFC 9562 — timestamp prefix makes inserts sequential, like bigint auto-increment
+    "uuid-utils>=0.6",
+    # loguru — structured logging with zero config, TRACE level for function tracing
+    "loguru>=0.7",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pos_contracts*"]

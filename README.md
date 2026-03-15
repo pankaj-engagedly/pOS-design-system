@@ -2,7 +2,7 @@
 
 A self-hosted personal hub with modular micro-services and a browser-native frontend. Built with Web Components (no framework), Python/FastAPI micro-services, and JWT authentication.
 
-**Status:** Phase 1 complete — auth + todos working end-to-end
+**Status:** Phase 2 in progress — notes module added, shared library refactored
 
 ---
 
@@ -24,7 +24,11 @@ make setup     # installs deps, builds design system, pulls Docker images
 ### Start everything
 
 ```bash
-make dev       # checks Postgres, starts RabbitMQ, runs migrations, starts all services
+make dev                             # start all services at INFO (default)
+make dev LOG_LEVEL=TRACE             # all services at TRACE level
+make dev notes=TRACE                 # just notes service at TRACE
+make dev notes=TRACE todos=DEBUG     # per-service log levels
+make dev LOG_LEVEL=DEBUG notes=TRACE # baseline DEBUG, notes at TRACE
 ```
 
 ### Stop everything
@@ -40,15 +44,23 @@ make stop      # stops all services, frontend, and Docker containers
 | Service | Port | URL | Description |
 |---------|------|-----|-------------|
 | **Frontend** | 3001 | http://localhost:3001 | App UI — open this in your browser |
+| Design System | 3000 | http://localhost:3000 | Component showcase |
 | Gateway | 8000 | http://localhost:8000 | API gateway, JWT auth middleware |
 | Auth API | 8001 | http://localhost:8001 | Registration, login, token management |
 | Todo API | 8002 | http://localhost:8002 | Lists, tasks, subtasks CRUD |
+| Attachments API | 8003 | http://localhost:8003 | File attachments |
+| Notes API | 8004 | http://localhost:8004 | Folders, notes, tags CRUD |
 | RabbitMQ | 5672 / 15672 | http://localhost:15672 | Message broker (management UI) |
 | PostgreSQL | 5432 | — | Local Homebrew install |
 
 API docs (Swagger): http://localhost:8000/docs
 
 Logs: `/tmp/pos-logs/*.log`
+
+```bash
+tail -f /tmp/pos-logs/notes.log    # follow a single service
+tail -f /tmp/pos-logs/*.log        # follow all services
+```
 
 ---
 
@@ -65,11 +77,13 @@ Browser (:3001)
         │  /api/* proxied
         ▼
 Gateway (:8000)              JWT validation, request proxying
-  ├── /api/auth/* ──► Auth Service (:8001)    users, tokens
-  └── /api/todos/* ─► Todo Service (:8002)    lists, tasks, subtasks
-                          │
-                     PostgreSQL (:5432)    shared database, per-service tables
-                     RabbitMQ (:5672)      domain events (best-effort)
+  ├── /api/auth/*        ──► Auth Service (:8001)        users, tokens
+  ├── /api/todos/*       ──► Todo Service (:8002)        lists, tasks, subtasks
+  ├── /api/attachments/* ──► Attachments Service (:8003) file uploads
+  └── /api/notes/*       ──► Notes Service (:8004)       folders, notes, tags
+                                  │
+                             PostgreSQL (:5432)    shared database, per-service tables
+                             RabbitMQ (:5672)      domain events (best-effort)
 ```
 
 ### Key Design Decisions
@@ -78,7 +92,12 @@ Gateway (:8000)              JWT validation, request proxying
 - **Atomic Design** — atoms (design system) → molecules/organisms (shared) → pages (modules)
 - **Micro-services** — each service owns its domain, shares a database with separate Alembic version tables
 - **JWT auth** — access token in memory, refresh token in localStorage, gateway validates
-- **API gateway** — single entry point, proxies to services, injects `X-User-Id` header
+- **Edge authentication** — gateway is the single trust boundary; services read `X-User-Id` header
+- **Per-service DB lifecycle** — each service owns its connection pool for independent scaling
+- **UUIDv7 primary keys** — timestamp-prefixed, B-tree friendly, monotonically increasing (RFC 9562)
+- **Declarative events** — `DomainEvent` with `payload_fields` tuple; define once, share across related events
+- **Best-effort events** — RabbitMQ unavailable = warning logged, request still succeeds
+- **Structured logging** — loguru with `TRACE`/`DEBUG`/`INFO` levels; `@trace` decorator for function tracing
 
 ---
 
@@ -90,8 +109,8 @@ pOS-design-system/
 │   ├── shell/                   App shell + index.html
 │   ├── modules/                 Feature modules
 │   │   ├── auth/pages/          Login & register pages
-│   │   ├── todos/               Todo app (pages, services, store, tests)
-│   │   ├── notes/               Placeholder
+│   │   ├── todos/               Todo app (pages, services, store, components)
+│   │   ├── notes/               Notes app (pages, services, store, components)
 │   │   ├── knowledge-base/      Placeholder
 │   │   ├── vault/               Placeholder
 │   │   └── ...                  (feeds, documents, photos, settings)
@@ -105,13 +124,19 @@ pOS-design-system/
 │   ├── gateway/                 API gateway (FastAPI)
 │   │   └── app/                 Routes, proxy, auth middleware
 │   ├── services/
-│   │   ├── auth/                Auth service (FastAPI)
-│   │   │   ├── app/             Models, routes, service logic
+│   │   ├── auth/                Auth service (FastAPI) :8001
+│   │   │   ├── app/             Models, routes, service logic, tokens
 │   │   │   └── migrations/      Alembic (alembic_version_auth)
-│   │   └── todos/               Todo service (FastAPI)
-│   │       ├── app/             Models, routes, service logic, events
-│   │       └── migrations/      Alembic (alembic_version_todos)
-│   ├── shared/                  pos_common library (auth, database, config, events)
+│   │   ├── todos/               Todo service (FastAPI) :8002
+│   │   │   ├── app/             Models, routes, service logic, events
+│   │   │   └── migrations/      Alembic (alembic_version_todos)
+│   │   ├── notes/               Notes service (FastAPI) :8004
+│   │   │   ├── app/             Models, routes, service logic, events
+│   │   │   └── migrations/      Alembic (alembic_version_notes)
+│   │   └── attachments/         Attachments service (FastAPI) :8003
+│   ├── shared/
+│   │   ├── pos_contracts/       Shared types, schemas, base models (zero infra)
+│   │   └── pos_events/          Event bus — BaseEvent, DomainEvent, Transport, EventBus
 │   ├── .env                     Local dev config
 │   └── docker-compose.yml       RabbitMQ (Postgres via Homebrew)
 │
@@ -141,6 +166,9 @@ pOS-design-system/
 |---------|-------------|
 | `make setup` | First-time setup (deps, build, Docker images) |
 | `make dev` | Start full stack (Postgres check → RabbitMQ → migrations → services) |
+| `make dev LOG_LEVEL=TRACE` | Start with all services at TRACE level |
+| `make dev notes=TRACE` | Start with notes service at TRACE, others at INFO |
+| `make dev notes=TRACE todos=DEBUG` | Per-service log levels |
 | `make stop` | Stop all services and Docker containers |
 | `make dev-ds` | Start design system preview only |
 | `make dev-frontend` | Start frontend server only |
@@ -172,7 +200,8 @@ Light + dark themes via `[data-pos-theme]` attribute.
 | Design System | Custom elements, CSS Custom Properties |
 | Backend | Python 3.12, FastAPI, SQLAlchemy 2.0 (async) |
 | Database | PostgreSQL 17 |
-| Messaging | RabbitMQ (domain events, best-effort) |
+| Messaging | RabbitMQ via aio-pika (domain events, best-effort) |
 | Auth | JWT (HS256), bcrypt password hashing |
+| Logging | loguru — TRACE/DEBUG/INFO levels, `@trace` decorator |
 | Testing | @web/test-runner + Playwright, pytest |
 | Dev Tooling | Makefile, esbuild, Alembic |

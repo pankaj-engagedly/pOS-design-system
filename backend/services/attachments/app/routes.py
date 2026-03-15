@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pos_common.database import get_async_session
+from .db import get_session as get_async_session
 
 from . import service
 from .schemas import AttachmentResponse, BatchRequest

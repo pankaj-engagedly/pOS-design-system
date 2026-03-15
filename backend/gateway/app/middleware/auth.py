@@ -4,8 +4,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from pos_common.auth import validate_token
-from pos_common.exceptions import AuthenticationError
+from pos_contracts.exceptions import AuthenticationError
+
+from app.auth import validate_token
 
 # Paths that don't require authentication
 PUBLIC_PATHS = {

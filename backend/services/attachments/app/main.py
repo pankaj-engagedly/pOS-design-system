@@ -5,9 +5,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from pos_common.config import BaseServiceConfig
-from pos_common.database import close_db, init_db
-from pos_common.schemas import HealthResponse
+from pos_contracts.config import BaseServiceConfig
+from .db import close_db, init_db
+from pos_contracts.schemas import HealthResponse
 
 from .routes import router
 

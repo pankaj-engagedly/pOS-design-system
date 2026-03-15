@@ -73,8 +73,11 @@ fi
 echo "Installing Python dependencies..."
 "$VENV_DIR/bin/pip" install --quiet --upgrade pip
 
-# Install shared library
-"$VENV_DIR/bin/pip" install --quiet -e "$ROOT_DIR/backend/shared"
+# Install shared packages (contracts first — pos_events depends on it)
+# pos_contracts: shared types, schemas, base models — no runtime infrastructure
+# pos_events: event bus with pluggable transport (RabbitMQ default)
+"$VENV_DIR/bin/pip" install --quiet -e "$ROOT_DIR/backend/shared/pos_contracts"
+"$VENV_DIR/bin/pip" install --quiet -e "$ROOT_DIR/backend/shared/pos_events"
 
 # Install gateway deps
 "$VENV_DIR/bin/pip" install --quiet -r "$ROOT_DIR/backend/gateway/requirements.txt"

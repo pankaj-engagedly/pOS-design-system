@@ -9,7 +9,7 @@ from fastapi import UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from pos_common.exceptions import NotFoundError
+from pos_contracts.exceptions import NotFoundError
 
 from .models import Attachment
 
