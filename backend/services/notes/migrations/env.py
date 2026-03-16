@@ -12,7 +12,7 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.models import Folder, Note, Tag, note_tags  # noqa: F401 — registers model metadata
+from app.models import Folder, Note  # noqa: F401 — registers model metadata
 from pos_contracts.models import UserScopedBase
 
 config = context.config
@@ -21,7 +21,7 @@ if config.config_file_name is not None:
 
 target_metadata = UserScopedBase.metadata
 
-OWNED_TABLES = {"folders", "notes", "tags", "note_tags"}
+OWNED_TABLES = {"folders", "notes"}
 
 
 def include_object(object, name, type_, reflected, compare_to):

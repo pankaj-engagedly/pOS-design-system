@@ -238,8 +238,13 @@ async def add_tag(
 ):
     try:
         note = await service.add_tag_to_note(session, user_id, note_id, data)
-        # Find the tag we just added by name to publish its event
-        tag = next((t for t in note.tags if t.name == data.name), None)
+        # Fetch the tag to get its id for the event
+        from pos_contracts.models import Tag
+        from sqlalchemy import select
+        tag_result = await session.execute(
+            select(Tag).where(Tag.user_id == user_id, Tag.name == data.name)
+        )
+        tag = tag_result.scalar_one_or_none()
         if tag:
             await publish_tag_event("tag.added", tag, note_id=str(note_id))
         return note
@@ -256,7 +261,7 @@ async def remove_tag(
 ):
     try:
         # Fetch tag before removal so we can publish its identity
-        from .models import Tag
+        from pos_contracts.models import Tag
         from sqlalchemy import select
         tag_result = await session.execute(
             select(Tag).where(Tag.id == tag_id, Tag.user_id == user_id)

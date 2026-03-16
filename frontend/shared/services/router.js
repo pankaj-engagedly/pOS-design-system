@@ -64,5 +64,7 @@ registerRoute('/knowledge-base', { module: 'knowledge-base', label: 'Knowledge B
 registerRoute('/vault', { module: 'vault', label: 'Vault', icon: 'lock' });
 registerRoute('/feeds', { module: 'feed-watcher', label: 'Feeds', icon: 'rss' });
 registerRoute('/documents', { module: 'documents', label: 'Documents', icon: 'folder' });
+registerRoute('/documents/shared', { module: 'documents', page: 'pos-documents-shared-app', label: 'Shared with Me', hidden: true });
+registerRoute('/documents/recent', { module: 'documents', page: 'pos-documents-recent-app', label: 'Recent Documents', hidden: true });
 registerRoute('/photos', { module: 'photos', label: 'Photos', icon: 'image' });
 registerRoute('/settings', { module: 'settings', label: 'Settings', icon: 'settings' });

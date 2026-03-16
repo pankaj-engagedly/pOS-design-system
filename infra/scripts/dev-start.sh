@@ -125,6 +125,15 @@ fi
 
 info "Running database migrations..."
 
+# Shared migrations first (tags, taggables) — must run before service migrations
+cd "$ROOT_DIR/backend/shared/migrations"
+if "$VENV/alembic" -c alembic.ini upgrade head > "$LOG_DIR/migrate-shared.log" 2>&1; then
+    ok "Migrations: shared (tags/taggables)"
+else
+    warn "Migration issue for shared tables (check $LOG_DIR/migrate-shared.log)"
+fi
+
+# Per-service migrations
 for svc_dir in "$ROOT_DIR"/backend/services/*/; do
     if [ -f "$svc_dir/alembic.ini" ]; then
         svc_name=$(basename "$svc_dir")
@@ -151,9 +160,11 @@ sleep 1
 AUTH_LOG="${auth:-INFO}"
 TODOS_LOG="${todos:-INFO}"
 NOTES_LOG="${notes:-INFO}"
+DOCUMENTS_LOG="${documents:-INFO}"
+VAULT_LOG="${vault:-INFO}"
 GATEWAY_LOG="${gateway:-INFO}"
 
-info "Starting services (auth=${AUTH_LOG} todos=${TODOS_LOG} notes=${NOTES_LOG} gateway=${GATEWAY_LOG})..."
+info "Starting services (auth=${AUTH_LOG} todos=${TODOS_LOG} notes=${NOTES_LOG} documents=${DOCUMENTS_LOG} vault=${VAULT_LOG} gateway=${GATEWAY_LOG})..."
 
 cd "$ROOT_DIR/backend/services/auth"
 LOG_LEVEL="$AUTH_LOG" "$VENV/uvicorn" app.main:app --reload --port 8001 > "$LOG_DIR/auth.log" 2>&1 &
@@ -166,6 +177,12 @@ cd "$ROOT_DIR/backend/services/attachments"
 
 cd "$ROOT_DIR/backend/services/notes"
 LOG_LEVEL="$NOTES_LOG" "$VENV/uvicorn" app.main:app --reload --port 8004 > "$LOG_DIR/notes.log" 2>&1 &
+
+cd "$ROOT_DIR/backend/services/documents"
+LOG_LEVEL="$DOCUMENTS_LOG" "$VENV/uvicorn" app.main:app --reload --port 8005 > "$LOG_DIR/documents.log" 2>&1 &
+
+cd "$ROOT_DIR/backend/services/vault"
+LOG_LEVEL="$VAULT_LOG" "$VENV/uvicorn" app.main:app --reload --port 8006 > "$LOG_DIR/vault.log" 2>&1 &
 
 cd "$ROOT_DIR/backend/gateway"
 LOG_LEVEL="$GATEWAY_LOG" "$VENV/uvicorn" app.main:app --reload --port 8000 > "$LOG_DIR/gateway.log" 2>&1 &
@@ -185,6 +202,8 @@ wait_for_port 8001 "auth"        || all_ok=false
 wait_for_port 8002 "todos"       || all_ok=false
 wait_for_port 8003 "attachments" || all_ok=false
 wait_for_port 8004 "notes"       || all_ok=false
+wait_for_port 8005 "documents"   || all_ok=false
+wait_for_port 8006 "vault"       || all_ok=false
 wait_for_port 8000 "gateway"     || all_ok=false
 
 # Frontend and design system don't have /health, just check the port
@@ -215,8 +234,10 @@ echo -e "  ${CYAN}Design System${NC}  http://localhost:3000"
 echo -e "  ${DIM}Gateway        http://localhost:8000${NC}"
 echo -e "  ${DIM}Auth API       http://localhost:8001${NC}"
 echo -e "  ${DIM}Todo API       http://localhost:8002${NC}"
-echo -e "  ${DIM}Attachment API http://localhost:8003${NC}
-  ${DIM}Notes API     http://localhost:8004${NC}"
+echo -e "  ${DIM}Attachment API http://localhost:8003${NC}"
+echo -e "  ${DIM}Notes API      http://localhost:8004${NC}"
+echo -e "  ${DIM}Documents API  http://localhost:8005${NC}"
+echo -e "  ${DIM}Vault API      http://localhost:8006${NC}"
 echo -e "  ${DIM}RabbitMQ       http://localhost:15672${NC}"
 echo ""
 echo -e "  ${DIM}Logs       $LOG_DIR/*.log${NC}"

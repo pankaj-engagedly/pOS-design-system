@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime, timezone
 
 import uuid_utils
-from sqlalchemy import Column, DateTime
+from sqlalchemy import Column, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase
 
@@ -70,3 +70,45 @@ class UserScopedBase(DeclarativeBase):
         onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+
+class Tag(UserScopedBase):
+    """Shared cross-service tag. Scoped per user, referenced by entity type.
+
+    Tags are shared across all entity types (notes, documents, etc.) via
+    the Taggable polymorphic join table. Access always goes through tag_service
+    — never query these tables directly from a service.
+    """
+
+    __tablename__ = "tags"
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_tags_user_name"),
+    )
+
+    name = Column(String(100), nullable=False)
+
+
+class Taggable(UserScopedBase):
+    """Polymorphic join table linking tags to any entity type.
+
+    entity_type: "note", "document", etc.
+    entity_id: UUID of the entity in its own service table.
+    Composite unique ensures a tag is applied to an entity only once.
+    """
+
+    __tablename__ = "taggables"
+    __table_args__ = (
+        UniqueConstraint(
+            "tag_id", "entity_type", "entity_id",
+            name="uq_taggables_tag_entity",
+        ),
+    )
+
+    tag_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("tags.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    entity_type = Column(String(50), nullable=False)
+    entity_id = Column(UUID(as_uuid=True), nullable=False, index=True)

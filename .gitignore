@@ -22,6 +22,10 @@ __pycache__/
 # Docker
 docker-volumes/
 
+# User-uploaded files (attachment service local storage)
+backend/data/attachments/*
+!backend/data/attachments/.gitkeep
+
 # IDE
 .idea/
 .vscode/

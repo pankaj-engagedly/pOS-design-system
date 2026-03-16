@@ -1,4 +1,8 @@
-"""Notes models — Folder, Note, Tag, NoteTag."""
+"""Notes models — Folder, Note.
+
+Tags are now shared across services via pos_contracts.models.Tag and Taggable.
+Use pos_contracts.tag_service for all tag operations.
+"""
 
 import uuid
 
@@ -9,32 +13,12 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
-    Table,
-    Text,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from pos_contracts.models import UserScopedBase
-
-# Association table — no extra columns, just the join
-note_tags = Table(
-    "note_tags",
-    UserScopedBase.metadata,
-    Column(
-        "note_id",
-        UUID(as_uuid=True),
-        ForeignKey("notes.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-    Column(
-        "tag_id",
-        UUID(as_uuid=True),
-        ForeignKey("tags.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-)
 
 
 class Folder(UserScopedBase):
@@ -72,17 +56,3 @@ class Note(UserScopedBase):
     position = Column(Integer, nullable=False, default=0)
 
     folder = relationship("Folder", back_populates="notes", foreign_keys=[folder_id])
-    tags = relationship("Tag", secondary=note_tags, back_populates="notes")
-
-
-class Tag(UserScopedBase):
-    """A user-defined tag for cross-cutting note organization."""
-
-    __tablename__ = "tags"
-    __table_args__ = (
-        UniqueConstraint("user_id", "name", name="uq_tags_user_name"),
-    )
-
-    name = Column(String(100), nullable=False)
-
-    notes = relationship("Note", secondary=note_tags, back_populates="tags")

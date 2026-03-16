@@ -4,10 +4,11 @@ Contains only types, schemas, and base models. Zero runtime infrastructure.
 No database engines, no message broker connections, no HTTP clients.
 
 Usage:
-    from pos_contracts.models import Base, UserScopedBase
+    from pos_contracts.models import Base, UserScopedBase, Tag, Taggable
     from pos_contracts.config import BaseServiceConfig
     from pos_contracts.schemas import HealthResponse, PaginatedResponse
     from pos_contracts.exceptions import NotFoundError, AuthenticationError
+    from pos_contracts import tag_service
 """
 
 from .config import BaseServiceConfig
@@ -19,12 +20,16 @@ from .exceptions import (
     PosError,
     ValidationError,
 )
-from .models import Base, UserScopedBase
+from .models import Base, UserScopedBase, Tag, Taggable
 from .schemas import ErrorResponse, HealthResponse, PaginatedResponse, PaginationParams
+from . import tag_service
 
 __all__ = [
     "Base",
     "UserScopedBase",
+    "Tag",
+    "Taggable",
+    "tag_service",
     "BaseServiceConfig",
     "HealthResponse",
     "ErrorResponse",

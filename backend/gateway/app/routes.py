@@ -12,6 +12,8 @@ AUTH_SERVICE_URL = "http://localhost:8001"
 TODO_SERVICE_URL = "http://localhost:8002"
 ATTACHMENT_SERVICE_URL = "http://localhost:8003"
 NOTES_SERVICE_URL = "http://localhost:8004"
+DOCUMENTS_SERVICE_URL = "http://localhost:8005"
+VAULT_SERVICE_URL = "http://localhost:8006"
 
 
 @router.get("/api/")
@@ -58,3 +60,17 @@ async def proxy_attachments(request: Request, path: str):
 @router.api_route("/api/notes/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
 async def proxy_notes(request: Request, path: str):
     return await proxy_request(request, NOTES_SERVICE_URL, f"/api/notes/{path}")
+
+
+# --- Documents service proxy ---
+
+@router.api_route("/api/documents/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
+async def proxy_documents(request: Request, path: str):
+    return await proxy_request(request, DOCUMENTS_SERVICE_URL, f"/api/documents/{path}")
+
+
+# --- Vault service proxy ---
+
+@router.api_route("/api/vault/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
+async def proxy_vault(request: Request, path: str):
+    return await proxy_request(request, VAULT_SERVICE_URL, f"/api/vault/{path}")

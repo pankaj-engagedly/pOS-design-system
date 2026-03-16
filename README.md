@@ -2,7 +2,7 @@
 
 A self-hosted personal hub with modular micro-services and a browser-native frontend. Built with Web Components (no framework), Python/FastAPI micro-services, and JWT authentication.
 
-**Status:** Phase 2 in progress — notes module added, shared library refactored
+**Status:** Phase 4 in progress — documents service added, shared tags infrastructure
 
 ---
 
@@ -50,6 +50,7 @@ make stop      # stops all services, frontend, and Docker containers
 | Todo API | 8002 | http://localhost:8002 | Lists, tasks, subtasks CRUD |
 | Attachments API | 8003 | http://localhost:8003 | File attachments |
 | Notes API | 8004 | http://localhost:8004 | Folders, notes, tags CRUD |
+| Documents API | 8005 | http://localhost:8005 | Folders, documents, sharing, recent |
 | RabbitMQ | 5672 / 15672 | http://localhost:15672 | Message broker (management UI) |
 | PostgreSQL | 5432 | — | Local Homebrew install |
 
@@ -80,7 +81,8 @@ Gateway (:8000)              JWT validation, request proxying
   ├── /api/auth/*        ──► Auth Service (:8001)        users, tokens
   ├── /api/todos/*       ──► Todo Service (:8002)        lists, tasks, subtasks
   ├── /api/attachments/* ──► Attachments Service (:8003) file uploads
-  └── /api/notes/*       ──► Notes Service (:8004)       folders, notes, tags
+  ├── /api/notes/*       ──► Notes Service (:8004)       folders, notes, tags
+  └── /api/documents/*   ──► Documents Service (:8005)   folders, docs, sharing
                                   │
                              PostgreSQL (:5432)    shared database, per-service tables
                              RabbitMQ (:5672)      domain events (best-effort)
@@ -98,6 +100,7 @@ Gateway (:8000)              JWT validation, request proxying
 - **Declarative events** — `DomainEvent` with `payload_fields` tuple; define once, share across related events
 - **Best-effort events** — RabbitMQ unavailable = warning logged, request still succeeds
 - **Structured logging** — loguru with `TRACE`/`DEBUG`/`INFO` levels; `@trace` decorator for function tracing
+- **Shared tags** — polymorphic `tags`/`taggables` tables in pos_contracts; `tag_service` abstraction layer enables future extraction to standalone service
 
 ---
 
@@ -133,10 +136,14 @@ pOS-design-system/
 │   │   ├── notes/               Notes service (FastAPI) :8004
 │   │   │   ├── app/             Models, routes, service logic, events
 │   │   │   └── migrations/      Alembic (alembic_version_notes)
+│   │   ├── documents/           Documents service (FastAPI) :8005
+│   │   │   ├── app/             Models, routes, service logic, events
+│   │   │   └── migrations/      Alembic (alembic_version_documents)
 │   │   └── attachments/         Attachments service (FastAPI) :8003
 │   ├── shared/
-│   │   ├── pos_contracts/       Shared types, schemas, base models (zero infra)
-│   │   └── pos_events/          Event bus — BaseEvent, DomainEvent, Transport, EventBus
+│   │   ├── pos_contracts/       Shared types, base models, tag_service (zero infra)
+│   │   ├── pos_events/          Event bus — BaseEvent, DomainEvent, Transport, EventBus
+│   │   └── migrations/          Shared Alembic (alembic_version_shared) — tags, taggables
 │   ├── .env                     Local dev config
 │   └── docker-compose.yml       RabbitMQ (Postgres via Homebrew)
 │
