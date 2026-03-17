@@ -1,8 +1,10 @@
 // pos-todos-app — Main todos page composing sidebar + task list
 // Composes: ui-app-layout, pos-list-sidebar, pos-task-list
 
-import '../../../shared/organisms/pos-list-sidebar.js';
+import '../../../shared/components/pos-module-layout.js';
+import '../components/pos-todo-sidebar.js';
 import '../components/pos-task-list.js';
+import '../components/pos-task-detail.js';
 import '../components/pos-subtask-list.js';
 import * as todoApi from '../services/todo-api.js';
 import * as attachmentApi from '../services/attachment-api.js';
@@ -106,32 +108,19 @@ class PosTodosApp extends HTMLElement {
   async _refreshTaskEdit(taskId) {
     try {
       const task = await todoApi.getTask(taskId);
-      const taskList = this.shadow.querySelector('pos-task-list');
-      if (taskList && taskList._editingTask && taskList._editingTask.id === taskId) {
-        taskList.editTask(task);
-        await this._loadAttachmentsForEdit(taskId);
+      const detail = this.shadow.querySelector('pos-task-detail');
+      detail?.refreshTask(task);
+      if (task.attachment_ids?.length > 0) {
+        const metadata = await attachmentApi.batchGetMetadata(task.attachment_ids);
+        detail?.setAttachments(metadata);
+      } else {
+        detail?.setAttachments([]);
       }
     } catch { /* ignore */ }
   }
 
   async _loadAttachmentsForEdit(taskId) {
-    try {
-      const task = await todoApi.getTask(taskId);
-      const ids = task.attachment_ids || [];
-      if (ids.length === 0) {
-        this._setFormAttachments([]);
-        return;
-      }
-      const metadata = await attachmentApi.batchGetMetadata(ids);
-      this._setFormAttachments(metadata);
-    } catch { /* ignore */ }
-  }
-
-  _setFormAttachments(attachments) {
-    const taskList = this.shadow.querySelector('pos-task-list');
-    if (!taskList) return;
-    const form = taskList.shadow?.querySelector('pos-task-form[mode="edit"]');
-    if (form) form.setAttachments(attachments);
+    return this._refreshTaskEdit(taskId);
   }
 
   _loadCurrentView() {
@@ -160,13 +149,8 @@ class PosTodosApp extends HTMLElement {
     let filtered;
     switch (view) {
       case 'inbox':
-        // First list's tasks
-        if (state.lists.length > 0) {
-          const inboxId = state.lists[0].id;
-          filtered = allTasks.filter(t => t.list_id === inboxId);
-        } else {
-          filtered = [];
-        }
+        // All tasks across all lists — the universal lobby
+        filtered = allTasks.filter(t => t.status !== 'done');
         break;
       case 'today':
         filtered = allTasks.filter(t => t.due_date === today && t.status !== 'done');
@@ -192,6 +176,7 @@ class PosTodosApp extends HTMLElement {
     const allTasks = todoStore.getState().allTasks || [];
     const today = new Date().toISOString().slice(0, 10);
     return {
+      inbox: allTasks.filter(t => t.status !== 'done').length,
       today: allTasks.filter(t => t.due_date === today && t.status !== 'done').length,
       upcoming: allTasks.filter(t => t.due_date && t.due_date > today && t.status !== 'done').length,
       completed: allTasks.filter(t => t.status === 'done').length,
@@ -201,30 +186,25 @@ class PosTodosApp extends HTMLElement {
   render() {
     this.shadow.innerHTML = `
       <style>
-        :host {
-          display: block;
-          height: 100%;
-        }
-
-        ui-app-layout {
-          height: 100%;
-        }
+        :host { display: block; height: 100%; }
 
         .main {
-          padding: var(--pos-space-lg);
-          height: 100%;
-          box-sizing: border-box;
+          position: relative;
+          flex: 1;
           min-width: 0;
           overflow: hidden;
+          display: flex;
+          flex-direction: column;
         }
       </style>
 
-      <ui-app-layout sidebar-width="220">
-        <pos-list-sidebar slot="sidebar"></pos-list-sidebar>
+      <pos-module-layout panel-width="220">
+        <pos-todo-sidebar slot="panel"></pos-todo-sidebar>
         <div class="main">
           <pos-task-list></pos-task-list>
+          <pos-task-detail id="task-detail"></pos-task-detail>
         </div>
-      </ui-app-layout>
+      </pos-module-layout>
     `;
 
     this.bindEvents();
@@ -232,7 +212,7 @@ class PosTodosApp extends HTMLElement {
 
   update() {
     const state = todoStore.getState();
-    const sidebar = this.shadow.querySelector('pos-list-sidebar');
+    const sidebar = this.shadow.querySelector('pos-todo-sidebar');
     const taskList = this.shadow.querySelector('pos-task-list');
 
     if (sidebar) {
@@ -290,20 +270,52 @@ class PosTodosApp extends HTMLElement {
       }
     });
 
-    // Create new task — listen for both task-create (relayed) and task-submit (direct)
+    // Rename list
+    this.shadow.addEventListener('list-rename', async (e) => {
+      const { listId, name } = e.detail;
+      try {
+        await todoApi.updateList(listId, { name });
+        await this._refreshAll();
+      } catch (err) {
+        todoStore.setState({ error: err.message });
+      }
+    });
+
+    // Delete list
+    this.shadow.addEventListener('list-delete', async (e) => {
+      const { listId } = e.detail;
+      try {
+        await todoApi.deleteList(listId);
+        const state = todoStore.getState();
+        // If deleted list was selected, fall back to inbox
+        const wasSelected = state.selectedListId === listId;
+        await this._refreshAll();
+        if (wasSelected) {
+          todoStore.setState({ selectedView: 'inbox', selectedListId: null });
+          this._persistSelection();
+          this._applySmartView('inbox');
+        }
+      } catch (err) {
+        todoStore.setState({ error: err.message });
+      }
+    });
+
+    // Create new task — list_id may be supplied by grouped add button
     const handleTaskCreate = async (detail) => {
       const state = todoStore.getState();
-      let listId = state.selectedListId;
+      const { list_id: hintListId, ...taskData } = detail;
+
+      let listId = hintListId || state.selectedListId;
       if (!listId && state.selectedView === 'inbox' && state.lists.length > 0) {
         listId = state.lists[0].id;
       }
       if (!listId && state.lists.length > 0) {
-        listId = state.lists[0].id; // fallback: add to first list
+        listId = state.lists[0].id;
       }
       if (!listId) return;
 
       try {
-        await todoApi.createTask({ list_id: listId, ...detail });
+        await todoApi.createTask({ list_id: listId, ...taskData });
         await this._refreshAll();
       } catch (err) {
         todoStore.setState({ error: err.message });
@@ -322,21 +334,17 @@ class PosTodosApp extends HTMLElement {
       }
     });
 
-    // Select task for editing
+    // Select task — open detail flyout
     this.shadow.addEventListener('select-task', async (e) => {
       const { taskId } = e.detail;
       try {
         const task = await todoApi.getTask(taskId);
-        const taskList = this.shadow.querySelector('pos-task-list');
-        if (taskList) {
-          taskList.editTask(task);
-          // Load attachment metadata for the edit form
+        const detail = this.shadow.querySelector('pos-task-detail');
+        if (detail) {
+          detail.openForTask(task);
           if (task.attachment_ids && task.attachment_ids.length > 0) {
             const metadata = await attachmentApi.batchGetMetadata(task.attachment_ids);
-            setTimeout(() => {
-              const form = taskList.shadow?.querySelector('pos-task-form[mode="edit"]');
-              if (form) form.setAttachments(metadata);
-            }, 0);
+            detail.setAttachments(metadata);
           }
         }
       } catch (err) {

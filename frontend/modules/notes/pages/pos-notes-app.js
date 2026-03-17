@@ -339,7 +339,7 @@ class PosNotesApp extends HTMLElement {
           grid-template-columns: 220px 300px 1fr;
           height: 100%;
           overflow: hidden;
-          background: var(--pos-color-surface, #fff);
+          background: var(--pos-color-background-primary);
         }
 
         .panel {
@@ -350,16 +350,16 @@ class PosNotesApp extends HTMLElement {
         }
 
         .panel-sidebar {
-          border-right: 1px solid var(--pos-color-border, #e5e5e5);
-          background: var(--pos-color-surface-alt, #f8f8f8);
+          border-right: 1px solid var(--pos-color-border-default);
+          background: var(--pos-color-background-secondary);
         }
 
         .panel-list {
-          border-right: 1px solid var(--pos-color-border, #e5e5e5);
+          border-right: 1px solid var(--pos-color-border-default);
         }
 
         .panel-editor {
-          background: var(--pos-color-surface, #fff);
+          background: var(--pos-color-background-primary);
         }
       </style>
 

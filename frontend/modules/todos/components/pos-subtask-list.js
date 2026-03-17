@@ -47,7 +47,7 @@ class PosSubtaskList extends HTMLElement {
         }
 
         .count {
-          font-size: var(--pos-raw-font-size-xs);
+          font-size: var(--pos-font-size-xs);
           color: var(--pos-color-text-secondary);
         }
 
@@ -55,13 +55,12 @@ class PosSubtaskList extends HTMLElement {
           display: flex;
           align-items: center;
           gap: var(--pos-space-sm);
-          padding: var(--pos-space-xs) 0;
+          padding: 3px 0;
         }
 
         .subtask-title {
           flex: 1;
-          font-family: var(--pos-font-family-default);
-          font-size: var(--pos-font-size-sm);
+          font-size: var(--pos-font-size-xs);
           color: var(--pos-color-text-primary);
         }
 
@@ -75,7 +74,7 @@ class PosSubtaskList extends HTMLElement {
           border: none;
           color: var(--pos-color-text-secondary);
           cursor: pointer;
-          font-size: var(--pos-font-size-sm);
+          font-size: var(--pos-font-size-xs);
           padding: 2px var(--pos-space-xs);
           opacity: 0;
           transition: opacity 0.1s ease;

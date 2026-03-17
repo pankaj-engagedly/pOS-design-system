@@ -1,8 +1,18 @@
-// pos-task-list — Scrollable task list organism with header, filters, and inline add
-// Composes: ui-button, pos-task-item, pos-task-form
+// pos-task-list — Task list with grouped card view + filter chips
+// Inbox view  → grouped by list (cards)
+// List view   → grouped by time bucket (cards)
+// Smart views (today, upcoming, completed) → flat list
 
 import './pos-task-item.js';
 import './pos-task-form.js';
+import { icon } from '../../../shared/utils/icons.js';
+
+const FILTERS = [
+  { key: 'all',      label: 'All' },
+  { key: 'today',    label: 'Today' },
+  { key: 'tomorrow', label: 'Tomorrow' },
+  { key: 'upcoming', label: 'Upcoming' },
+];
 
 class PosTaskList extends HTMLElement {
   constructor() {
@@ -10,103 +20,236 @@ class PosTaskList extends HTMLElement {
     this.shadow = this.attachShadow({ mode: 'open' });
     this._tasks = [];
     this._listName = '';
-    this._viewMode = null; // null = list mode, or 'inbox'/'today'/'upcoming'/'completed'
-    this._showForm = false;
-    this._editingTask = null; // task object being edited
-    this._filter = 'active'; // 'all', 'active', 'done'
+    this._viewMode = null;
+    this._collapsedGroups = new Set();
+    this._addingToGroup = null;
+    this._activeFilter = 'all';
   }
 
-  set tasks(val) {
-    this._tasks = val || [];
-    this.render();
-  }
+  set tasks(val) { this._tasks = val || []; this.render(); }
+  set listName(val) { this._listName = val; this.render(); }
+  set viewMode(val) { this._viewMode = val; this._activeFilter = 'all'; }
 
-  set listName(val) {
-    this._listName = val;
-    this.render();
-  }
-
-  set viewMode(val) {
-    this._viewMode = val;
-  }
-
-  editTask(task) {
-    this._editingTask = task;
-    this._showForm = false;
-    this.render();
-  }
+  editTask() { }
 
   connectedCallback() {
     this._bindShadowEvents();
     this.render();
   }
 
+  // ─── Filtering ────────────────────────────────────────────
+
+  _getFilteredTasks() {
+    const now = new Date();
+    const today    = now.toISOString().slice(0, 10);
+    const tomorrow = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
+
+    switch (this._activeFilter) {
+      case 'today':
+        return this._tasks.filter(t => t.due_date === today);
+      case 'tomorrow':
+        return this._tasks.filter(t => t.due_date === tomorrow);
+      case 'upcoming':
+        return this._tasks.filter(t => t.due_date && t.due_date > today);
+      default:
+        return this._tasks;
+    }
+  }
+
+  // ─── Grouping ─────────────────────────────────────────────
+
+  _getGroups(tasks) {
+    if (this._viewMode === 'inbox') return this._groupByList(tasks);
+    // List view and other smart views → flat (filter chips handle time filtering)
+    return null;
+  }
+
+  _groupByList(tasks) {
+    const map = new Map();
+    for (const task of tasks) {
+      const key = task.list_id || 'unknown';
+      if (!map.has(key)) {
+        map.set(key, { key, label: task.list_name || 'List', listId: task.list_id, tasks: [] });
+      }
+      map.get(key).tasks.push(task);
+    }
+    return [...map.values()].map(g => ({
+      ...g,
+      total: g.tasks.length,
+      done:  g.tasks.filter(t => t.status === 'done').length,
+    }));
+  }
+
+  // ─── Rendering ────────────────────────────────────────────
+
   render() {
-    const filtered = this._getFilteredTasks();
-    const activeCount = this._tasks.filter(t => t.status !== 'done' && t.status !== 'archived').length;
-    const isSmartView = !!this._viewMode;
+    const showFilterChips = (this._viewMode === 'inbox' || !this._viewMode);
+    const filteredTasks   = this._getFilteredTasks();
+    const groups          = this._getGroups(filteredTasks);
+    const isSmartView     = !!this._viewMode;
 
     this.shadow.innerHTML = `
       <style>
-        :host { display: flex; flex-direction: column; height: 100%; min-width: 0; overflow: hidden; }
+        :host {
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          min-width: 0;
+          overflow: hidden;
+        }
 
         .header {
           display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding-bottom: var(--pos-space-lg);
-          border-bottom: 1px solid var(--pos-color-border-default);
-          margin-bottom: var(--pos-space-md);
+          align-items: baseline;
+          gap: var(--pos-space-sm);
+          padding: var(--pos-space-md) var(--pos-space-lg) var(--pos-space-sm);
+          flex-shrink: 0;
         }
-
-        .header-left h2 {
+        .header h2 {
           margin: 0;
-          font-family: var(--pos-font-family-default);
-          font-size: var(--pos-font-size-lg);
+          font-size: var(--pos-font-size-2xl);
           font-weight: var(--pos-font-weight-bold);
           color: var(--pos-color-text-primary);
         }
-
-        .header-left .count {
+        .header .count {
           font-size: var(--pos-font-size-sm);
           color: var(--pos-color-text-secondary);
-          margin-top: 2px;
         }
 
+        /* ── Filter chips ── */
         .filters {
           display: flex;
+          align-items: center;
           gap: var(--pos-space-xs);
-          margin-bottom: var(--pos-space-md);
+          padding: 0 var(--pos-space-lg) var(--pos-space-md);
+          flex-shrink: 0;
+        }
+        .filter-chip {
+          padding: 2px 8px;
+          border-radius: 99px;
+          border: 1px solid var(--pos-color-border-default);
+          background: transparent;
+          font-size: var(--pos-font-size-xs);
+          font-family: inherit;
+          color: var(--pos-color-text-secondary);
+          cursor: pointer;
+          transition: background 0.1s, color 0.1s, border-color 0.1s;
+          line-height: 1.5;
+        }
+        .filter-chip:hover {
+          border-color: var(--pos-color-action-primary);
+          color: var(--pos-color-action-primary);
+        }
+        .filter-chip.active {
+          background: var(--pos-color-action-primary);
+          border-color: var(--pos-color-action-primary);
+          color: #fff;
+          font-weight: var(--pos-font-weight-medium);
         }
 
-        .task-list {
+        .scroll {
           flex: 1;
           overflow-y: auto;
+          padding: 0 var(--pos-space-lg) var(--pos-space-lg);
         }
 
-        .empty {
+        /* ── Group cards ── */
+        .group {
+          border: 1px solid var(--pos-color-border-default);
+          border-radius: var(--pos-radius-md);
+          margin-bottom: var(--pos-space-md);
+          background: var(--pos-color-background-primary);
+          box-shadow: 0 1px 3px color-mix(in srgb, var(--pos-color-text-primary) 6%, transparent);
+        }
+
+        .group-header {
           display: flex;
-          flex-direction: column;
           align-items: center;
-          justify-content: center;
-          padding: var(--pos-space-2xl) var(--pos-space-lg);
+          gap: var(--pos-space-sm);
+          padding: var(--pos-space-sm) var(--pos-space-md);
+          cursor: pointer;
+          user-select: none;
+          background: var(--pos-color-background-secondary);
+          border-radius: var(--pos-radius-md) var(--pos-radius-md) 0 0;
+        }
+        .group-header:hover { background: color-mix(in srgb, var(--pos-color-border-default) 40%, transparent); }
+        .group.collapsed .group-header { border-radius: var(--pos-radius-md); }
+
+        .group-chevron {
+          color: var(--pos-color-text-secondary);
+          display: flex;
+          align-items: center;
+          transition: transform 0.15s;
+        }
+        .group-chevron.open { transform: rotate(90deg); }
+
+        .group-name {
+          flex: 1;
+          font-size: var(--pos-font-size-sm);
+          font-weight: var(--pos-font-weight-semibold);
+          color: var(--pos-color-text-primary);
+        }
+        .group-count {
+          font-size: var(--pos-font-size-xs);
           color: var(--pos-color-text-secondary);
         }
 
-        .empty h3 {
-          margin: 0 0 var(--pos-space-xs);
-          font-size: var(--pos-font-size-md);
+        .group-body { }
+
+        /* ── Subtask rows (inline inside group cards) ── */
+        .subtask-row {
+          display: flex;
+          align-items: center;
+          gap: var(--pos-space-sm);
+          padding: 3px var(--pos-space-md) 3px calc(var(--pos-space-md) + 28px);
+        }
+        .subtask-check {
+          width: 14px;
+          height: 14px;
+          border: 1.5px solid var(--pos-color-border-default);
+          border-radius: 3px;
+          cursor: pointer;
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.1s, border-color 0.1s;
+        }
+        .subtask-check.done {
+          background: var(--pos-color-action-primary);
+          border-color: var(--pos-color-action-primary);
+          color: #fff;
+        }
+        .subtask-check svg { pointer-events: none; }
+        .subtask-title {
+          font-size: var(--pos-font-size-xs);
+          color: var(--pos-color-text-secondary);
+          flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .subtask-title.done {
+          text-decoration: line-through;
+          opacity: 0.6;
         }
 
-        .empty p {
-          margin: 0;
+        .group-add {
+          display: flex;
+          align-items: center;
+          gap: var(--pos-space-sm);
+          padding: var(--pos-space-sm) var(--pos-space-md);
+          cursor: pointer;
+          color: var(--pos-color-text-secondary);
           font-size: var(--pos-font-size-sm);
+          font-family: inherit;
+          border-top: 1px solid var(--pos-color-border-default);
+          transition: color 0.1s;
         }
+        .group-add:hover { color: var(--pos-color-action-primary); }
+        .group-add svg { flex-shrink: 0; }
 
-        .inline-add {
-          margin-top: var(--pos-space-sm);
-        }
-
+        /* ── Flat list (smart views) ── */
         .add-row {
           display: flex;
           align-items: center;
@@ -116,138 +259,205 @@ class PosTaskList extends HTMLElement {
           cursor: pointer;
           color: var(--pos-color-text-secondary);
           font-size: var(--pos-font-size-sm);
-          font-family: var(--pos-font-family-default);
-          transition: background-color 0.1s ease;
+          font-family: inherit;
+          margin-top: var(--pos-space-sm);
+          transition: background 0.1s, color 0.1s;
         }
-
         .add-row:hover {
           background: var(--pos-color-background-secondary);
           color: var(--pos-color-text-primary);
         }
 
-        .add-icon {
-          font-size: var(--pos-font-size-md);
-          font-weight: var(--pos-font-weight-bold);
+        .empty {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: var(--pos-space-2xl) var(--pos-space-lg);
+          color: var(--pos-color-text-secondary);
+          text-align: center;
         }
+        .empty h3 { margin: 0 0 var(--pos-space-xs); font-size: var(--pos-font-size-md); }
+        .empty p  { margin: 0; font-size: var(--pos-font-size-sm); }
       </style>
 
       <div class="header">
-        <div class="header-left">
-          <h2>${this._escapeHtml(this._listName)}</h2>
-          <div class="count">${activeCount} task${activeCount !== 1 ? 's' : ''}</div>
+        <h2>${this._esc(this._listName)}</h2>
+        <span class="count">${filteredTasks.length} task${filteredTasks.length !== 1 ? 's' : ''}</span>
+      </div>
+
+      ${showFilterChips ? `
+        <div class="filters">
+          ${FILTERS.map(f => `
+            <button class="filter-chip ${this._activeFilter === f.key ? 'active' : ''}"
+                    data-filter="${f.key}">${f.label}</button>
+          `).join('')}
         </div>
-      </div>
+      ` : ''}
 
-      <div class="filters">
-        <ui-button size="sm" variant="${this._filter === 'all' ? 'solid' : 'outline'}" data-filter="all">All</ui-button>
-        <ui-button size="sm" variant="${this._filter === 'active' ? 'solid' : 'outline'}" data-filter="active">Active</ui-button>
-        <ui-button size="sm" variant="${this._filter === 'done' ? 'solid' : 'outline'}" data-filter="done">Done</ui-button>
-      </div>
-
-      <div class="task-list">
-        ${filtered.length === 0 && !this._showForm ? `
-          <div class="empty">
-            <h3>No tasks yet</h3>
-            <p>Click "+ Add task" below to get started</p>
-          </div>
-        ` : filtered.map(t => {
-          if (this._editingTask && this._editingTask.id === t.id) {
-            return `<pos-task-form mode="edit" data-task-id="${t.id}"></pos-task-form>`;
-          }
-          return `
-            <pos-task-item
-              task-id="${t.id}"
-              title="${this._escapeAttr(t.title)}"
-              status="${t.status}"
-              priority="${t.priority}"
-              ${t.due_date ? `due-date="${t.due_date}"` : ''}
-              ${t.subtask_total ? `subtask-done="${t.subtask_done || 0}" subtask-total="${t.subtask_total}"` : ''}
-              ${t.attachment_ids && t.attachment_ids.length > 0 ? `attachment-count="${t.attachment_ids.length}"` : ''}
-              ${isSmartView && t.list_name ? `list-name="${this._escapeAttr(t.list_name)}"` : ''}
-            ></pos-task-item>
-          `;
-        }).join('')}
-      </div>
-
-      <div class="inline-add">
-        ${this._showForm
-          ? '<pos-task-form mode="create"></pos-task-form>'
-          : '<div class="add-row" id="add-row"><span class="add-icon">+</span> Add task</div>'
-        }
+      <div class="scroll">
+        ${groups ? this._renderGroups(groups, isSmartView) : this._renderFlat(filteredTasks, isSmartView)}
       </div>
     `;
 
-    // Pre-fill edit form if editing
-    if (this._editingTask) {
-      const form = this.shadow.querySelector(`pos-task-form[data-task-id="${this._editingTask.id}"]`);
-      if (form) {
-        setTimeout(() => form.setValues(this._editingTask), 0);
-      }
-    }
   }
+
+  _renderGroups(groups, isSmartView) {
+    if (groups.length === 0) {
+      return `<div class="empty"><h3>No tasks</h3><p>Add a task to get started</p></div>`;
+    }
+
+    return groups.map(g => {
+      const collapsed = this._collapsedGroups.has(g.key);
+      const showForm  = this._addingToGroup === g.key;
+
+      return `
+        <div class="group ${collapsed ? 'collapsed' : ''}" data-group-key="${g.key}">
+          <div class="group-header" data-action="toggle-group" data-group-key="${g.key}">
+            <span class="group-chevron ${collapsed ? '' : 'open'}">${icon('chevron-right', 14)}</span>
+            <span class="group-name">${this._esc(g.label)}</span>
+            <span class="group-count">${g.done}/${g.total}</span>
+          </div>
+
+          ${collapsed ? '' : `
+            <div class="group-body">
+              ${g.tasks.map(t => this._renderTaskWithSubtasks(t, isSmartView)).join('')}
+              ${showForm
+                ? `<pos-task-form mode="create" data-group="${g.key}" data-list-id="${g.listId || ''}"></pos-task-form>`
+                : `<div class="group-add" data-action="add-to-group" data-group-key="${g.key}" data-list-id="${g.listId || ''}">
+                     ${icon('plus', 13)} Add task
+                   </div>`
+              }
+            </div>
+          `}
+        </div>
+      `;
+    }).join('');
+  }
+
+  _renderFlat(tasks, isSmartView) {
+    const showing = this._addingToGroup === 'flat';
+    return `
+      <div class="flat-task-list">
+        ${tasks.length === 0 && !showing
+          ? `<div class="empty"><h3>No tasks</h3><p>Click "+ Add task" to get started</p></div>`
+          : tasks.map(t => this._renderTaskWithSubtasks(t, isSmartView)).join('')
+        }
+        ${showing
+          ? `<pos-task-form mode="create" data-group="flat"></pos-task-form>`
+          : `<div class="add-row" data-action="add-to-group" data-group-key="flat">${icon('plus', 13)} Add task</div>`
+        }
+      </div>
+    `;
+  }
+
+  _renderTaskWithSubtasks(t, isSmartView) {
+    const taskHtml = `
+      <pos-task-item
+        task-id="${t.id}"
+        title="${this._escAttr(t.title)}"
+        status="${t.status}"
+        priority="${t.priority}"
+        ${t.due_date ? `due-date="${t.due_date}"` : ''}
+        ${t.subtask_total ? `subtask-done="${t.subtask_done || 0}" subtask-total="${t.subtask_total}"` : ''}
+        ${t.attachment_ids?.length ? `attachment-count="${t.attachment_ids.length}"` : ''}
+        ${isSmartView && t.list_name ? `list-name="${this._escAttr(t.list_name)}"` : ''}
+      ></pos-task-item>
+    `;
+
+    // Render inline subtask rows if full subtask objects are available
+    const subtasks = t.subtasks;
+    if (!subtasks || subtasks.length === 0) return taskHtml;
+
+    const subtaskRows = subtasks.map(s => `
+      <div class="subtask-row"
+           data-action="toggle-subtask"
+           data-subtask-id="${s.id}"
+           data-task-id="${t.id}"
+           data-completed="${s.is_completed ? 'true' : 'false'}">
+        <span class="subtask-check ${s.is_completed ? 'done' : ''}">
+          ${s.is_completed ? icon('check', 10) : ''}
+        </span>
+        <span class="subtask-title ${s.is_completed ? 'done' : ''}">${this._esc(s.title)}</span>
+      </div>
+    `).join('');
+
+    return taskHtml + subtaskRows;
+  }
+
+  // ─── Events ───────────────────────────────────────────────
 
   _bindShadowEvents() {
     this.shadow.addEventListener('click', (e) => {
-      const addRow = e.target.closest('#add-row');
-      if (addRow) {
-        this._showForm = true;
-        this._editingTask = null;
+      // Filter chip
+      const chip = e.target.closest('.filter-chip');
+      if (chip) {
+        this._activeFilter = chip.dataset.filter;
+        this._addingToGroup = null;
         this.render();
         return;
       }
 
-      const filterBtn = e.target.closest('[data-filter]');
-      if (filterBtn) {
-        this._filter = filterBtn.dataset.filter;
+      // Toggle group collapse
+      const toggleEl = e.target.closest('[data-action="toggle-group"]');
+      if (toggleEl) {
+        const key = toggleEl.dataset.groupKey;
+        if (this._collapsedGroups.has(key)) this._collapsedGroups.delete(key);
+        else                                 this._collapsedGroups.add(key);
         this.render();
+        return;
+      }
+
+      // Open add form inside group
+      const addEl = e.target.closest('[data-action="add-to-group"]');
+      if (addEl) {
+        this._addingToGroup = addEl.dataset.groupKey;
+        this.render();
+        return;
+      }
+
+      // Subtask toggle
+      const subtaskRow = e.target.closest('[data-action="toggle-subtask"]');
+      if (subtaskRow) {
+        const { subtaskId, taskId, completed } = subtaskRow.dataset;
+        this.dispatchEvent(new CustomEvent('subtask-toggle', {
+          bubbles: true, composed: true,
+          detail: {
+            subtaskId,
+            taskId,
+            completed: completed !== 'true', // flip
+          },
+        }));
         return;
       }
     });
 
-    // Create or edit task
+    // task-submit from pos-task-form
     this.shadow.addEventListener('task-submit', (e) => {
       e.stopPropagation();
-      // Find which form dispatched — check if it has a task ID (edit mode)
-      const formEl = this.shadow.querySelector('pos-task-form[mode="edit"]');
-      if (formEl && this._editingTask) {
-        this.dispatchEvent(new CustomEvent('task-update', {
-          bubbles: true, composed: true,
-          detail: { taskId: this._editingTask.id, ...e.detail },
-        }));
-        this._editingTask = null;
-      } else {
-        this._showForm = false;
-        this.dispatchEvent(new CustomEvent('task-create', { bubbles: true, composed: true, detail: e.detail }));
-      }
+      const createForm = this.shadow.querySelector('pos-task-form[mode="create"]');
+      const listId = createForm?.dataset.listId || null;
+      this._addingToGroup = null;
+      this.dispatchEvent(new CustomEvent('task-create', {
+        bubbles: true, composed: true,
+        detail: { ...e.detail, ...(listId ? { list_id: listId } : {}) },
+      }));
     });
 
     this.shadow.addEventListener('task-cancel', (e) => {
       e.stopPropagation();
-      this._showForm = false;
-      this._editingTask = null;
+      this._addingToGroup = null;
       this.render();
     });
   }
 
-  _getFilteredTasks() {
-    let tasks = [...this._tasks];
-
-    if (this._filter === 'active') {
-      tasks = tasks.filter(t => t.status !== 'done' && t.status !== 'archived');
-    } else if (this._filter === 'done') {
-      tasks = tasks.filter(t => t.status === 'done');
-    }
-
-    return tasks;
+  _esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
   }
 
-  _escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  _escapeAttr(str) {
+  _escAttr(str) {
     return (str || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 }

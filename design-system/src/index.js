@@ -27,6 +27,10 @@ import './components/ui-progress.js';
 import './components/ui-nav-item.js';
 import './components/ui-side-panel.js';
 import './components/ui-app-layout.js';
+import './components/ui-avatar.js';
+import './components/ui-search-input.js';
+import './components/ui-theme-toggle.js';
+import './components/ui-dropdown.js';
 
 // Plugin runtime — re-exported for consumers
 export { loadPlugin, createHostSDK } from './plugins/loader.js';

@@ -13,7 +13,7 @@ class PosVaultSidebar extends HTMLElement {
 
   connectedCallback() {
     this.render();
-    this.shadow.addEventListener('click', (e) => this._handleClick(e));
+    this.shadow.addEventListener('nav-select', (e) => this._handleNavSelect(e));
     this._unsub = store.subscribe(() => this.render());
   }
 
@@ -26,67 +26,65 @@ class PosVaultSidebar extends HTMLElement {
 
     this.shadow.innerHTML = `
       <style>
-        :host { display: block; padding: 8px 0; }
+        :host { display: block; padding: var(--pos-space-sm) 0; }
+
         .section-header {
-          padding: 4px 12px 8px;
-          font-size: 11px; font-weight: 600;
-          text-transform: uppercase; letter-spacing: 0.06em;
+          padding: var(--pos-space-xs) var(--pos-space-md) var(--pos-space-sm);
+          font-size: var(--pos-raw-font-size-xs);
+          font-weight: var(--pos-font-weight-semibold);
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
           color: var(--pos-color-text-secondary);
         }
-        .nav-item {
-          display: flex; align-items: center; gap: 8px;
-          padding: 6px 12px; cursor: pointer; border-radius: 6px;
-          font-size: 13px; color: var(--pos-color-text-secondary);
-          user-select: none; margin: 0 4px;
+
+        .divider {
+          height: 1px;
+          background: var(--pos-color-border-default);
+          margin: var(--pos-space-sm) var(--pos-space-md);
         }
-        .nav-item:hover { background: var(--pos-color-background-primary); color: var(--pos-color-text-primary); }
-        .nav-item.active { background: var(--pos-color-action-primary-subtle, #eff6ff); color: var(--pos-color-action-primary); font-weight: 500; }
-        .nav-icon { width: 16px; text-align: center; font-size: 13px; }
-        .nav-label { flex: 1; }
-        .nav-count { font-size: 11px; color: var(--pos-color-text-disabled); }
-        .divider { height: 1px; background: var(--pos-color-border-default); margin: 8px 12px; }
       </style>
 
       <div class="section-header">Vault</div>
 
-      <div class="nav-item ${!activeTag ? 'active' : ''}" data-action="filter" data-tag="">
-        <span class="nav-icon">🔐</span>
-        <span class="nav-label">All Items</span>
-      </div>
+      <ui-nav-item data-action="filter" data-tag="" ${!activeTag ? 'selected' : ''}>
+        <span slot="icon">🔐</span>
+        All Items
+      </ui-nav-item>
 
-      <div class="nav-item" data-action="filter-favorites">
-        <span class="nav-icon">⭐</span>
-        <span class="nav-label">Favorites</span>
-      </div>
+      <ui-nav-item data-action="filter-favorites">
+        <span slot="icon">⭐</span>
+        Favorites
+      </ui-nav-item>
 
       ${tags.length > 0 ? `
         <div class="divider"></div>
         <div class="section-header">Tags</div>
         ${tags.map(t => `
-          <div class="nav-item ${activeTag === t.name ? 'active' : ''}" data-action="filter" data-tag="${this._esc(t.name)}">
-            <span class="nav-icon">🏷</span>
-            <span class="nav-label">${this._esc(t.name)}</span>
-            <span class="nav-count">${t.count}</span>
-          </div>
+          <ui-nav-item
+            data-action="filter"
+            data-tag="${this._esc(t.name)}"
+            ${activeTag === t.name ? 'selected' : ''}
+            count="${t.count}">
+            <span slot="icon">🏷</span>
+            ${this._esc(t.name)}
+          </ui-nav-item>
         `).join('')}
       ` : ''}
     `;
   }
 
-  _handleClick(e) {
-    const el = e.target.closest('[data-action]');
-    if (!el) return;
+  _handleNavSelect(e) {
+    const item = e.target;
+    const action = item.dataset?.action;
 
-    if (el.dataset.action === 'filter') {
-      const tag = el.dataset.tag || null;
+    if (action === 'filter') {
+      const tag = item.dataset.tag || null;
       store.setState({ activeTag: tag, searchQuery: '' });
       this.dispatchEvent(new CustomEvent('filter-change', {
         detail: { tag, favorites: false },
         bubbles: true, composed: true,
       }));
-    }
-
-    if (el.dataset.action === 'filter-favorites') {
+    } else if (action === 'filter-favorites') {
       store.setState({ activeTag: null, searchQuery: '' });
       this.dispatchEvent(new CustomEvent('filter-change', {
         detail: { tag: null, favorites: true },

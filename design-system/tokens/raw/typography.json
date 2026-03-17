@@ -1,7 +1,7 @@
 {
   "font": {
     "family": {
-      "default": { "$value": "'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", "$type": "fontFamily" },
+      "default": { "$value": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", "$type": "fontFamily" },
       "secondary": { "$value": "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", "$type": "fontFamily" },
       "mono":    { "$value": "'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace", "$type": "fontFamily" }
     },

@@ -62,11 +62,21 @@ const CSS = `
   :host(:not([count])) .count {
     display: none;
   }
+
+  :host([icon-only]) .label,
+  :host([icon-only]) .count {
+    display: none;
+  }
+
+  :host([icon-only]) .nav-row {
+    justify-content: center;
+    padding: var(--pos-space-sm);
+  }
 `;
 
 class UiNavItem extends PosBaseElement {
   static get observedAttributes() {
-    return ['selected', 'count'];
+    return ['selected', 'count', 'icon-only'];
   }
 
   connectedCallback() {

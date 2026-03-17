@@ -1,9 +1,18 @@
-// pos-task-item — Single task row molecule
+// pos-task-item — Flat task row inside a group card
 // Composes: ui-checkbox
+
+import { icon } from '../../../shared/utils/icons.js';
+
+const PRIORITY_COLORS = {
+  low:    'var(--pos-color-priority-low)',
+  medium: 'var(--pos-color-priority-medium)',
+  high:   'var(--pos-color-priority-high)',
+  urgent: 'var(--pos-color-priority-urgent)',
+};
 
 class PosTaskItem extends HTMLElement {
   static get observedAttributes() {
-    return ['task-id', 'title', 'status', 'priority', 'due-date', 'list-name', 'subtask-done', 'subtask-total', 'attachment-count'];
+    return ['task-id', 'title', 'status', 'priority', 'due-date', 'list-name', 'attachment-count'];
   }
 
   constructor() {
@@ -11,155 +20,126 @@ class PosTaskItem extends HTMLElement {
     this.shadow = this.attachShadow({ mode: 'open' });
   }
 
-  connectedCallback() {
-    this.render();
-    this.bindEvents();
-  }
-
+  connectedCallback() { this.render(); this.bindEvents(); }
   attributeChangedCallback() {
-    if (this.shadow.innerHTML) {
-      this.render();
-      this.bindEvents();
-    }
+    if (this.shadow.innerHTML) { this.render(); this.bindEvents(); }
   }
 
-  get isDone() {
-    return this.getAttribute('status') === 'done';
-  }
+  get isDone() { return this.getAttribute('status') === 'done'; }
 
   render() {
-    const title = this.getAttribute('title') || '';
-    const priority = this.getAttribute('priority') || 'none';
-    const dueDate = this.getAttribute('due-date');
-    const listName = this.getAttribute('list-name');
-    const subtaskDone = parseInt(this.getAttribute('subtask-done')) || 0;
-    const subtaskTotal = parseInt(this.getAttribute('subtask-total')) || 0;
-    const attachmentCount = parseInt(this.getAttribute('attachment-count')) || 0;
-    const isDone = this.isDone;
-
-    const isOverdue = dueDate && !isDone && new Date(dueDate) < new Date();
+    const title          = this.getAttribute('title') || '';
+    const priority       = this.getAttribute('priority') || 'none';
+    const dueDate        = this.getAttribute('due-date');
+    const listName       = this.getAttribute('list-name');
+    const subtaskDone    = parseInt(this.getAttribute('subtask-done')) || 0;
+    const subtaskTotal   = parseInt(this.getAttribute('subtask-total')) || 0;
+    const attachCount    = parseInt(this.getAttribute('attachment-count')) || 0;
+    const isDone         = this.isDone;
+    const today          = new Date().toISOString().slice(0, 10);
+    const isOverdue      = dueDate && !isDone && dueDate < today;
+    const flagColor      = PRIORITY_COLORS[priority] || null;
 
     this.shadow.innerHTML = `
       <style>
-        :host {
-          display: block;
-        }
+        :host { display: block; }
 
         .task-row {
           display: flex;
           align-items: center;
           gap: var(--pos-space-sm);
-          padding: var(--pos-space-sm) var(--pos-space-md);
-          border-radius: var(--pos-radius-md);
+          padding: 8px var(--pos-space-md);
           cursor: pointer;
-          transition: background-color 0.1s ease;
+          transition: background 0.1s;
+          border-bottom: 1px solid var(--pos-color-border-default);
         }
+        :host(:last-of-type) .task-row { border-bottom: none; }
+        .task-row:hover { background: color-mix(in srgb, var(--pos-color-action-primary) 4%, transparent); }
 
-        .task-row:hover {
-          background-color: var(--pos-color-background-secondary);
-        }
-
-        ui-checkbox {
-          flex-shrink: 0;
-        }
-
-        .title {
+        .title-col {
           flex: 1;
-          font-family: var(--pos-font-family-default);
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+        }
+        .title {
           font-size: var(--pos-font-size-sm);
           color: var(--pos-color-text-primary);
-          min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
-
         .title.done {
           text-decoration: line-through;
           color: var(--pos-color-text-secondary);
         }
-
         .meta {
           display: flex;
           align-items: center;
-          gap: var(--pos-space-sm);
+          gap: 6px;
           flex-shrink: 0;
         }
 
-        .priority-badge {
-          font-size: var(--pos-raw-font-size-xs);
-          font-weight: var(--pos-font-weight-semibold);
-          padding: 2px var(--pos-space-xs);
-          border-radius: var(--pos-radius-sm);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-
-        .priority-low {
-          background: color-mix(in srgb, var(--pos-color-priority-low) 15%, transparent);
-          color: var(--pos-color-priority-low);
-        }
-        .priority-medium {
-          background: color-mix(in srgb, var(--pos-color-priority-medium) 15%, transparent);
-          color: var(--pos-color-priority-medium);
-        }
-        .priority-high {
-          background: color-mix(in srgb, var(--pos-color-priority-high) 15%, transparent);
-          color: var(--pos-color-priority-high);
-        }
-        .priority-urgent {
-          background: color-mix(in srgb, var(--pos-color-priority-urgent) 15%, transparent);
-          color: var(--pos-color-priority-urgent);
-        }
-
-        .due-date {
-          font-size: var(--pos-raw-font-size-xs);
+        .list-chip {
+          font-size: var(--pos-font-size-xs);
           color: var(--pos-color-text-secondary);
-        }
-
-        .due-date.overdue {
-          color: var(--pos-color-priority-urgent);
-          font-weight: var(--pos-font-weight-medium);
-        }
-
-        .list-name {
-          font-size: var(--pos-raw-font-size-xs);
-          color: var(--pos-color-text-disabled);
-          padding: 2px var(--pos-space-xs);
           background: var(--pos-color-background-secondary);
-          border-radius: var(--pos-radius-sm);
-        }
-
-        .subtask-progress {
-          font-size: var(--pos-raw-font-size-xs);
-          color: var(--pos-color-text-secondary);
+          border: 1px solid var(--pos-color-border-default);
+          border-radius: 99px;
+          padding: 1px 7px;
           white-space: nowrap;
         }
 
-        .attachment-count {
-          font-size: var(--pos-raw-font-size-xs);
+        .attach-hint {
+          font-size: var(--pos-font-size-xs);
+          color: var(--pos-color-text-secondary);
+          display: flex;
+          align-items: center;
+          gap: 2px;
+        }
+
+        .due {
+          display: flex;
+          align-items: center;
+          gap: 3px;
+          font-size: var(--pos-font-size-xs);
           color: var(--pos-color-text-secondary);
           white-space: nowrap;
         }
+        .due.overdue { color: var(--pos-color-priority-urgent); }
+        .due.today   { color: var(--pos-color-priority-medium); }
+        .due svg     { flex-shrink: 0; }
+
+        .priority-flag { display: flex; align-items: center; }
+        .priority-flag svg { pointer-events: none; }
       </style>
 
       <div class="task-row">
         <ui-checkbox id="checkbox" ${isDone ? 'checked' : ''}></ui-checkbox>
-        <span class="title ${isDone ? 'done' : ''}">${this._escapeHtml(title)}</span>
+
+        <div class="title-col">
+          <span class="title ${isDone ? 'done' : ''}">${this._esc(title)}</span>
+        </div>
+
         <div class="meta">
-          ${subtaskTotal > 0 ? `<span class="subtask-progress">${subtaskDone}/${subtaskTotal}</span>` : ''}
-          ${attachmentCount > 0 ? `<span class="attachment-count">${attachmentCount} file${attachmentCount > 1 ? 's' : ''}</span>` : ''}
-          ${priority !== 'none' ? `<span class="priority-badge priority-${priority}">${priority}</span>` : ''}
-          ${dueDate ? `<span class="due-date ${isOverdue ? 'overdue' : ''}">${this._formatDate(dueDate)}</span>` : ''}
-          ${listName ? `<span class="list-name">${this._escapeHtml(listName)}</span>` : ''}
+          ${listName ? `<span class="list-chip">${this._esc(listName)}</span>` : ''}
+          ${attachCount > 0 ? `<span class="attach-hint">${icon('upload', 11)} ${attachCount}</span>` : ''}
+          ${dueDate ? `
+            <span class="due ${isOverdue ? 'overdue' : dueDate === today ? 'today' : ''}">
+              ${icon('calendar', 11)} ${this._formatDate(dueDate)}
+            </span>` : ''}
+          ${flagColor ? `
+            <span class="priority-flag" style="color:${flagColor}" title="${priority}">
+              ${icon('flag', 13)}
+            </span>` : ''}
         </div>
       </div>
     `;
   }
 
   bindEvents() {
-    const checkbox = this.shadow.getElementById('checkbox');
-    checkbox.addEventListener('change', (e) => {
+    this.shadow.getElementById('checkbox')?.addEventListener('change', (e) => {
       e.stopPropagation();
       this.dispatchEvent(new CustomEvent('toggle-status', {
         bubbles: true, composed: true,
@@ -167,7 +147,7 @@ class PosTaskItem extends HTMLElement {
       }));
     });
 
-    this.shadow.querySelector('.task-row').addEventListener('click', (e) => {
+    this.shadow.querySelector('.task-row')?.addEventListener('click', (e) => {
       if (e.target.closest('ui-checkbox')) return;
       this.dispatchEvent(new CustomEvent('select-task', {
         bubbles: true, composed: true,
@@ -177,19 +157,21 @@ class PosTaskItem extends HTMLElement {
   }
 
   _formatDate(dateStr) {
+    const today    = new Date().toISOString().slice(0, 10);
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const weekEnd  = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    if (dateStr < today)    return 'Overdue';
+    if (dateStr === today)  return 'Today';
+    if (dateStr === tomorrow) return 'Tomorrow';
+    if (dateStr <= weekEnd) return 'This week';
     const d = new Date(dateStr + 'T00:00:00');
-    const now = new Date();
-    const diff = Math.floor((d - now) / (1000 * 60 * 60 * 24));
-    if (diff === 0) return 'Today';
-    if (diff === 1) return 'Tomorrow';
-    if (diff === -1) return 'Yesterday';
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
-  _escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+  _esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
   }
 }
 

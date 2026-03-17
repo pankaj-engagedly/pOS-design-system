@@ -39,8 +39,6 @@ async def list_lists(
     user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
 ):
-    # Ensure Inbox exists
-    await service.ensure_inbox(session, user_id)
     return await service.get_lists(session, user_id)
 
 

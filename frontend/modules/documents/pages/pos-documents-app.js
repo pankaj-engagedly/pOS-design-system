@@ -1,5 +1,6 @@
 // pos-documents-app — main documents page: folder tree sidebar + document list + upload
 
+import '../../../shared/components/pos-module-layout.js';
 import '../components/pos-folder-tree.js';
 import '../components/pos-document-list.js';
 import '../components/pos-document-upload.js';
@@ -51,31 +52,19 @@ class PosDocumentsApp extends HTMLElement {
   render() {
     this.shadow.innerHTML = `
       <style>
-        :host {
-          display: flex;
-          height: 100%;
-          overflow: hidden;
-          background: var(--pos-color-background-primary);
-        }
-        .sidebar {
-          width: 220px;
-          min-width: 220px;
-          border-right: 1px solid var(--pos-color-border-default);
-          background: var(--pos-color-background-secondary);
-          overflow-y: auto;
-          display: flex;
-          flex-direction: column;
-        }
+        :host { display: block; height: 100%; }
+
         .main {
           flex: 1;
           display: flex;
           flex-direction: column;
           min-width: 0;
           overflow: hidden;
+          height: 100%;
         }
         .upload-panel {
           display: none;
-          padding: 12px 16px;
+          padding: var(--pos-space-sm) var(--pos-space-md);
           border-bottom: 1px solid var(--pos-color-border-default);
         }
         pos-document-list {
@@ -88,16 +77,15 @@ class PosDocumentsApp extends HTMLElement {
         }
       </style>
 
-      <aside class="sidebar">
-        <pos-folder-tree></pos-folder-tree>
-      </aside>
-
-      <div class="main">
-        <div class="upload-panel">
-          <pos-document-upload></pos-document-upload>
+      <pos-module-layout panel-width="220">
+        <pos-folder-tree slot="panel"></pos-folder-tree>
+        <div class="main">
+          <div class="upload-panel">
+            <pos-document-upload></pos-document-upload>
+          </div>
+          <pos-document-list></pos-document-list>
         </div>
-        <pos-document-list></pos-document-list>
-      </div>
+      </pos-module-layout>
 
       <pos-share-dialog></pos-share-dialog>
       <pos-folder-picker></pos-folder-picker>

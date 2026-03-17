@@ -109,7 +109,7 @@ class TaskResponse(BaseModel):
 
 
 class TaskSummaryResponse(BaseModel):
-    """Task without subtasks — used in list views."""
+    """Task with inline subtasks — used in list views."""
     id: UUID
     list_id: UUID
     title: str
@@ -122,6 +122,7 @@ class TaskSummaryResponse(BaseModel):
     attachment_ids: list[UUID] = []
     subtask_total: int = 0
     subtask_done: int = 0
+    subtasks: list[SubtaskResponse] = []
     created_at: datetime
 
     model_config = {"from_attributes": True}

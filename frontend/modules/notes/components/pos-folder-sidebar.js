@@ -137,51 +137,51 @@ class PosFolderSidebar extends HTMLElement {
           display: flex;
           flex-direction: column;
           height: 100%;
-          padding: 8px 0;
+          padding: var(--pos-space-sm) 0;
           box-sizing: border-box;
           overflow-y: auto;
         }
 
         .section-label {
-          font-size: 11px;
-          font-weight: 600;
+          font-size: var(--pos-raw-font-size-xs);
+          font-weight: var(--pos-font-weight-semibold);
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          color: var(--pos-color-text-muted, #888);
-          padding: 8px 16px 4px;
+          color: var(--pos-color-text-secondary);
+          padding: var(--pos-space-sm) var(--pos-space-md) var(--pos-space-xs);
         }
 
         .nav-item {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 7px 16px;
+          gap: var(--pos-space-sm);
+          padding: 7px var(--pos-space-md);
           cursor: pointer;
-          border-radius: 6px;
-          margin: 1px 8px;
-          font-size: 14px;
-          color: var(--pos-color-text-primary, #1a1a1a);
+          border-radius: var(--pos-radius-sm);
+          margin: 1px var(--pos-space-sm);
+          font-size: var(--pos-font-size-sm);
+          color: var(--pos-color-text-primary);
           user-select: none;
         }
 
         .nav-item:hover {
-          background: var(--pos-color-surface-hover, #f0f0f0);
+          background: var(--pos-color-background-secondary);
         }
 
         .nav-item.active {
-          background: var(--pos-color-primary-100, #e8f0fe);
-          color: var(--pos-color-primary-600, #1a73e8);
-          font-weight: 500;
+          background: color-mix(in srgb, var(--pos-color-action-primary) 12%, transparent);
+          color: var(--pos-color-action-primary);
+          font-weight: var(--pos-font-weight-medium);
         }
 
         .nav-item .icon { width: 18px; text-align: center; font-style: normal; }
         .nav-item .label { flex: 1; }
         .nav-item .count {
-          font-size: 12px;
-          color: var(--pos-color-text-muted, #888);
-          background: var(--pos-color-surface-alt, #f5f5f5);
-          border-radius: 10px;
-          padding: 1px 6px;
+          font-size: var(--pos-raw-font-size-xs);
+          color: var(--pos-color-text-secondary);
+          background: var(--pos-color-background-secondary);
+          border-radius: var(--pos-radius-full);
+          padding: 1px var(--pos-space-xs);
           min-width: 20px;
           text-align: center;
         }
@@ -191,41 +191,42 @@ class PosFolderSidebar extends HTMLElement {
           background: none;
           border: none;
           cursor: pointer;
-          padding: 2px 4px;
-          border-radius: 4px;
-          color: var(--pos-color-text-muted, #888);
-          font-size: 14px;
+          padding: 2px var(--pos-space-xs);
+          border-radius: var(--pos-radius-sm);
+          color: var(--pos-color-text-secondary);
+          font-size: var(--pos-font-size-sm);
           line-height: 1;
         }
 
         .nav-item:hover .delete-btn { opacity: 1; }
         .nav-item .delete-btn:hover {
-          background: var(--pos-color-danger-100, #fee);
-          color: var(--pos-color-danger-600, #e53e3e);
+          background: color-mix(in srgb, var(--pos-color-priority-urgent) 10%, transparent);
+          color: var(--pos-color-priority-urgent);
         }
 
         .rename-input, .new-folder-input {
           flex: 1;
-          border: 1px solid var(--pos-color-primary-400, #4f8ef7);
-          border-radius: 4px;
-          padding: 2px 6px;
-          font-size: 14px;
+          border: 1px solid var(--pos-color-action-primary);
+          border-radius: var(--pos-radius-sm);
+          padding: 2px var(--pos-space-xs);
+          font-size: var(--pos-font-size-sm);
           outline: none;
-          background: var(--pos-color-surface, #fff);
+          background: var(--pos-color-background-primary);
+          color: var(--pos-color-text-primary);
         }
 
         .new-folder-wrap {
-          padding: 4px 8px;
+          padding: var(--pos-space-xs) var(--pos-space-sm);
         }
 
         .new-folder-btn {
           display: flex;
           align-items: center;
-          gap: 6px;
-          padding: 6px 16px;
+          gap: var(--pos-space-sm);
+          padding: var(--pos-space-sm) var(--pos-space-md);
           cursor: pointer;
-          color: var(--pos-color-text-muted, #888);
-          font-size: 13px;
+          color: var(--pos-color-text-secondary);
+          font-size: var(--pos-font-size-sm);
           border: none;
           background: none;
           width: 100%;
@@ -233,12 +234,12 @@ class PosFolderSidebar extends HTMLElement {
           margin-top: auto;
         }
 
-        .new-folder-btn:hover { color: var(--pos-color-primary-600, #1a73e8); }
+        .new-folder-btn:hover { color: var(--pos-color-action-primary); }
 
         .divider {
           height: 1px;
-          background: var(--pos-color-border, #e5e5e5);
-          margin: 8px 16px;
+          background: var(--pos-color-border-default);
+          margin: var(--pos-space-sm) var(--pos-space-md);
         }
 
         .spacer { flex: 1; }

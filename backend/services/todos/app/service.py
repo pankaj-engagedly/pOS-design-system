@@ -131,6 +131,7 @@ async def get_tasks(
             **_model_to_dict(t),
             "subtask_total": len(t.subtasks),
             "subtask_done": sum(1 for s in t.subtasks if s.is_completed),
+            "subtasks": sorted(t.subtasks, key=lambda s: s.position),
         }
         for t in tasks
     ]

@@ -1,358 +1,505 @@
-// pos-task-form — Create/edit task form molecule
-// Composes: ui-input, ui-select, ui-textarea, ui-button, pos-subtask-list
+// pos-task-form — Todoist-style inline create form (create mode only)
+// Emits: task-submit, task-cancel, attachment-upload
 
-import './pos-subtask-list.js';
+import { icon } from '../../../shared/utils/icons.js';
+
+const PRIORITIES = [
+  { value: 'none',   label: 'Priority' },
+  { value: 'low',    label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high',   label: 'High' },
+  { value: 'urgent', label: 'Urgent' },
+];
 
 class PosTaskForm extends HTMLElement {
-  static get observedAttributes() {
-    return ['mode']; // 'create' or 'edit'
-  }
-
   constructor() {
     super();
     this.shadow = this.attachShadow({ mode: 'open' });
-    this._expanded = false;
-    this._taskData = null; // holds full task data in edit mode (including subtasks)
-    this._attachments = []; // attachment metadata objects
-    this._pendingAttachmentIds = []; // IDs for new task creation
+    this._dueDate = '';
+    this._priority = 'none';
+    this._pendingAttachments = []; // full objects {id, filename}
+    this._showPriorityMenu = false;
+    this._menuCoords = null; // fixed coords for priority dropdown
+    // Persist typed values across re-renders triggered by chip interactions
+    this._title = '';
+    this._desc = '';
   }
 
   connectedCallback() {
-    this.render();
-    this.bindEvents();
-    // Focus title input
-    const uiInput = this.shadow.getElementById('title');
-    if (uiInput) setTimeout(() => { uiInput._input?.focus(); }, 0);
+    this._render();
+    this._bindEvents();
+    setTimeout(() => this.shadow.getElementById('title-input')?.focus(), 0);
   }
 
-  get mode() {
-    return this.getAttribute('mode') || 'create';
+  // Called by pos-task-list to pre-fill context (e.g. due_date from time bucket)
+  setValues({ due_date } = {}) {
+    if (due_date) {
+      this._dueDate = due_date;
+      this._saveInputs();
+      this._render();
+      this._bindEvents();
+    }
   }
 
-  render() {
+  addPendingAttachment(attachment) {
+    this._pendingAttachments.push(attachment);
+    this._saveInputs();
+    this._render();
+    this._bindEvents();
+  }
+
+  // Save current input values before a re-render
+  _saveInputs() {
+    const title = this.shadow.getElementById('title-input');
+    const desc  = this.shadow.getElementById('desc-input');
+    if (title) this._title = title.value;
+    if (desc)  this._desc  = desc.value;
+  }
+
+  _render() {
+    const dateLabel = this._dueDate ? this._formatDate(this._dueDate) : null;
+    const priorityLabel = this._priority !== 'none'
+      ? PRIORITIES.find(p => p.value === this._priority)?.label
+      : null;
+
     this.shadow.innerHTML = `
       <style>
-        :host {
-          display: block;
-        }
+        :host { display: block; }
 
-        .form-container {
-          padding: var(--pos-space-md);
-          background: var(--pos-color-background-secondary);
+        .card {
           border: 1px solid var(--pos-color-border-default);
           border-radius: var(--pos-radius-md);
+          background: var(--pos-color-background-primary);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.06);
           margin-bottom: var(--pos-space-sm);
+          overflow: visible;
         }
 
-        .title-row {
-          display: flex;
-          gap: var(--pos-space-sm);
-          align-items: center;
+        .inputs {
+          padding: var(--pos-space-md) var(--pos-space-md) var(--pos-space-xs);
         }
 
-        .title-row ui-input {
-          flex: 1;
-        }
-
-        .details {
-          display: none;
-          margin-top: var(--pos-space-md);
-        }
-
-        .details.visible {
+        .title-input {
           display: block;
-        }
-
-        .form-row {
-          display: flex;
-          gap: var(--pos-space-sm);
-          margin-bottom: var(--pos-space-sm);
-        }
-
-        .form-row > * {
-          flex: 1;
-        }
-
-        .field-label {
-          display: block;
-          font-size: var(--pos-raw-font-size-xs);
-          font-weight: var(--pos-font-weight-medium);
-          color: var(--pos-color-text-secondary);
-          margin-bottom: var(--pos-space-xs);
-        }
-
-        ui-textarea {
           width: 100%;
+          border: none;
+          outline: none;
+          font-size: var(--pos-font-size-sm);
+          font-weight: var(--pos-font-weight-medium);
+          font-family: inherit;
+          color: var(--pos-color-text-primary);
+          background: transparent;
+          padding: 0;
+          margin-bottom: var(--pos-space-xs);
+          box-sizing: border-box;
         }
+        .title-input::placeholder { color: var(--pos-color-text-disabled); font-weight: 400; }
 
-        .actions {
+        .desc-input {
+          display: block;
+          width: 100%;
+          border: none;
+          outline: none;
+          font-size: var(--pos-font-size-sm);
+          font-family: inherit;
+          color: var(--pos-color-text-secondary);
+          background: transparent;
+          padding: 0;
+          resize: none;
+          overflow: hidden;
+          box-sizing: border-box;
+          min-height: 1.4em;
+        }
+        .desc-input::placeholder { color: var(--pos-color-text-disabled); }
+
+        .chips-row {
           display: flex;
-          justify-content: flex-end;
-          gap: var(--pos-space-sm);
-          margin-top: var(--pos-space-md);
-        }
-
-        .attachment-section {
-          margin-top: var(--pos-space-md);
-        }
-
-        .attachment-list {
-          display: flex;
-          flex-wrap: wrap;
+          align-items: center;
           gap: var(--pos-space-xs);
-          margin-bottom: var(--pos-space-sm);
+          padding: var(--pos-space-xs) var(--pos-space-md) var(--pos-space-sm);
+          border-top: 1px solid var(--pos-color-border-default);
+          flex-wrap: wrap;
+          position: relative;
         }
 
-        .attachment-chip {
+        .chip {
           display: inline-flex;
           align-items: center;
-          gap: var(--pos-space-xs);
-          padding: 2px var(--pos-space-sm);
-          background: var(--pos-color-background-tertiary, var(--pos-color-background-secondary));
+          gap: 4px;
+          padding: 3px 9px;
           border: 1px solid var(--pos-color-border-default);
-          border-radius: var(--pos-radius-sm);
-          font-size: var(--pos-raw-font-size-xs);
-          font-family: var(--pos-font-family-default);
-          color: var(--pos-color-text-primary);
-        }
-
-        .attachment-chip a {
-          color: var(--pos-color-action-primary);
-          text-decoration: none;
-        }
-
-        .attachment-chip a:hover {
-          text-decoration: underline;
-        }
-
-        .attachment-chip .size {
+          border-radius: 99px;
+          background: transparent;
+          font-size: var(--pos-font-size-xs);
+          font-family: inherit;
           color: var(--pos-color-text-secondary);
-        }
-
-        .attachment-chip .remove-btn {
-          background: none;
-          border: none;
           cursor: pointer;
-          color: var(--pos-color-text-secondary);
-          font-size: var(--pos-font-size-sm);
-          padding: 0 2px;
+          transition: border-color 0.1s, color 0.1s;
+          white-space: nowrap;
+          position: relative;
+        }
+        .chip:hover { border-color: var(--pos-color-action-primary); color: var(--pos-color-action-primary); }
+        .chip.active { border-color: var(--pos-color-action-primary); color: var(--pos-color-action-primary); background: color-mix(in srgb, var(--pos-color-action-primary) 8%, transparent); }
+        .chip svg { pointer-events: none; }
+
+        .chip-clear {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 14px; height: 14px;
+          border-radius: 50%;
+          margin-left: 2px;
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          color: inherit;
+          padding: 0;
+          font-size: 11px;
           line-height: 1;
         }
+        .chip-clear:hover { background: color-mix(in srgb, currentColor 15%, transparent); }
 
-        .attachment-chip .remove-btn:hover {
-          color: var(--pos-color-priority-urgent);
+        /* Pending attachment chips */
+        .attach-chip-item {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 3px 6px 3px 9px;
+          border: 1px solid var(--pos-color-action-primary);
+          border-radius: 99px;
+          background: color-mix(in srgb, var(--pos-color-action-primary) 8%, transparent);
+          font-size: var(--pos-font-size-xs);
+          color: var(--pos-color-action-primary);
+          max-width: 160px;
+        }
+        .attach-chip-item svg { flex-shrink: 0; }
+        .attach-chip-name {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          flex: 1;
+          min-width: 0;
         }
 
-        .file-input-wrapper {
-          display: inline-block;
+        /* Date input: invisible overlay on chip so showPicker() works */
+        .date-chip-wrap {
+          position: relative;
+          display: inline-flex;
+        }
+        #date-input {
+          position: absolute;
+          inset: 0;
+          opacity: 0;
+          pointer-events: none;
+          width: 100%;
+          height: 100%;
+          cursor: pointer;
+          border: none;
+          padding: 0;
         }
 
-        .file-input-wrapper input[type="file"] {
-          display: none;
+        /* File input hidden */
+        #file-input { display: none; }
+
+        /* Priority dropdown — fixed so it escapes overflow:hidden ancestors */
+        .priority-menu {
+          position: fixed;
+          top: 0; left: 0; /* overridden by JS */
+          background: var(--pos-color-background-primary);
+          border: 1px solid var(--pos-color-border-default);
+          border-radius: var(--pos-radius-md);
+          box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+          z-index: 9999;
+          overflow: hidden;
+          min-width: 130px;
         }
+        .priority-option {
+          display: flex;
+          align-items: center;
+          gap: var(--pos-space-sm);
+          padding: 7px var(--pos-space-md);
+          font-size: var(--pos-font-size-sm);
+          font-family: inherit;
+          color: var(--pos-color-text-primary);
+          cursor: pointer;
+          background: none;
+          border: none;
+          width: 100%;
+          text-align: left;
+        }
+        .priority-option:hover { background: var(--pos-color-background-secondary); }
+        .priority-option.selected { color: var(--pos-color-action-primary); font-weight: var(--pos-font-weight-medium); }
+
+        /* Bottom bar */
+        .bottom-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: var(--pos-space-sm) var(--pos-space-md);
+          border-top: 1px solid var(--pos-color-border-default);
+          background: var(--pos-color-background-secondary);
+          border-radius: 0 0 var(--pos-radius-md) var(--pos-radius-md);
+        }
+
+        .list-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: var(--pos-font-size-xs);
+          color: var(--pos-color-text-secondary);
+        }
+
+        .actions { display: flex; gap: var(--pos-space-sm); }
+
+        .btn {
+          display: inline-flex;
+          align-items: center;
+          padding: 5px 12px;
+          border-radius: var(--pos-radius-sm);
+          font-size: var(--pos-font-size-sm);
+          font-family: inherit;
+          cursor: pointer;
+          transition: background 0.1s, opacity 0.1s;
+          border: 1px solid transparent;
+        }
+        .btn-cancel {
+          background: transparent;
+          border-color: var(--pos-color-border-default);
+          color: var(--pos-color-text-secondary);
+        }
+        .btn-cancel:hover { background: var(--pos-color-background-primary); color: var(--pos-color-text-primary); }
+        .btn-submit {
+          background: var(--pos-color-action-primary);
+          color: #fff;
+          font-weight: var(--pos-font-weight-medium);
+        }
+        .btn-submit:hover { opacity: 0.88; }
+        .btn-submit:disabled { opacity: 0.45; cursor: not-allowed; }
       </style>
 
-      <div class="form-container">
-        <div class="title-row">
-          <ui-input id="title" placeholder="Task title..."></ui-input>
-          <ui-button id="expand-btn" variant="outline" size="sm">&#9662;</ui-button>
+      <div class="card">
+        <div class="inputs">
+          <input id="title-input" class="title-input" placeholder="Task name" autocomplete="off"
+                 value="${this._escAttr(this._title)}" />
+          <textarea id="desc-input" class="desc-input" placeholder="Description" rows="1">${this._esc(this._desc)}</textarea>
         </div>
 
-        <div class="details ${this._expanded ? 'visible' : ''}" id="details">
-          <div class="form-row">
-            <div>
-              <span class="field-label">Priority</span>
-              <ui-select id="priority">
-                <option value="none">None</option>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </ui-select>
+        <div class="chips-row">
+          <div class="date-chip-wrap">
+            ${dateLabel
+              ? `<button class="chip active" id="date-chip">
+                   ${icon('check-square', 12)} ${dateLabel}
+                   <button class="chip-clear" id="date-clear">×</button>
+                 </button>`
+              : `<button class="chip" id="date-chip">${icon('check-square', 12)} Due date</button>`
+            }
+            <input type="date" id="date-input" value="${this._dueDate}" tabindex="-1" />
+          </div>
+
+          <button class="chip ${this._priority !== 'none' ? 'active' : ''}" id="priority-chip">
+            ${icon('star', 12)}
+            ${priorityLabel || 'Priority'}
+          </button>
+
+          <button class="chip ${this._pendingAttachments.length ? 'active' : ''}" id="attach-chip">
+            ${icon('upload', 12)} Attach${this._pendingAttachments.length ? ` +${this._pendingAttachments.length}` : ''}
+          </button>
+          <input type="file" id="file-input" />
+
+          ${this._pendingAttachments.map((a, i) => `
+            <div class="attach-chip-item">
+              ${icon('upload', 11)}
+              <span class="attach-chip-name">${this._esc(a.filename)}</span>
+              <button class="chip-clear" data-remove-attach="${i}" title="Remove">×</button>
             </div>
-            <div>
-              <span class="field-label">Due date</span>
-              <ui-input id="due-date" type="date"></ui-input>
-            </div>
-          </div>
+          `).join('')}
 
-          <div>
-            <span class="field-label">Description</span>
-            <ui-textarea id="description" placeholder="Add details..." rows="3"></ui-textarea>
-          </div>
-
-          ${this.mode === 'edit' ? `
-          <div style="margin-top: var(--pos-space-md);">
-            <span class="field-label">Subtasks</span>
-            <pos-subtask-list id="subtask-list"></pos-subtask-list>
-          </div>
-          ` : ''}
-
-          <div class="attachment-section">
-            <span class="field-label">Attachments</span>
-            <div class="attachment-list" id="attachment-list">
-              ${this._attachments.map(a => `
-                <span class="attachment-chip">
-                  <a href="/api/attachments/${a.id}/download" target="_blank">${this._escapeHtml(a.filename)}</a>
-                  <span class="size">${this._formatSize(a.size)}</span>
-                  <button class="remove-btn" data-remove-attachment="${a.id}" title="Remove">&times;</button>
-                </span>
+          ${this._showPriorityMenu ? `
+            <div class="priority-menu" id="priority-menu">
+              ${PRIORITIES.map(p => `
+                <button class="priority-option ${this._priority === p.value ? 'selected' : ''}"
+                        data-priority="${p.value}">${p.label}</button>
               `).join('')}
             </div>
-            <div class="file-input-wrapper">
-              <ui-button id="attach-btn" variant="outline" size="sm">Attach file</ui-button>
-              <input type="file" id="file-input" />
-            </div>
-          </div>
-
+          ` : ''}
         </div>
 
-        <div class="actions">
-          <ui-button id="cancel-btn" variant="outline" size="sm">Cancel</ui-button>
-          <ui-button id="submit-btn" size="sm">${this.mode === 'edit' ? 'Save' : 'Add task'}</ui-button>
+        <div class="bottom-bar">
+          <span class="list-badge">${icon('folder', 13)} Inbox</span>
+          <div class="actions">
+            <button class="btn btn-cancel" id="cancel-btn">Cancel</button>
+            <button class="btn btn-submit" id="submit-btn">Add task</button>
+          </div>
         </div>
       </div>
     `;
   }
 
-  bindEvents() {
-    this.shadow.getElementById('expand-btn').addEventListener('click', () => {
-      this._expanded = !this._expanded;
-      this.shadow.getElementById('details').classList.toggle('visible', this._expanded);
+  _bindEvents() {
+    const titleInput = this.shadow.getElementById('title-input');
+    const descInput  = this.shadow.getElementById('desc-input');
+    const dateInput  = this.shadow.getElementById('date-input');
+
+    // Submit on Enter in title
+    titleInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); this._submit(); }
+      if (e.key === 'Escape') this._cancel();
     });
 
-    // Listen for keydown on the ui-input's internal input
-    const titleInput = this.shadow.getElementById('title');
-    titleInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        this._submit();
-      }
-      if (e.key === 'Escape') {
-        this._cancel();
+    // Auto-expand description textarea
+    const autoResize = () => {
+      descInput.style.height = 'auto';
+      descInput.style.height = descInput.scrollHeight + 'px';
+    };
+    descInput?.addEventListener('input', autoResize);
+    // Run once on render to handle pre-filled content
+    if (descInput && this._desc) setTimeout(autoResize, 0);
+
+    // Date chip → trigger date picker on the overlaid input
+    this.shadow.getElementById('date-chip')?.addEventListener('click', (e) => {
+      if (e.target.closest('#date-clear')) return;
+      e.preventDefault();
+      // Temporarily make input pointer-events active, trigger picker, then restore
+      if (dateInput) {
+        dateInput.style.pointerEvents = 'auto';
+        try { dateInput.showPicker(); } catch { dateInput.click(); }
+        setTimeout(() => { dateInput.style.pointerEvents = 'none'; }, 300);
       }
     });
 
-    this.shadow.getElementById('submit-btn').addEventListener('click', () => this._submit());
-    this.shadow.getElementById('cancel-btn').addEventListener('click', () => this._cancel());
+    this.shadow.getElementById('date-clear')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._dueDate = '';
+      this._saveInputs();
+      this._render();
+      this._bindEvents();
+    });
 
-    // Attachment: trigger file input when attach button clicked
-    const attachBtn = this.shadow.getElementById('attach-btn');
-    const fileInput = this.shadow.getElementById('file-input');
-    if (attachBtn && fileInput) {
-      attachBtn.addEventListener('click', () => fileInput.click());
-      fileInput.addEventListener('change', () => {
-        if (fileInput.files.length > 0) {
-          this.dispatchEvent(new CustomEvent('attachment-upload', {
-            bubbles: true, composed: true,
-            detail: {
-              file: fileInput.files[0],
-              taskId: this._taskData?.id || null,
-            },
-          }));
-          fileInput.value = '';
-        }
-      });
+    dateInput?.addEventListener('change', () => {
+      this._dueDate = dateInput.value;
+      this._saveInputs();
+      this._render();
+      this._bindEvents();
+    });
+
+    // Priority chip → toggle menu
+    this.shadow.getElementById('priority-chip')?.addEventListener('click', () => {
+      this._showPriorityMenu = !this._showPriorityMenu;
+      if (this._showPriorityMenu) {
+        const chip = this.shadow.getElementById('priority-chip');
+        const rect = chip?.getBoundingClientRect();
+        this._menuCoords = rect ? { top: rect.bottom + 4, left: rect.left } : null;
+      }
+      this._saveInputs();
+      this._render();
+      this._bindEvents();
+    });
+
+    // Apply fixed coords to priority menu after render
+    if (this._showPriorityMenu && this._menuCoords) {
+      const menu = this.shadow.getElementById('priority-menu');
+      if (menu) {
+        menu.style.top  = this._menuCoords.top  + 'px';
+        menu.style.left = this._menuCoords.left + 'px';
+      }
     }
 
-    // Attachment remove
-    this.shadow.querySelectorAll('[data-remove-attachment]').forEach(btn => {
+    // Priority option select
+    this.shadow.querySelectorAll('[data-priority]').forEach(btn => {
       btn.addEventListener('click', () => {
-        this.dispatchEvent(new CustomEvent('attachment-remove', {
-          bubbles: true, composed: true,
-          detail: {
-            attachmentId: btn.dataset.removeAttachment,
-            taskId: this._taskData?.id || null,
-          },
-        }));
+        this._priority = btn.dataset.priority;
+        this._showPriorityMenu = false;
+        this._menuCoords = null;
+        this._saveInputs();
+        this._render();
+        this._bindEvents();
+        setTimeout(() => this.shadow.getElementById('title-input')?.focus(), 0);
       });
     });
+
+    // Click outside priority menu
+    if (this._showPriorityMenu) {
+      setTimeout(() => {
+        document.addEventListener('click', (e) => {
+          if (!this.contains(e.target) && !this.shadow.contains(e.composedPath()[0])) {
+            this._showPriorityMenu = false;
+            this._menuCoords = null;
+            this._saveInputs();
+            this._render();
+            this._bindEvents();
+          }
+        }, { once: true, capture: true });
+      }, 0);
+    }
+
+    // Attach chip
+    const fileInput = this.shadow.getElementById('file-input');
+    this.shadow.getElementById('attach-chip')?.addEventListener('click', () => fileInput?.click());
+    fileInput?.addEventListener('change', () => {
+      if (fileInput.files.length > 0) {
+        this.dispatchEvent(new CustomEvent('attachment-upload', {
+          bubbles: true, composed: true,
+          detail: { file: fileInput.files[0], taskId: null },
+        }));
+        fileInput.value = '';
+      }
+    });
+
+    // Remove pending attachment
+    this.shadow.querySelectorAll('[data-remove-attach]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.removeAttach);
+        this._pendingAttachments.splice(idx, 1);
+        this._saveInputs();
+        this._render();
+        this._bindEvents();
+      });
+    });
+
+    this.shadow.getElementById('submit-btn')?.addEventListener('click', () => this._submit());
+    this.shadow.getElementById('cancel-btn')?.addEventListener('click', () => this._cancel());
   }
 
   _submit() {
-    const title = this.shadow.getElementById('title').value.trim();
+    const titleEl = this.shadow.getElementById('title-input');
+    const title = (titleEl ? titleEl.value : this._title).trim();
     if (!title) return;
-
-    const data = {
-      title,
-      priority: this.shadow.getElementById('priority').value,
-      due_date: this.shadow.getElementById('due-date').value || null,
-      description: this.shadow.getElementById('description').value || null,
-    };
-
-    // Include pending attachment IDs for create mode
-    if (this._pendingAttachmentIds.length > 0) {
-      data.attachment_ids = this._pendingAttachmentIds;
-    }
-
-    this.dispatchEvent(new CustomEvent('task-submit', { bubbles: true, composed: true, detail: data }));
+    const descEl = this.shadow.getElementById('desc-input');
+    const desc = (descEl ? descEl.value : this._desc).trim();
+    this.dispatchEvent(new CustomEvent('task-submit', {
+      bubbles: true, composed: true,
+      detail: {
+        title,
+        description: desc || null,
+        due_date: this._dueDate || null,
+        priority: this._priority,
+        ...(this._pendingAttachments.length ? { attachment_ids: this._pendingAttachments.map(a => a.id) } : {}),
+      },
+    }));
   }
 
   _cancel() {
     this.dispatchEvent(new CustomEvent('task-cancel', { bubbles: true, composed: true }));
   }
 
-  setAttachments(attachments) {
-    this._attachments = attachments || [];
-    // Re-render just the attachment list area
-    const listEl = this.shadow.getElementById('attachment-list');
-    if (listEl) {
-      listEl.innerHTML = this._attachments.map(a => `
-        <span class="attachment-chip">
-          <a href="/api/attachments/${a.id}/download" target="_blank">${this._escapeHtml(a.filename)}</a>
-          <span class="size">${this._formatSize(a.size)}</span>
-          <button class="remove-btn" data-remove-attachment="${a.id}" title="Remove">&times;</button>
-        </span>
-      `).join('');
-      // Rebind remove buttons
-      listEl.querySelectorAll('[data-remove-attachment]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          this.dispatchEvent(new CustomEvent('attachment-remove', {
-            bubbles: true, composed: true,
-            detail: {
-              attachmentId: btn.dataset.removeAttachment,
-              taskId: this._taskData?.id || null,
-            },
-          }));
-        });
-      });
-    }
+  _formatDate(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    const today = new Date().toISOString().slice(0, 10);
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    if (dateStr === today) return 'Today';
+    if (dateStr === tomorrow) return 'Tomorrow';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
-  addPendingAttachment(attachment) {
-    this._pendingAttachmentIds.push(attachment.id);
-    this._attachments.push(attachment);
-    this.setAttachments(this._attachments);
+  _esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
   }
 
-  _escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  _formatSize(bytes) {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  }
-
-  setValues(task) {
-    if (!task) return;
-    this._taskData = task;
-    this.shadow.getElementById('title').value = task.title || '';
-    this.shadow.getElementById('priority').value = task.priority || 'none';
-    this.shadow.getElementById('due-date').value = task.due_date || '';
-    this.shadow.getElementById('description').value = task.description || '';
-    this._expanded = true;
-    this.shadow.getElementById('details').classList.add('visible');
-
-    // Pass subtasks to subtask list in edit mode
-    const subtaskList = this.shadow.getElementById('subtask-list');
-    if (subtaskList && task.subtasks) {
-      subtaskList.taskId = task.id;
-      subtaskList.subtasks = task.subtasks;
-    }
+  _escAttr(str) {
+    return (str || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 }
 

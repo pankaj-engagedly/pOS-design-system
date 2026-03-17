@@ -28,7 +28,7 @@ export function getAllRoutes() {
 }
 
 function handleHashChange() {
-  const hash = window.location.hash.slice(1) || '/todos';
+  const hash = window.location.hash.slice(1) || '/overview';
   const config = routes.get(hash);
 
   const previous = currentRoute;
@@ -58,6 +58,7 @@ registerRoute('/login', { module: 'auth', page: 'pos-auth-login', label: 'Login'
 registerRoute('/register', { module: 'auth', page: 'pos-auth-register', label: 'Register', hidden: true, public: true });
 
 // App routes
+registerRoute('/overview', { module: 'overview', label: 'Overview', icon: 'home' });
 registerRoute('/todos', { module: 'todos', label: 'Todos', icon: 'check-square' });
 registerRoute('/notes', { module: 'notes', label: 'Notes', icon: 'file-text' });
 registerRoute('/knowledge-base', { module: 'knowledge-base', label: 'Knowledge Base', icon: 'book-open' });

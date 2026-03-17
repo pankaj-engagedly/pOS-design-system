@@ -1,6 +1,6 @@
-// pos-vault-app — main vault page: sidebar + item list + detail panel
+// pos-vault-app — main vault page: item list (with filters) + detail panel
 
-import '../components/pos-vault-sidebar.js';
+import '../../../shared/components/pos-module-layout.js';
 import '../components/pos-vault-item-list.js';
 import '../components/pos-vault-item-detail.js';
 import * as api from '../services/vault-api.js';
@@ -13,7 +13,6 @@ class PosVaultApp extends HTMLElement {
     super();
     this.shadow = this.attachShadow({ mode: 'open' });
     this._unsub = null;
-    this._favorites = false;
   }
 
   connectedCallback() {
@@ -31,13 +30,13 @@ class PosVaultApp extends HTMLElement {
   }
 
   async _loadItems() {
-    const { activeTag, searchQuery } = store.getState();
+    const { activeTag, searchQuery, favorites } = store.getState();
     store.setState({ loading: true, error: null });
     try {
       const items = await api.getItems({
         tag: activeTag || undefined,
         search: searchQuery || undefined,
-        favorites: this._favorites || undefined,
+        favorites: favorites || undefined,
       });
       store.setState({ items, loading: false });
     } catch (e) {
@@ -56,7 +55,7 @@ class PosVaultApp extends HTMLElement {
     try {
       const item = await api.getItem(itemId);
       store.setState({ selectedItem: item });
-    } catch (e) {
+    } catch {
       store.setState({ selectedItem: null });
     }
   }
@@ -64,49 +63,21 @@ class PosVaultApp extends HTMLElement {
   render() {
     this.shadow.innerHTML = `
       <style>
-        :host {
-          display: grid;
-          grid-template-columns: 200px 280px 1fr;
-          height: 100%;
-          overflow: hidden;
-          background: var(--pos-color-background-primary);
-        }
-        .sidebar {
-          border-right: 1px solid var(--pos-color-border-default);
-          background: var(--pos-color-background-secondary);
-          overflow-y: auto;
-        }
-        .list-panel {
-          border-right: 1px solid var(--pos-color-border-default);
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-        }
-        .detail-panel {
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-        }
+        :host { display: block; height: 100%; }
       </style>
 
-      <div class="sidebar">
-        <pos-vault-sidebar></pos-vault-sidebar>
-      </div>
-      <div class="list-panel">
-        <pos-vault-item-list></pos-vault-item-list>
-      </div>
-      <div class="detail-panel">
+      <pos-module-layout panel-width="280">
+        <pos-vault-item-list slot="panel"></pos-vault-item-list>
         <pos-vault-item-detail></pos-vault-item-detail>
-      </div>
+      </pos-module-layout>
     `;
   }
 
   _bindEvents() {
-    // Sidebar filter changes
+    // Filter change from item list pills
     this.shadow.addEventListener('filter-change', async (e) => {
       const { tag, favorites } = e.detail;
-      this._favorites = favorites;
-      store.setState({ activeTag: tag, selectedItemId: null, selectedItem: null });
+      store.setState({ activeTag: tag, favorites, selectedItemId: null, selectedItem: null });
       await this._loadItems();
     });
 
@@ -150,7 +121,7 @@ class PosVaultApp extends HTMLElement {
         await api.deleteItem(e.detail.itemId);
         store.setState({ selectedItemId: null, selectedItem: null });
         await this._loadAll();
-      } catch (err) {
+      } catch {
         alert('Failed to delete item');
       }
     });
@@ -161,7 +132,7 @@ class PosVaultApp extends HTMLElement {
       try {
         await api.addField(itemId, field);
         await this._loadSelectedItem(itemId);
-        await this._loadItems(); // refresh field count
+        await this._loadItems();
       } catch (err) {
         alert('Failed to add field: ' + err.message);
       }
@@ -184,8 +155,8 @@ class PosVaultApp extends HTMLElement {
       try {
         await api.deleteField(itemId, fieldId);
         await this._loadSelectedItem(itemId);
-        await this._loadItems(); // refresh field count
-      } catch (err) {
+        await this._loadItems();
+      } catch {
         alert('Failed to delete field');
       }
     });
