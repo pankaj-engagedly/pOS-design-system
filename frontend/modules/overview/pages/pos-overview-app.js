@@ -42,9 +42,9 @@ class PosOverviewApp extends HTMLElement {
         }
       </style>
 
-      <pos-page-header
-        title="Welcome back!"
-        subtitle="Here's what's happening with your life today">
+      <pos-page-header separator>
+        Welcome back!
+        <span slot="subtitle">Here's what's happening with your life today</span>
       </pos-page-header>
 
       <div class="content">

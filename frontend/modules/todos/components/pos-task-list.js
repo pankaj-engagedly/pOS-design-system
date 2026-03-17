@@ -6,10 +6,12 @@
 import './pos-task-item.js';
 import './pos-task-form.js';
 import { icon } from '../../../shared/utils/icons.js';
+import '../../../shared/components/pos-page-header.js';
+import '../../../../design-system/src/components/ui-chips.js';
 
 const FILTERS = [
-  { key: 'all',      label: 'All' },
-  { key: 'today',    label: 'Today' },
+  { key: 'all', label: 'All' },
+  { key: 'today', label: 'Today' },
   { key: 'tomorrow', label: 'Tomorrow' },
   { key: 'upcoming', label: 'Upcoming' },
 ];
@@ -41,7 +43,7 @@ class PosTaskList extends HTMLElement {
 
   _getFilteredTasks() {
     const now = new Date();
-    const today    = now.toISOString().slice(0, 10);
+    const today = now.toISOString().slice(0, 10);
     const tomorrow = new Date(now.getTime() + 86400000).toISOString().slice(0, 10);
 
     switch (this._activeFilter) {
@@ -76,7 +78,7 @@ class PosTaskList extends HTMLElement {
     return [...map.values()].map(g => ({
       ...g,
       total: g.tasks.length,
-      done:  g.tasks.filter(t => t.status === 'done').length,
+      done: g.tasks.filter(t => t.status === 'done').length,
     }));
   }
 
@@ -84,9 +86,9 @@ class PosTaskList extends HTMLElement {
 
   render() {
     const showFilterChips = (this._viewMode === 'inbox' || !this._viewMode);
-    const filteredTasks   = this._getFilteredTasks();
-    const groups          = this._getGroups(filteredTasks);
-    const isSmartView     = !!this._viewMode;
+    const filteredTasks = this._getFilteredTasks();
+    const groups = this._getGroups(filteredTasks);
+    const isSmartView = !!this._viewMode;
 
     this.shadow.innerHTML = `
       <style>
@@ -98,53 +100,9 @@ class PosTaskList extends HTMLElement {
           overflow: hidden;
         }
 
-        .header {
-          display: flex;
-          align-items: baseline;
-          gap: var(--pos-space-sm);
-          padding: var(--pos-space-md) var(--pos-space-lg) var(--pos-space-sm);
-          flex-shrink: 0;
-        }
-        .header h2 {
-          margin: 0;
-          font-size: var(--pos-font-size-2xl);
-          font-weight: var(--pos-font-weight-bold);
-          color: var(--pos-color-text-primary);
-        }
-        .header .count {
-          font-size: var(--pos-font-size-sm);
-          color: var(--pos-color-text-secondary);
-        }
-
-        /* ── Filter chips ── */
         .filters {
-          display: flex;
-          align-items: center;
-          gap: var(--pos-space-xs);
           padding: 0 var(--pos-space-lg) var(--pos-space-md);
           flex-shrink: 0;
-        }
-        .filter-chip {
-          padding: 2px 8px;
-          border-radius: 99px;
-          border: 1px solid var(--pos-color-border-default);
-          background: transparent;
-          font-size: var(--pos-font-size-xs);
-          font-family: inherit;
-          color: var(--pos-color-text-secondary);
-          cursor: pointer;
-          transition: background 0.1s, color 0.1s, border-color 0.1s;
-          line-height: 1.5;
-        }
-        .filter-chip:hover {
-          border-color: var(--pos-color-action-primary);
-          color: var(--pos-color-action-primary);
-        }
-        .filter-chip.active {
-          background: var(--pos-color-action-primary);
-          border-color: var(--pos-color-action-primary);
-          color: #fff;
-          font-weight: var(--pos-font-weight-medium);
         }
 
         .scroll {
@@ -281,25 +239,22 @@ class PosTaskList extends HTMLElement {
         .empty p  { margin: 0; font-size: var(--pos-font-size-sm); }
       </style>
 
-      <div class="header">
-        <h2>${this._esc(this._listName)}</h2>
-        <span class="count">${filteredTasks.length} task${filteredTasks.length !== 1 ? 's' : ''}</span>
-      </div>
+      <pos-page-header>
+        ${this._esc(this._listName)}
+        <span slot="meta">${filteredTasks.length} task${filteredTasks.length !== 1 ? 's' : ''}</span>
+      </pos-page-header>
 
-      ${showFilterChips ? `
-        <div class="filters">
-          ${FILTERS.map(f => `
-            <button class="filter-chip ${this._activeFilter === f.key ? 'active' : ''}"
-                    data-filter="${f.key}">${f.label}</button>
-          `).join('')}
-        </div>
-      ` : ''}
+      ${showFilterChips ? `<div class="filters"><ui-chips id="filter-chips" active="${this._activeFilter}"></ui-chips></div>` : ''}
 
       <div class="scroll">
         ${groups ? this._renderGroups(groups, isSmartView) : this._renderFlat(filteredTasks, isSmartView)}
       </div>
     `;
 
+    if (showFilterChips) {
+      const chips = this.shadow.getElementById('filter-chips');
+      if (chips) chips.items = FILTERS;
+    }
   }
 
   _renderGroups(groups, isSmartView) {
@@ -309,7 +264,7 @@ class PosTaskList extends HTMLElement {
 
     return groups.map(g => {
       const collapsed = this._collapsedGroups.has(g.key);
-      const showForm  = this._addingToGroup === g.key;
+      const showForm = this._addingToGroup === g.key;
 
       return `
         <div class="group ${collapsed ? 'collapsed' : ''}" data-group-key="${g.key}">
@@ -323,11 +278,11 @@ class PosTaskList extends HTMLElement {
             <div class="group-body">
               ${g.tasks.map(t => this._renderTaskWithSubtasks(t, isSmartView)).join('')}
               ${showForm
-                ? `<pos-task-form mode="create" data-group="${g.key}" data-list-id="${g.listId || ''}"></pos-task-form>`
-                : `<div class="group-add" data-action="add-to-group" data-group-key="${g.key}" data-list-id="${g.listId || ''}">
+            ? `<pos-task-form mode="create" data-group="${g.key}" data-list-id="${g.listId || ''}"></pos-task-form>`
+            : `<div class="group-add" data-action="add-to-group" data-group-key="${g.key}" data-list-id="${g.listId || ''}">
                      ${icon('plus', 13)} Add task
                    </div>`
-              }
+          }
             </div>
           `}
         </div>
@@ -340,13 +295,13 @@ class PosTaskList extends HTMLElement {
     return `
       <div class="flat-task-list">
         ${tasks.length === 0 && !showing
-          ? `<div class="empty"><h3>No tasks</h3><p>Click "+ Add task" to get started</p></div>`
-          : tasks.map(t => this._renderTaskWithSubtasks(t, isSmartView)).join('')
-        }
+        ? `<div class="empty"><h3>No tasks</h3><p>Click "+ Add task" to get started</p></div>`
+        : tasks.map(t => this._renderTaskWithSubtasks(t, isSmartView)).join('')
+      }
         ${showing
-          ? `<pos-task-form mode="create" data-group="flat"></pos-task-form>`
-          : `<div class="add-row" data-action="add-to-group" data-group-key="flat">${icon('plus', 13)} Add task</div>`
-        }
+        ? `<pos-task-form mode="create" data-group="flat"></pos-task-form>`
+        : `<div class="add-row" data-action="add-to-group" data-group-key="flat">${icon('plus', 13)} Add task</div>`
+      }
       </div>
     `;
   }
@@ -388,22 +343,20 @@ class PosTaskList extends HTMLElement {
   // ─── Events ───────────────────────────────────────────────
 
   _bindShadowEvents() {
-    this.shadow.addEventListener('click', (e) => {
-      // Filter chip
-      const chip = e.target.closest('.filter-chip');
-      if (chip) {
-        this._activeFilter = chip.dataset.filter;
-        this._addingToGroup = null;
-        this.render();
-        return;
-      }
+    // ui-chips chip-select (composed: true — crosses shadow boundary)
+    this.shadow.addEventListener('chip-select', (e) => {
+      this._activeFilter = e.detail.key;
+      this._addingToGroup = null;
+      this.render();
+    });
 
+    this.shadow.addEventListener('click', (e) => {
       // Toggle group collapse
       const toggleEl = e.target.closest('[data-action="toggle-group"]');
       if (toggleEl) {
         const key = toggleEl.dataset.groupKey;
         if (this._collapsedGroups.has(key)) this._collapsedGroups.delete(key);
-        else                                 this._collapsedGroups.add(key);
+        else this._collapsedGroups.add(key);
         this.render();
         return;
       }

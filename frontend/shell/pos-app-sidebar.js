@@ -56,10 +56,12 @@ class PosAppSidebar extends HTMLElement {
           display: flex;
           align-items: center;
           gap: var(--pos-space-sm);
-          padding: var(--pos-space-md) var(--pos-space-sm) var(--pos-space-sm);
+          padding: var(--pos-space-sm);
+          height: 48px;                /* match app header height */
           border-bottom: 1px solid var(--pos-color-border-default);
           overflow: visible;           /* let the button overflow the right edge */
           flex-shrink: 0;
+          box-sizing: border-box;
         }
 
         .brand-icon {
@@ -104,7 +106,8 @@ class PosAppSidebar extends HTMLElement {
         .toggle-btn {
           position: absolute;
           right: -12px;
-          top: 18px;          /* visually centred with the 32px brand icon */
+          top: 50%;
+          transform: translateY(-50%);
           z-index: 10;
           display: flex;
           align-items: center;

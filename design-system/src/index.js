@@ -31,6 +31,7 @@ import './components/ui-avatar.js';
 import './components/ui-search-input.js';
 import './components/ui-theme-toggle.js';
 import './components/ui-dropdown.js';
+import './components/ui-chips.js';
 
 // Plugin runtime — re-exported for consumers
 export { loadPlugin, createHostSDK } from './plugins/loader.js';

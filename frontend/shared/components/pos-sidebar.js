@@ -92,7 +92,7 @@ class PosSidebar extends HTMLElement {
         }
 
         .title {
-          padding: var(--pos-space-xs) var(--pos-space-md) var(--pos-space-sm);
+          padding: var(--pos-space-md) var(--pos-space-md) var(--pos-space-sm);
           font-size: var(--pos-font-size-lg);
           font-weight: var(--pos-font-weight-bold);
           color: var(--pos-color-text-primary);
