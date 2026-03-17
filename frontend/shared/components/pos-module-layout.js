@@ -3,42 +3,43 @@
 // Right: slot (default)   — main content area (primary bg)
 // Attribute: panel-width  — left panel width in px (default: 260)
 
+const sheet = new CSSStyleSheet();
+sheet.replaceSync(`
+  :host {
+    display: grid;
+    grid-template-columns: var(--_panel-width, 260px) 1fr;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .panel {
+    border-right: 1px solid var(--pos-color-border-default);
+    background: var(--pos-color-background-secondary);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .content {
+    overflow: hidden;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--pos-color-background-primary);
+  }
+`);
+
 class PosModuleLayout extends HTMLElement {
+  static get observedAttributes() { return ['panel-width']; }
+
   constructor() {
     super();
     this.shadow = this.attachShadow({ mode: 'open' });
-  }
-
-  static get observedAttributes() {
-    return ['panel-width'];
+    this.shadow.adoptedStyleSheets = [sheet];
   }
 
   connectedCallback() {
     this.shadow.innerHTML = `
-      <style>
-        :host {
-          display: grid;
-          grid-template-columns: var(--_panel-width, 260px) 1fr;
-          height: 100%;
-          overflow: hidden;
-        }
-
-        .panel {
-          border-right: 1px solid var(--pos-color-border-default);
-          background: var(--pos-color-background-secondary);
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-        }
-
-        .content {
-          overflow: hidden;
-          min-width: 0;
-          display: flex;
-          flex-direction: column;
-          background: var(--pos-color-background-primary);
-        }
-      </style>
       <div class="panel"><slot name="panel"></slot></div>
       <div class="content"><slot></slot></div>
     `;

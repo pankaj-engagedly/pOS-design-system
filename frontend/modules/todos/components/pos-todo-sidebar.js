@@ -1,14 +1,50 @@
 // pos-todo-sidebar — Todos sidebar: smart views + user lists
 // Composes: pos-sidebar (shell + scroll + footer)
 
-import '../../../shared/components/pos-sidebar.js';
-import { SIDEBAR_NAV_STYLES } from '../../../shared/components/pos-sidebar.js';
+import { SIDEBAR_NAV_SHEET } from '../../../shared/components/pos-sidebar.js';
 import { icon } from '../../../shared/utils/icons.js';
+
+const todoSheet = new CSSStyleSheet();
+todoSheet.replaceSync(`
+  .new-list-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--pos-space-xs);
+    width: 100%;
+    padding: 6px var(--pos-space-sm);
+    border: 1px dashed var(--pos-color-border-default);
+    border-radius: var(--pos-radius-sm);
+    background: transparent;
+    color: var(--pos-color-text-secondary);
+    font-size: var(--pos-font-size-sm);
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 0.1s, color 0.1s;
+  }
+  .new-list-btn:hover {
+    border-color: var(--pos-color-action-primary);
+    color: var(--pos-color-action-primary);
+  }
+
+  .new-list-input {
+    width: 100%;
+    padding: 6px var(--pos-space-sm);
+    border: 1px solid var(--pos-color-action-primary);
+    border-radius: var(--pos-radius-sm);
+    font-size: var(--pos-font-size-sm);
+    font-family: inherit;
+    background: var(--pos-color-background-primary);
+    color: var(--pos-color-text-primary);
+    outline: none;
+    box-sizing: border-box;
+  }
+`);
 
 class PosTodoSidebar extends HTMLElement {
   constructor() {
     super();
     this.shadow = this.attachShadow({ mode: 'open' });
+    this.shadow.adoptedStyleSheets = [SIDEBAR_NAV_SHEET, todoSheet];
     this._lists = [];
     this._selectedId = null;
     this._selectedView = null;
@@ -38,99 +74,6 @@ class PosTodoSidebar extends HTMLElement {
     ];
 
     this.shadow.innerHTML = `
-      <style>
-        ${SIDEBAR_NAV_STYLES}
-
-        /* List items need relative positioning for the action overlay */
-        .nav-item { position: relative; }
-
-        /* Hide count when actions are showing so they don't overlap */
-        .nav-item:hover .nav-count { visibility: hidden; }
-
-        /* Action overlay — sits on top of the count badge on hover */
-        .nav-actions {
-          display: none;
-          position: absolute;
-          right: 0;
-          top: 50%;
-          transform: translateY(-50%);
-          align-items: center;
-          gap: 2px;
-          padding-right: 2px;
-          background: inherit; /* inherits hover/active bg from parent */
-        }
-        .nav-item:hover .nav-actions { display: flex; }
-
-        .nav-action-btn {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 22px;
-          height: 22px;
-          border: none;
-          border-radius: var(--pos-radius-sm);
-          background: transparent;
-          color: var(--pos-color-text-secondary);
-          cursor: pointer;
-          padding: 0;
-          transition: background 0.1s, color 0.1s;
-        }
-        .nav-action-btn:hover { background: var(--pos-color-border-default); color: var(--pos-color-text-primary); }
-        .nav-action-btn.delete:hover { color: var(--pos-color-priority-urgent); }
-        .nav-action-btn svg { pointer-events: none; }
-
-        /* Inline rename input replaces the nav-item row */
-        .rename-wrap {
-          padding: 2px var(--pos-space-xs);
-        }
-        .rename-input {
-          width: 100%;
-          padding: 4px var(--pos-space-sm);
-          border: 1px solid var(--pos-color-action-primary);
-          border-radius: var(--pos-radius-sm);
-          font-size: var(--pos-font-size-sm);
-          font-family: inherit;
-          background: var(--pos-color-background-primary);
-          color: var(--pos-color-text-primary);
-          outline: none;
-          box-sizing: border-box;
-        }
-
-        /* New list controls */
-        .new-list-btn {
-          display: flex;
-          align-items: center;
-          gap: var(--pos-space-xs);
-          width: 100%;
-          padding: 6px var(--pos-space-sm);
-          border: 1px dashed var(--pos-color-border-default);
-          border-radius: var(--pos-radius-sm);
-          background: transparent;
-          color: var(--pos-color-text-secondary);
-          font-size: var(--pos-font-size-sm);
-          font-family: inherit;
-          cursor: pointer;
-          transition: border-color 0.1s, color 0.1s;
-        }
-        .new-list-btn:hover {
-          border-color: var(--pos-color-action-primary);
-          color: var(--pos-color-action-primary);
-        }
-
-        .new-list-input {
-          width: 100%;
-          padding: 6px var(--pos-space-sm);
-          border: 1px solid var(--pos-color-action-primary);
-          border-radius: var(--pos-radius-sm);
-          font-size: var(--pos-font-size-sm);
-          font-family: inherit;
-          background: var(--pos-color-background-primary);
-          color: var(--pos-color-text-primary);
-          outline: none;
-          box-sizing: border-box;
-        }
-      </style>
-
       <pos-sidebar title="Todos">
 
         ${SMART_VIEWS.map(v => `
