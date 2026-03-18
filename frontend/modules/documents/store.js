@@ -3,17 +3,28 @@
 import { createStore } from '../../shared/services/state-store.js';
 
 const documentsStore = createStore({
-  currentFolderId: null,       // null = root (all documents)
-  folders: [],                 // root-level folders (or children of currentFolderId)
-  foldersTree: [],             // full folder tree for sidebar
-  documents: [],               // documents in current folder/filter
+  // Navigation state
+  selectedView: 'home',        // 'home' | 'recent' | 'favourites' | null
+  selectedFolderId: null,      // active folder ID (null when a smart view is active)
+  selectedFolderName: '',      // name of the active folder (for display)
+  folderPath: [],              // [{id, name}, ...] root→current, only set when in a folder
+
+  // Data
+  documents: [],               // documents shown in the list view
+  childFolders: [],            // subfolders inside the current folder
+  recentDocuments: [],         // recent access docs (for home + recent views)
+  rootFolders: [],             // root-level folders (for home lobby cards)
   selectedDocumentId: null,
+
+  // Filters
   tags: [],                    // all user tags with document counts
-  viewMode: 'list',            // 'list' or 'grid' — persisted
   tagFilter: null,             // currently active tag filter
+
+  // UI
+  viewMode: 'list',            // 'list' or 'grid'
   loading: false,
   uploading: false,
-  uploadProgress: 0,           // 0-100
+  uploadProgress: 0,
   error: null,
 });
 

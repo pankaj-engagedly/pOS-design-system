@@ -18,10 +18,14 @@ from .events import (
     publish_tag_event,
 )
 from .schemas import (
+    CommentCreate,
+    CommentResponse,
+    CommentUpdate,
     DocumentCreate,
     DocumentResponse,
     DocumentUpdate,
     FolderCreate,
+    FolderPathItem,
     FolderResponse,
     FolderUpdate,
     RecentDocumentResponse,
@@ -82,6 +86,18 @@ async def get_folder(
 ):
     try:
         return await service.get_folder(session, user_id, folder_id)
+    except NotFoundError as e:
+        _handle_not_found(e)
+
+
+@router.get("/folders/{folder_id}/path", response_model=list[FolderPathItem])
+async def get_folder_path(
+    folder_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        return await service.get_folder_path(session, user_id, folder_id)
     except NotFoundError as e:
         _handle_not_found(e)
 
@@ -310,6 +326,94 @@ async def revoke_share(
 ):
     try:
         await service.revoke_share(session, user_id, share_id)
+    except NotFoundError as e:
+        _handle_not_found(e)
+
+
+# --- Favourites ---
+
+
+@router.post("/documents/{document_id}/favourite", response_model=DocumentResponse, status_code=201)
+async def favourite_document(
+    document_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        return await service.favourite_document(session, user_id, document_id)
+    except NotFoundError as e:
+        _handle_not_found(e)
+
+
+@router.delete("/documents/{document_id}/favourite", status_code=204)
+async def unfavourite_document(
+    document_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        await service.unfavourite_document(session, user_id, document_id)
+    except NotFoundError as e:
+        _handle_not_found(e)
+
+
+@router.get("/favourites", response_model=list[DocumentResponse])
+async def list_favourites(
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    return await service.get_favourite_documents(session, user_id)
+
+
+# --- Comments ---
+
+
+@router.get("/documents/{document_id}/comments", response_model=list[CommentResponse])
+async def list_comments(
+    document_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        return await service.get_comments(session, user_id, document_id)
+    except NotFoundError as e:
+        _handle_not_found(e)
+
+
+@router.post("/documents/{document_id}/comments", response_model=CommentResponse, status_code=201)
+async def create_comment(
+    document_id: UUID,
+    data: CommentCreate,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        return await service.create_comment(session, user_id, document_id, data)
+    except NotFoundError as e:
+        _handle_not_found(e)
+
+
+@router.patch("/comments/{comment_id}", response_model=CommentResponse)
+async def update_comment(
+    comment_id: UUID,
+    data: CommentUpdate,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        return await service.update_comment(session, user_id, comment_id, data)
+    except NotFoundError as e:
+        _handle_not_found(e)
+
+
+@router.delete("/comments/{comment_id}", status_code=204)
+async def delete_comment(
+    comment_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    try:
+        await service.delete_comment(session, user_id, comment_id)
     except NotFoundError as e:
         _handle_not_found(e)
 

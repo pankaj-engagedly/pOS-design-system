@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 # --- Folder schemas ---
@@ -72,6 +72,8 @@ class DocumentResponse(BaseModel):
     content_type: str | None
     folder_id: UUID | None
     tags: list[TagResponse] = []
+    is_favourite: bool = False
+    comment_count: int = 0
     created_at: datetime
     updated_at: datetime
 
@@ -118,3 +120,31 @@ class RecentDocumentResponse(BaseModel):
 
 class ReorderRequest(BaseModel):
     ordered_ids: list[UUID]
+
+
+# --- Folder path ---
+
+class FolderPathItem(BaseModel):
+    id: UUID
+    name: str
+
+
+# --- Comment schemas ---
+
+class CommentCreate(BaseModel):
+    content: str = Field(..., min_length=1)
+
+
+class CommentUpdate(BaseModel):
+    content: str | None = None
+
+
+class CommentResponse(BaseModel):
+    id: UUID
+    document_id: UUID
+    user_id: UUID
+    content: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

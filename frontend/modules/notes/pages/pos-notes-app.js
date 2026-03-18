@@ -1,6 +1,7 @@
 // pos-notes-app — Main notes page: three-panel layout (folder | list | editor)
 // Composes: pos-folder-sidebar, pos-note-list, pos-note-editor
 
+import { confirmDialog } from '../../../shared/components/pos-confirm-dialog.js';
 import '../components/pos-folder-sidebar.js';
 import '../components/pos-note-list.js';
 import '../components/pos-note-editor.js';
@@ -133,7 +134,7 @@ class PosNotesApp extends HTMLElement {
     });
 
     this.shadow.addEventListener('folder-delete', async (e) => {
-      if (!confirm('Delete this folder? Notes inside will be moved to All Notes.')) return;
+      if (!await confirmDialog('Delete this folder? Notes inside will be moved to All Notes.', { confirmLabel: 'Delete', danger: true })) return;
       try {
         await notesApi.deleteFolder(e.detail.folderId);
         const state = notesStore.getState();
@@ -292,7 +293,7 @@ class PosNotesApp extends HTMLElement {
     });
 
     this.shadow.addEventListener('note-permanent-delete', async (e) => {
-      if (!confirm('Permanently delete this note? This cannot be undone.')) return;
+      if (!await confirmDialog('Permanently delete this note? This cannot be undone.', { confirmLabel: 'Delete', danger: true })) return;
       try {
         await notesApi.permanentDeleteNote(e.detail.noteId);
         const state = notesStore.getState();
@@ -323,6 +324,9 @@ class PosNotesApp extends HTMLElement {
       noteList.notes = state.notes;
       noteList.selectedNoteId = state.selectedNoteId;
       noteList.viewMode = state.viewMode;
+      const folder = state.folders?.find(f => f.id === state.selectedFolderId);
+      const viewLabels = { all: 'Notes', pinned: 'Pinned', trash: 'Trash' };
+      noteList.folderName = folder?.name || viewLabels[state.selectedView] || 'Notes';
     }
 
     const editor = this.shadow.querySelector('pos-note-editor');

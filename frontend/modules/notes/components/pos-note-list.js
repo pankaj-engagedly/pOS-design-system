@@ -4,6 +4,7 @@
 
 import './pos-note-list-item.js';
 import './pos-note-card.js';
+import '../../../shared/components/pos-page-header.js';
 
 class PosNoteList extends HTMLElement {
   constructor() {
@@ -15,11 +16,13 @@ class PosNoteList extends HTMLElement {
     this._searchValue = '';
     this._searchTimer = null;
     this._eventsBound = false;
+    this._folderName = 'Notes';
   }
 
   set notes(val) {
     this._notes = val || [];
     this._renderNotes();
+    this._updateHeader();
   }
 
   set selectedNoteId(val) {
@@ -31,6 +34,11 @@ class PosNoteList extends HTMLElement {
     this._viewMode = val;
     this._renderNotes();
     this._updateToolbar();
+  }
+
+  set folderName(val) {
+    this._folderName = val || 'Notes';
+    this._updateHeader();
   }
 
   connectedCallback() {
@@ -168,6 +176,11 @@ class PosNoteList extends HTMLElement {
         .empty-icon { font-size: 40px; }
       </style>
 
+      <pos-page-header id="page-header">
+        ${this._esc(this._folderName)}
+        <span slot="subtitle">${this._notes.length} note${this._notes.length !== 1 ? 's' : ''}</span>
+      </pos-page-header>
+
       <div class="toolbar">
         <input class="search-input" placeholder="Search notes..." value="${this._searchValue}" />
         <button class="toolbar-btn" data-action="toggle-grid" title="Toggle view">
@@ -224,6 +237,21 @@ class PosNoteList extends HTMLElement {
         container.appendChild(item);
       });
     }
+  }
+
+  _updateHeader() {
+    const header = this.shadow.querySelector('#page-header');
+    if (!header) return;
+    header.innerHTML = `
+      ${this._esc(this._folderName)}
+      <span slot="subtitle">${this._notes.length} note${this._notes.length !== 1 ? 's' : ''}</span>
+    `;
+  }
+
+  _esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
   }
 }
 

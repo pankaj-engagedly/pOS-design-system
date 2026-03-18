@@ -2,6 +2,7 @@
 
 import './pos-vault-field-row.js';
 import * as api from '../services/vault-api.js';
+import { confirmDialog } from '../../../shared/components/pos-confirm-dialog.js';
 import store from '../store.js';
 
 const TAG = 'pos-vault-item-detail';
@@ -281,7 +282,7 @@ class PosVaultItemDetail extends HTMLElement {
   }
 
   async _deleteItem() {
-    if (!confirm('Delete this vault item and all its fields?')) return;
+    if (!await confirmDialog('Delete this vault item and all its fields?', { confirmLabel: 'Delete', danger: true })) return;
     const { selectedItemId } = store.getState();
     this.dispatchEvent(new CustomEvent('item-delete', {
       detail: { itemId: selectedItemId },
@@ -330,7 +331,7 @@ class PosVaultItemDetail extends HTMLElement {
   }
 
   async _onFieldDelete(e) {
-    if (!confirm('Delete this field?')) return;
+    if (!await confirmDialog('Delete this field?', { confirmLabel: 'Delete', danger: true })) return;
     const { fieldId } = e.detail;
     const { selectedItemId } = store.getState();
     this.dispatchEvent(new CustomEvent('field-delete', {

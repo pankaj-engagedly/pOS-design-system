@@ -42,7 +42,7 @@ class PosOverviewApp extends HTMLElement {
         }
       </style>
 
-      <pos-page-header separator>
+      <pos-page-header>
         Welcome back!
         <span slot="subtitle">Here's what's happening with your life today</span>
       </pos-page-header>

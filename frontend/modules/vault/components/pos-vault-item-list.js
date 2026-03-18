@@ -1,6 +1,7 @@
 // pos-vault-item-list — scrollable item list with filter pills, search, and create button
 
 import store from '../store.js';
+import '../../../shared/components/pos-page-header.js';
 
 const TAG = 'pos-vault-item-list';
 
@@ -105,6 +106,11 @@ class PosVaultItemList extends HTMLElement {
         }
         .empty { display: flex; align-items: center; justify-content: center; height: 120px; color: var(--pos-color-text-secondary); font-size: var(--pos-font-size-sm); }
       </style>
+
+      <pos-page-header>
+        ${this._favorites ? 'Favourites' : this._activeTag ? this._esc(this._activeTag) : 'Vault'}
+        <span slot="subtitle">${items.length} item${items.length !== 1 ? 's' : ''}</span>
+      </pos-page-header>
 
       <div class="filters">
         <button class="filter-pill ${!this._activeTag && !this._favorites ? 'active' : ''}" data-action="filter-all">All</button>

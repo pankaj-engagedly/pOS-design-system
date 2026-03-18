@@ -12,8 +12,10 @@ from pos_contracts.logging import trace
 from pos_contracts import tag_service
 from pos_contracts.models import Tag, Taggable
 
-from .models import DocFolder, Document, DocShare, DocRecentAccess
+from .models import DocFolder, Document, DocShare, DocRecentAccess, DocFavourite, DocComment
 from .schemas import (
+    CommentCreate,
+    CommentUpdate,
     DocumentCreate,
     DocumentUpdate,
     FolderCreate,
@@ -128,6 +130,39 @@ async def delete_folder(session: AsyncSession, user_id: UUID, folder_id: UUID) -
     await session.commit()
 
 
+@trace
+async def get_folder_path(
+    session: AsyncSession, user_id: UUID, folder_id: UUID
+) -> list[dict]:
+    """Walk parent_id chain from folder_id up to root, return ordered list root→current.
+
+    Each item is {'id': UUID, 'name': str}.
+    Raises NotFoundError if folder_id doesn't exist or doesn't belong to user.
+    """
+    # Verify the starting folder belongs to the user
+    await _get_folder_orm(session, user_id, folder_id)
+
+    path = []
+    visited = set()
+    current_id = folder_id
+
+    while current_id and current_id not in visited:
+        visited.add(current_id)
+        result = await session.execute(
+            select(DocFolder.id, DocFolder.name, DocFolder.parent_id)
+            .where(DocFolder.id == current_id, DocFolder.user_id == user_id)
+        )
+        row = result.fetchone()
+        if not row:
+            break
+        path.append({"id": row[0], "name": row[1]})
+        current_id = row[2]
+
+    # Walk produced current→root; reverse to get root→current
+    path.reverse()
+    return path
+
+
 async def reorder_folders(
     session: AsyncSession, user_id: UUID, data: ReorderRequest
 ) -> None:
@@ -165,7 +200,7 @@ async def create_document(
     session.add(doc)
     await session.commit()
     await session.refresh(doc)
-    return await _doc_with_tags(session, doc)
+    return await _doc_with_tags(session, doc, favourite_ids=set())
 
 
 @trace
@@ -176,7 +211,9 @@ async def get_document(
     allow_shared: bool = False,
 ) -> dict:
     doc = await _get_doc_orm(session, user_id, document_id, allow_shared=allow_shared)
-    return await _doc_with_tags(session, doc)
+    fav_ids = await _get_favourite_ids(session, user_id)
+    cc = await _get_comment_counts(session, [document_id])
+    return await _doc_with_tags(session, doc, favourite_ids=fav_ids, comment_counts=cc)
 
 
 @trace
@@ -211,9 +248,11 @@ async def get_documents(
 
     doc_ids = [d.id for d in docs]
     tags_by_doc = await _get_tags_for_docs(session, doc_ids)
+    fav_ids = await _get_favourite_ids(session, user_id)
+    comment_counts = await _get_comment_counts(session, doc_ids)
 
     return [
-        {**_model_to_dict(d), "tags": tags_by_doc.get(d.id, [])}
+        {**_model_to_dict(d), "tags": tags_by_doc.get(d.id, []), "is_favourite": d.id in fav_ids, "comment_count": comment_counts.get(d.id, 0)}
         for d in docs
     ]
 
@@ -228,7 +267,9 @@ async def update_document(
     for key, value in data.model_dump(exclude_unset=True).items():
         setattr(doc, key, value)
     await session.commit()
-    return await _doc_with_tags(session, doc)
+    fav_ids = await _get_favourite_ids(session, user_id)
+    cc = await _get_comment_counts(session, [document_id])
+    return await _doc_with_tags(session, doc, favourite_ids=fav_ids, comment_counts=cc)
 
 
 @trace
@@ -429,6 +470,73 @@ async def check_document_access(
     return False
 
 
+# --- Favourites ---
+
+
+@trace
+async def favourite_document(
+    session: AsyncSession, user_id: UUID, document_id: UUID
+) -> dict:
+    """Add a document to the user's favourites. Idempotent — ignores if already favourited."""
+    # Verify document exists and is accessible
+    await _get_doc_orm(session, user_id, document_id)
+
+    # Check if already favourited (avoid duplicate insert)
+    existing = await session.execute(
+        select(DocFavourite).where(
+            DocFavourite.user_id == user_id,
+            DocFavourite.document_id == document_id,
+        )
+    )
+    if not existing.scalar_one_or_none():
+        fav = DocFavourite(user_id=user_id, document_id=document_id)
+        session.add(fav)
+        await session.commit()
+
+    return await get_document(session, user_id, document_id)
+
+
+@trace
+async def unfavourite_document(
+    session: AsyncSession, user_id: UUID, document_id: UUID
+) -> None:
+    """Remove a document from the user's favourites. No-ops if not favourited."""
+    await session.execute(
+        delete(DocFavourite).where(
+            DocFavourite.user_id == user_id,
+            DocFavourite.document_id == document_id,
+        )
+    )
+    await session.commit()
+
+
+@trace
+async def get_favourite_documents(
+    session: AsyncSession, user_id: UUID
+) -> list[dict]:
+    """Return all documents favourited by the user, most recently favourited first."""
+    result = await session.execute(
+        select(DocFavourite, Document)
+        .join(Document, Document.id == DocFavourite.document_id)
+        .where(DocFavourite.user_id == user_id)
+        .order_by(DocFavourite.created_at.desc())
+    )
+    rows = result.all()
+
+    if not rows:
+        return []
+
+    docs = [row[1] for row in rows]
+    doc_ids = [d.id for d in docs]
+    tags_by_doc = await _get_tags_for_docs(session, doc_ids)
+    comment_counts = await _get_comment_counts(session, doc_ids)
+
+    return [
+        {**_model_to_dict(d), "tags": tags_by_doc.get(d.id, []), "is_favourite": True, "comment_count": comment_counts.get(d.id, 0)}
+        for d in docs
+    ]
+
+
 # --- Recent access ---
 
 
@@ -493,14 +601,92 @@ async def get_recent_documents(
 
     doc_ids = [row[1].id for row in rows]
     tags_by_doc = await _get_tags_for_docs(session, doc_ids)
+    fav_ids = await _get_favourite_ids(session, user_id)
+    comment_counts = await _get_comment_counts(session, doc_ids)
 
     return [
         {
-            "document": {**_model_to_dict(doc), "tags": tags_by_doc.get(doc.id, [])},
+            "document": {
+                **_model_to_dict(doc),
+                "tags": tags_by_doc.get(doc.id, []),
+                "is_favourite": doc.id in fav_ids,
+                "comment_count": comment_counts.get(doc.id, 0),
+            },
             "accessed_at": access.accessed_at,
         }
         for access, doc in rows
     ]
+
+
+# --- Comments ---
+
+
+@trace
+async def get_comments(
+    session: AsyncSession, user_id: UUID, document_id: UUID
+) -> list[DocComment]:
+    """Return comments for a document. Verifies the document belongs to the user first."""
+    await _get_doc_orm(session, user_id, document_id, allow_shared=True)
+    result = await session.execute(
+        select(DocComment)
+        .where(DocComment.document_id == document_id)
+        .order_by(DocComment.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+@trace
+async def create_comment(
+    session: AsyncSession, user_id: UUID, document_id: UUID, data: CommentCreate
+) -> DocComment:
+    """Create a comment on a document. Document must be accessible by user."""
+    await _get_doc_orm(session, user_id, document_id, allow_shared=True)
+    comment = DocComment(
+        user_id=user_id,
+        document_id=document_id,
+        content=data.content,
+    )
+    session.add(comment)
+    await session.commit()
+    await session.refresh(comment)
+    return comment
+
+
+@trace
+async def update_comment(
+    session: AsyncSession, user_id: UUID, comment_id: UUID, data: CommentUpdate
+) -> DocComment:
+    """Update a comment. Only the comment's author can edit it."""
+    result = await session.execute(
+        select(DocComment).where(
+            DocComment.id == comment_id, DocComment.user_id == user_id
+        )
+    )
+    comment = result.scalar_one_or_none()
+    if not comment:
+        raise NotFoundError(f"Comment {comment_id} not found")
+    if data.content is not None:
+        comment.content = data.content
+    await session.commit()
+    await session.refresh(comment)
+    return comment
+
+
+@trace
+async def delete_comment(
+    session: AsyncSession, user_id: UUID, comment_id: UUID
+) -> None:
+    """Delete a comment. Only the comment's author can delete it."""
+    result = await session.execute(
+        select(DocComment).where(
+            DocComment.id == comment_id, DocComment.user_id == user_id
+        )
+    )
+    comment = result.scalar_one_or_none()
+    if not comment:
+        raise NotFoundError(f"Comment {comment_id} not found")
+    await session.delete(comment)
+    await session.commit()
 
 
 # --- Helpers ---
@@ -543,12 +729,29 @@ async def _get_doc_orm(
     return doc
 
 
-async def _doc_with_tags(session: AsyncSession, doc: Document) -> dict:
+async def _doc_with_tags(
+    session: AsyncSession,
+    doc: Document,
+    favourite_ids: set | None = None,
+    comment_counts: dict | None = None,
+) -> dict:
     tags = await tag_service.get_tags_for_entity(session, "document", doc.id)
+    is_fav = doc.id in favourite_ids if favourite_ids is not None else False
+    cc = comment_counts.get(doc.id, 0) if comment_counts else 0
     return {
         **_model_to_dict(doc),
         "tags": [_model_to_dict(t) for t in tags],
+        "is_favourite": is_fav,
+        "comment_count": cc,
     }
+
+
+async def _get_favourite_ids(session: AsyncSession, user_id: UUID) -> set:
+    """Return the set of document IDs favourited by the user."""
+    result = await session.execute(
+        select(DocFavourite.document_id).where(DocFavourite.user_id == user_id)
+    )
+    return {row[0] for row in result.all()}
 
 
 async def _get_tags_for_docs(
@@ -569,6 +772,20 @@ async def _get_tags_for_docs(
     for tag, doc_id in result.all():
         tags_by_doc.setdefault(doc_id, []).append(_model_to_dict(tag))
     return tags_by_doc
+
+
+async def _get_comment_counts(
+    session: AsyncSession, doc_ids: list[UUID]
+) -> dict[UUID, int]:
+    """Batch fetch comment counts for a list of documents."""
+    if not doc_ids:
+        return {}
+    result = await session.execute(
+        select(DocComment.document_id, func.count(DocComment.id))
+        .where(DocComment.document_id.in_(doc_ids))
+        .group_by(DocComment.document_id)
+    )
+    return {row[0]: row[1] for row in result.all()}
 
 
 async def _get_folder_depth(session: AsyncSession, folder_id: UUID) -> int:

@@ -12,8 +12,10 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -106,3 +108,38 @@ class DocRecentAccess(UserScopedBase):
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+
+class DocFavourite(UserScopedBase):
+    """Tracks which documents a user has starred/favourited."""
+
+    __tablename__ = "doc_favourites"
+    __table_args__ = (
+        UniqueConstraint("user_id", "document_id", name="uq_doc_favourites_user_document"),
+    )
+
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+
+class DocComment(UserScopedBase):
+    """A comment on a document, written by the document owner or a shared user."""
+
+    __tablename__ = "doc_comments"
+    __table_args__ = (
+        Index("ix_doc_comments_document_created", "document_id", "created_at"),
+    )
+
+    document_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    content = Column(Text, nullable=False)
+
+    document = relationship("Document", backref="comments")

@@ -35,6 +35,10 @@ export function reorderFolders(orderedIds) {
   });
 }
 
+export function getFolderPath(folderId) {
+  return apiFetch(`/api/documents/folders/${folderId}/path`);
+}
+
 // --- Documents ---
 
 export function getDocuments(params = {}) {
@@ -154,10 +158,48 @@ export function getSharedWithMe() {
   return apiFetch('/api/documents/shared-with-me');
 }
 
+// --- Favourites ---
+
+export function favouriteDocument(documentId) {
+  return apiFetch(`/api/documents/documents/${documentId}/favourite`, { method: 'POST' });
+}
+
+export function unfavouriteDocument(documentId) {
+  return apiFetch(`/api/documents/documents/${documentId}/favourite`, { method: 'DELETE' });
+}
+
+export function getFavourites() {
+  return apiFetch('/api/documents/favourites');
+}
+
 // --- Recent ---
 
 export function getRecentDocuments(limit = 20) {
   return apiFetch(`/api/documents/recent?limit=${limit}`);
+}
+
+// --- Comments ---
+
+export function getComments(documentId) {
+  return apiFetch(`/api/documents/documents/${documentId}/comments`);
+}
+
+export function createComment(documentId, content) {
+  return apiFetch(`/api/documents/documents/${documentId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  });
+}
+
+export function updateComment(commentId, content) {
+  return apiFetch(`/api/documents/comments/${commentId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ content }),
+  });
+}
+
+export function deleteComment(commentId) {
+  return apiFetch(`/api/documents/comments/${commentId}`, { method: 'DELETE' });
 }
 
 // --- Attachment download helper ---

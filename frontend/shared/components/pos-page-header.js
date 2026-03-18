@@ -29,34 +29,37 @@ sheet.replaceSync(`
     flex-shrink: 0;
   }
 
-  :host([separator]) {
-    border-bottom: 1px solid var(--pos-color-border-default);
-    padding-bottom: var(--pos-space-md);
-  }
-
   .row {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: var(--pos-space-sm);
   }
 
   h2 {
     margin: 0;
-    font-size: var(--pos-font-size-2xl);
+    font-size: var(--pos-font-size-lg);
     font-weight: var(--pos-font-weight-bold);
     color: var(--pos-color-text-primary);
     line-height: 1.2;
   }
 
+  .spacer { flex: 1; }
+
   ::slotted([slot="icon"]) {
     font-size: var(--pos-raw-font-size-xl);
     line-height: 1;
-    align-self: center;
   }
 
   ::slotted([slot="meta"]) {
     font-size: var(--pos-font-size-sm);
     color: var(--pos-color-text-secondary);
+  }
+
+  ::slotted([slot="actions"]) {
+    display: flex;
+    align-items: center;
+    gap: var(--pos-space-xs);
+    flex-shrink: 0;
   }
 
   ::slotted([slot="subtitle"]) {
@@ -81,6 +84,8 @@ class PosPageHeader extends HTMLElement {
         <slot name="icon"></slot>
         <h2><slot></slot></h2>
         <slot name="meta"></slot>
+        <div class="spacer"></div>
+        <slot name="actions"></slot>
       </div>
       <slot name="subtitle"></slot>
     `;

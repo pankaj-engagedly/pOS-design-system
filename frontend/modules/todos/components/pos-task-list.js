@@ -241,7 +241,7 @@ class PosTaskList extends HTMLElement {
 
       <pos-page-header>
         ${this._esc(this._listName)}
-        <span slot="meta">${filteredTasks.length} task${filteredTasks.length !== 1 ? 's' : ''}</span>
+        <span slot="subtitle">${filteredTasks.length} task${filteredTasks.length !== 1 ? 's' : ''}</span>
       </pos-page-header>
 
       ${showFilterChips ? `<div class="filters"><ui-chips id="filter-chips" active="${this._activeFilter}"></ui-chips></div>` : ''}
