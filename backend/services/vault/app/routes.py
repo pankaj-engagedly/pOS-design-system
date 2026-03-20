@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_session
 from .schemas import (
-    ReorderRequest, TagCreate, TagResponse,
-    VaultFieldCreate, VaultFieldResponse, VaultFieldRevealResponse, VaultFieldUpdate,
-    VaultItemCreate, VaultItemDetailResponse, VaultItemResponse, VaultItemUpdate,
+    CategoryCreate, CategoryUpdate, CategoryReorderRequest, CategoryResponse,
+    FieldTemplateCreate, FieldTemplateUpdate, FieldTemplateReorderRequest, FieldTemplateResponse,
+    VaultItemCreate, VaultItemUpdate, VaultItemResponse, VaultItemDetailResponse,
+    FieldValueCreate, FieldValueUpdate, FieldValueRevealResponse,
+    TagCreate, TagResponse,
 )
 from . import service
 
@@ -25,45 +27,147 @@ def get_app_secret(request: Request) -> str:
     return request.app.state.config.APP_SECRET_KEY
 
 
+# ── Categories ────────────────────────────────────────────────────────────────
+
+@router.get("/categories", response_model=List[CategoryResponse])
+async def list_categories(
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    return await service.get_categories(session, user_id)
+
+
+@router.post("/categories", response_model=CategoryResponse, status_code=201)
+async def create_category(
+    data: CategoryCreate,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    return await service.create_category(session, user_id, data)
+
+
+@router.patch("/categories/reorder", status_code=204)
+async def reorder_categories(
+    data: CategoryReorderRequest,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    await service.reorder_categories(session, user_id, data.ordered_ids)
+
+
+@router.patch("/categories/{category_id}", response_model=CategoryResponse)
+async def update_category(
+    category_id: UUID,
+    data: CategoryUpdate,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    return await service.update_category(session, user_id, category_id, data)
+
+
+@router.delete("/categories/{category_id}", status_code=204)
+async def delete_category(
+    category_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    await service.delete_category(session, user_id, category_id)
+
+
+# ── Field Templates ───────────────────────────────────────────────────────────
+
+@router.get("/categories/{category_id}/templates", response_model=List[FieldTemplateResponse])
+async def list_templates(
+    category_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    return await service.get_templates(session, user_id, category_id)
+
+
+@router.post("/categories/{category_id}/templates", response_model=FieldTemplateResponse, status_code=201)
+async def create_template(
+    category_id: UUID,
+    data: FieldTemplateCreate,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    return await service.create_template(session, user_id, category_id, data)
+
+
+@router.patch("/categories/{category_id}/templates/reorder", status_code=204)
+async def reorder_templates(
+    category_id: UUID,
+    data: FieldTemplateReorderRequest,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    await service.reorder_templates(session, user_id, category_id, data.ordered_ids)
+
+
+@router.patch("/categories/{category_id}/templates/{template_id}", response_model=FieldTemplateResponse)
+async def update_template(
+    category_id: UUID,
+    template_id: UUID,
+    data: FieldTemplateUpdate,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    return await service.update_template(session, user_id, category_id, template_id, data)
+
+
+@router.delete("/categories/{category_id}/templates/{template_id}", status_code=204)
+async def delete_template(
+    category_id: UUID,
+    template_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    await service.delete_template(session, user_id, category_id, template_id)
+
+
 # ── Vault Items ───────────────────────────────────────────────────────────────
 
 @router.get("/items", response_model=List[VaultItemResponse])
 async def list_items(
-    tag: Optional[str] = None,
+    category_id: Optional[UUID] = None,
     search: Optional[str] = None,
-    favorites: Optional[bool] = None,
+    is_favorite: Optional[bool] = None,
     user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    return await service.get_items(session, user_id, tag=tag, search=search, favorites=favorites)
+    return await service.get_items(session, user_id, category_id=category_id, search=search, is_favorite=is_favorite)
 
 
 @router.post("/items", response_model=VaultItemDetailResponse, status_code=201)
 async def create_item(
     data: VaultItemCreate,
+    request: Request,
     user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    return await service.create_item(session, user_id, data)
+    return await service.create_item(session, user_id, data, get_app_secret(request))
 
 
 @router.get("/items/{item_id}", response_model=VaultItemDetailResponse)
 async def get_item(
     item_id: UUID,
+    request: Request,
     user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    return await service.get_item(session, user_id, item_id)
+    return await service.get_item(session, user_id, item_id, get_app_secret(request))
 
 
 @router.patch("/items/{item_id}", response_model=VaultItemDetailResponse)
 async def update_item(
     item_id: UUID,
     data: VaultItemUpdate,
+    request: Request,
     user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    return await service.update_item(session, user_id, item_id, data)
+    return await service.update_item(session, user_id, item_id, data, get_app_secret(request))
 
 
 @router.delete("/items/{item_id}", status_code=204)
@@ -75,60 +179,51 @@ async def delete_item(
     await service.delete_item(session, user_id, item_id)
 
 
-# ── Fields ────────────────────────────────────────────────────────────────────
+# ── Field Values ──────────────────────────────────────────────────────────────
 
-@router.post("/items/{item_id}/fields", response_model=VaultFieldResponse, status_code=201)
-async def add_field(
+@router.post("/items/{item_id}/fields", response_model=VaultItemDetailResponse, status_code=201)
+async def add_field_value(
     item_id: UUID,
-    data: VaultFieldCreate,
+    data: FieldValueCreate,
     request: Request,
     user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    return await service.add_field(session, user_id, item_id, data, get_app_secret(request))
+    return await service.add_field_value(session, user_id, item_id, data, get_app_secret(request))
 
 
-@router.patch("/items/{item_id}/fields/reorder", status_code=204)
-async def reorder_fields(
+@router.patch("/items/{item_id}/fields/{value_id}", response_model=VaultItemDetailResponse)
+async def update_field_value(
     item_id: UUID,
-    data: ReorderRequest,
-    user_id: UUID = Depends(get_user_id),
-    session: AsyncSession = Depends(get_session),
-):
-    await service.reorder_fields(session, user_id, item_id, data.ordered_ids)
-
-
-@router.patch("/items/{item_id}/fields/{field_id}", response_model=VaultFieldResponse)
-async def update_field(
-    item_id: UUID,
-    field_id: UUID,
-    data: VaultFieldUpdate,
+    value_id: UUID,
+    data: FieldValueUpdate,
     request: Request,
     user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    return await service.update_field(session, user_id, item_id, field_id, data, get_app_secret(request))
+    return await service.update_field_value(session, user_id, item_id, value_id, data, get_app_secret(request))
 
 
-@router.delete("/items/{item_id}/fields/{field_id}", status_code=204)
-async def delete_field(
+@router.delete("/items/{item_id}/fields/{value_id}", response_model=VaultItemDetailResponse)
+async def delete_field_value(
     item_id: UUID,
-    field_id: UUID,
-    user_id: UUID = Depends(get_user_id),
-    session: AsyncSession = Depends(get_session),
-):
-    await service.delete_field(session, user_id, item_id, field_id)
-
-
-@router.get("/items/{item_id}/fields/{field_id}/reveal", response_model=VaultFieldRevealResponse)
-async def reveal_field(
-    item_id: UUID,
-    field_id: UUID,
+    value_id: UUID,
     request: Request,
     user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_session),
 ):
-    return await service.reveal_field(session, user_id, item_id, field_id, get_app_secret(request))
+    return await service.delete_field_value(session, user_id, item_id, value_id, get_app_secret(request))
+
+
+@router.get("/items/{item_id}/fields/{value_id}/reveal", response_model=FieldValueRevealResponse)
+async def reveal_field_value(
+    item_id: UUID,
+    value_id: UUID,
+    request: Request,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_session),
+):
+    return await service.reveal_field_value(session, user_id, item_id, value_id, get_app_secret(request))
 
 
 # ── Tags ──────────────────────────────────────────────────────────────────────

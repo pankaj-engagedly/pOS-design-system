@@ -63,7 +63,7 @@ registerRoute('/todos', { module: 'todos', label: 'Todos', icon: 'check-square' 
 registerRoute('/notes', { module: 'notes', label: 'Notes', icon: 'file-text' });
 registerRoute('/knowledge-base', { module: 'knowledge-base', label: 'Knowledge Base', icon: 'book-open' });
 registerRoute('/vault', { module: 'vault', label: 'Vault', icon: 'lock' });
-registerRoute('/feeds', { module: 'feed-watcher', label: 'Feeds', icon: 'rss' });
+registerRoute('/feeds', { module: 'feed-watcher', label: 'Feeds', icon: 'rss', hidden: true });
 registerRoute('/documents', { module: 'documents', label: 'Documents', icon: 'folder' });
 registerRoute('/documents/shared', { module: 'documents', page: 'pos-documents-shared-app', label: 'Shared with Me', hidden: true });
 registerRoute('/documents/recent', { module: 'documents', page: 'pos-documents-recent-app', label: 'Recent Documents', hidden: true });

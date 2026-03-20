@@ -119,7 +119,7 @@ class DomainEvent(BaseEvent):
         """
         payload = {}
         for attr in cls._payload_fields:
-            val = getattr(model, attr)
+            val = model[attr] if isinstance(model, dict) else getattr(model, attr)
             # UUID objects have .hex — convert to string for JSON serialization
             payload[attr] = str(val) if val is not None and hasattr(val, "hex") else val
         payload.update(extra)

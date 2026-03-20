@@ -2,13 +2,77 @@
 
 import { apiFetch } from '../../../shared/services/api-client.js';
 
+// ── Categories ────────────────────────────────────────────────────────────────
+
+export function getCategories() {
+  return apiFetch('/api/vault/categories');
+}
+
+export function createCategory(data) {
+  return apiFetch('/api/vault/categories', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateCategory(id, data) {
+  return apiFetch(`/api/vault/categories/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteCategory(id) {
+  return apiFetch(`/api/vault/categories/${id}`, { method: 'DELETE' });
+}
+
+export function reorderCategories(orderedIds) {
+  return apiFetch('/api/vault/categories/reorder', {
+    method: 'PATCH',
+    body: JSON.stringify({ ordered_ids: orderedIds }),
+  });
+}
+
+// ── Field Templates ───────────────────────────────────────────────────────────
+
+export function getTemplates(categoryId) {
+  return apiFetch(`/api/vault/categories/${categoryId}/templates`);
+}
+
+export function createTemplate(categoryId, data) {
+  return apiFetch(`/api/vault/categories/${categoryId}/templates`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateTemplate(categoryId, templateId, data) {
+  return apiFetch(`/api/vault/categories/${categoryId}/templates/${templateId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteTemplate(categoryId, templateId) {
+  return apiFetch(`/api/vault/categories/${categoryId}/templates/${templateId}`, {
+    method: 'DELETE',
+  });
+}
+
+export function reorderTemplates(categoryId, orderedIds) {
+  return apiFetch(`/api/vault/categories/${categoryId}/templates/reorder`, {
+    method: 'PATCH',
+    body: JSON.stringify({ ordered_ids: orderedIds }),
+  });
+}
+
 // ── Items ─────────────────────────────────────────────────────────────────────
 
 export function getItems(params = {}) {
   const q = new URLSearchParams();
-  if (params.tag) q.set('tag', params.tag);
+  if (params.category_id) q.set('category_id', params.category_id);
   if (params.search) q.set('search', params.search);
-  if (params.favorites) q.set('favorites', 'true');
+  if (params.is_favorite) q.set('is_favorite', 'true');
   const qs = q.toString();
   return apiFetch(`/api/vault/items${qs ? '?' + qs : ''}`);
 }
@@ -35,35 +99,28 @@ export function deleteItem(id) {
   return apiFetch(`/api/vault/items/${id}`, { method: 'DELETE' });
 }
 
-// ── Fields ────────────────────────────────────────────────────────────────────
+// ── Field Values ──────────────────────────────────────────────────────────────
 
-export function addField(itemId, data) {
+export function addFieldValue(itemId, data) {
   return apiFetch(`/api/vault/items/${itemId}/fields`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export function updateField(itemId, fieldId, data) {
-  return apiFetch(`/api/vault/items/${itemId}/fields/${fieldId}`, {
+export function updateFieldValue(itemId, valueId, data) {
+  return apiFetch(`/api/vault/items/${itemId}/fields/${valueId}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
   });
 }
 
-export function deleteField(itemId, fieldId) {
-  return apiFetch(`/api/vault/items/${itemId}/fields/${fieldId}`, { method: 'DELETE' });
+export function deleteFieldValue(itemId, valueId) {
+  return apiFetch(`/api/vault/items/${itemId}/fields/${valueId}`, { method: 'DELETE' });
 }
 
-export function reorderFields(itemId, orderedIds) {
-  return apiFetch(`/api/vault/items/${itemId}/fields/reorder`, {
-    method: 'PATCH',
-    body: JSON.stringify({ ordered_ids: orderedIds }),
-  });
-}
-
-export function revealField(itemId, fieldId) {
-  return apiFetch(`/api/vault/items/${itemId}/fields/${fieldId}/reveal`);
+export function revealFieldValue(itemId, valueId) {
+  return apiFetch(`/api/vault/items/${itemId}/fields/${valueId}/reveal`);
 }
 
 // ── Tags ──────────────────────────────────────────────────────────────────────

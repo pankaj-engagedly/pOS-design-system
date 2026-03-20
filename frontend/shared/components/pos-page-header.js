@@ -28,6 +28,10 @@ sheet.replaceSync(`
     padding: var(--pos-space-md) var(--pos-space-lg) var(--pos-space-sm);
     flex-shrink: 0;
   }
+  :host([separator]) {
+    border-bottom: 1px solid var(--pos-color-border-default);
+    padding-bottom: var(--pos-space-md);
+  }
 
   .row {
     display: flex;

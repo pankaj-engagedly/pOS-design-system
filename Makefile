@@ -19,10 +19,11 @@ todos      ?= $(LOG_LEVEL)
 notes      ?= $(LOG_LEVEL)
 documents  ?= $(LOG_LEVEL)
 vault      ?= $(LOG_LEVEL)
+kb         ?= $(LOG_LEVEL)
 gateway    ?= $(LOG_LEVEL)
 
 dev:
-	@auth=$(auth) todos=$(todos) notes=$(notes) documents=$(documents) vault=$(vault) gateway=$(gateway) bash infra/scripts/dev-start.sh
+	@auth=$(auth) todos=$(todos) notes=$(notes) documents=$(documents) vault=$(vault) kb=$(kb) gateway=$(gateway) bash infra/scripts/dev-start.sh
 
 dev-infra:
 	docker compose -f backend/docker-compose.yml up -d

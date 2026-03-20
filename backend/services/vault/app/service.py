@@ -1,8 +1,10 @@
-"""Vault service layer — business logic for vault items and fields."""
+"""Vault service layer — categories, field templates, items, field values."""
 
+from collections import defaultdict
 from uuid import UUID
 from typing import List, Optional
 
+from fastapi import HTTPException
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,10 +12,12 @@ from pos_contracts import tag_service
 from pos_contracts.models import Taggable
 
 from .encryption import MASK, get_encryption_key, encrypt_value, decrypt_value
-from .models import VaultField, VaultItem
+from .models import VaultCategory, VaultFieldTemplate, VaultItem, VaultFieldValue
 from .schemas import (
+    CategoryCreate, CategoryUpdate,
+    FieldTemplateCreate, FieldTemplateUpdate,
     VaultItemCreate, VaultItemUpdate,
-    VaultFieldCreate, VaultFieldUpdate,
+    FieldValueCreate, FieldValueUpdate,
 )
 
 ENTITY_TYPE = "vault_item"
@@ -21,15 +25,30 @@ ENTITY_TYPE = "vault_item"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _mask_field(field: VaultField) -> dict:
-    return {
-        "id": field.id,
-        "vault_item_id": field.vault_item_id,
-        "field_name": field.field_name,
-        "field_value": MASK if field.field_type == "secret" else field.field_value,
-        "field_type": field.field_type,
-        "position": field.position,
-    }
+async def _get_category_or_404(session: AsyncSession, user_id: UUID, category_id: UUID) -> VaultCategory:
+    result = await session.execute(
+        select(VaultCategory).where(VaultCategory.id == category_id, VaultCategory.user_id == user_id)
+    )
+    cat = result.scalar_one_or_none()
+    if not cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+    return cat
+
+
+async def _get_template_or_404(
+    session: AsyncSession, user_id: UUID, category_id: UUID, template_id: UUID
+) -> VaultFieldTemplate:
+    result = await session.execute(
+        select(VaultFieldTemplate).where(
+            VaultFieldTemplate.id == template_id,
+            VaultFieldTemplate.category_id == category_id,
+            VaultFieldTemplate.user_id == user_id,
+        )
+    )
+    tpl = result.scalar_one_or_none()
+    if not tpl:
+        raise HTTPException(status_code=404, detail="Field template not found")
+    return tpl
 
 
 async def _get_item_or_404(session: AsyncSession, user_id: UUID, item_id: UUID) -> VaultItem:
@@ -38,42 +57,139 @@ async def _get_item_or_404(session: AsyncSession, user_id: UUID, item_id: UUID) 
     )
     item = result.scalar_one_or_none()
     if not item:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Vault item not found")
     return item
 
 
-async def _get_field_or_404(
-    session: AsyncSession, user_id: UUID, item_id: UUID, field_id: UUID
-) -> VaultField:
+async def _get_field_value_or_404(
+    session: AsyncSession, user_id: UUID, item_id: UUID, value_id: UUID
+) -> VaultFieldValue:
     result = await session.execute(
-        select(VaultField).where(
-            VaultField.id == field_id,
-            VaultField.vault_item_id == item_id,
-            VaultField.user_id == user_id,
+        select(VaultFieldValue).where(
+            VaultFieldValue.id == value_id,
+            VaultFieldValue.item_id == item_id,
+            VaultFieldValue.user_id == user_id,
         )
     )
-    field = result.scalar_one_or_none()
-    if not field:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="Field not found")
-    return field
+    val = result.scalar_one_or_none()
+    if not val:
+        raise HTTPException(status_code=404, detail="Field value not found")
+    return val
+
+
+def _mask_value(field_type: str, field_value: Optional[str]) -> Optional[str]:
+    if field_type == "secret" and field_value:
+        return MASK
+    return field_value
+
+
+async def _build_resolved_sections(
+    session: AsyncSession, item: VaultItem, app_secret: str, user_id: UUID
+) -> list:
+    """Merge category templates with stored values into sectioned response."""
+    # Load all templates for this category, ordered by position
+    templates_result = await session.execute(
+        select(VaultFieldTemplate)
+        .where(VaultFieldTemplate.category_id == item.category_id)
+        .order_by(VaultFieldTemplate.section, VaultFieldTemplate.position)
+    )
+    templates = templates_result.scalars().all()
+
+    # Load all stored values for this item
+    values_result = await session.execute(
+        select(VaultFieldValue)
+        .where(VaultFieldValue.item_id == item.id)
+        .order_by(VaultFieldValue.position)
+    )
+    values = values_result.scalars().all()
+
+    # Index values by template_id (for linked) and collect standalones
+    linked_values: dict[UUID, VaultFieldValue] = {}
+    standalone_values: list[VaultFieldValue] = []
+    for v in values:
+        if v.template_id:
+            linked_values[v.template_id] = v
+        else:
+            standalone_values.append(v)
+
+    # Build section groups from templates
+    section_map: dict[str, list] = defaultdict(list)
+    for tpl in templates:
+        stored = linked_values.get(tpl.id)
+        if stored:
+            raw_value = stored.field_value
+            masked = _mask_value(tpl.field_type, raw_value)
+            section_map[tpl.section].append({
+                "id": stored.id,
+                "template_id": tpl.id,
+                "field_name": tpl.field_name,
+                "field_type": tpl.field_type,
+                "section": tpl.section,
+                "field_value": masked,
+                "has_value": bool(stored.field_value),
+                "position": tpl.position,
+            })
+        else:
+            # Template field with no value yet — show empty
+            section_map[tpl.section].append({
+                "id": None,
+                "template_id": tpl.id,
+                "field_name": tpl.field_name,
+                "field_type": tpl.field_type,
+                "section": tpl.section,
+                "field_value": None,
+                "has_value": False,
+                "position": tpl.position,
+            })
+
+    # Append standalone fields
+    for sv in standalone_values:
+        sect = sv.section or "Other"
+        field_type = sv.field_type or "text"
+        section_map[sect].append({
+            "id": sv.id,
+            "template_id": None,
+            "field_name": sv.field_name or "",
+            "field_type": field_type,
+            "section": sect,
+            "field_value": _mask_value(field_type, sv.field_value),
+            "has_value": bool(sv.field_value),
+            "position": sv.position,
+        })
+
+    # Convert to ordered list of sections
+    sections = []
+    for section_name, fields in section_map.items():
+        sections.append({"name": section_name, "fields": fields})
+
+    return sections
 
 
 async def _build_item_response(session: AsyncSession, user_id: UUID, item: VaultItem) -> dict:
-    """Build a summary response dict with field_count and tags."""
+    """Build summary response with field_count, category_name, and tags."""
+    # Count stored values only (non-empty)
     count_result = await session.execute(
-        select(func.count(VaultField.id)).where(VaultField.vault_item_id == item.id)
+        select(func.count(VaultFieldValue.id)).where(
+            VaultFieldValue.item_id == item.id,
+            VaultFieldValue.field_value.isnot(None),
+        )
     )
     field_count = count_result.scalar() or 0
+
+    # Category name
+    cat_result = await session.execute(
+        select(VaultCategory.name).where(VaultCategory.id == item.category_id)
+    )
+    category_name = cat_result.scalar_one_or_none() or ""
 
     tags = await tag_service.get_tags_for_entity(session, ENTITY_TYPE, item.id)
     tag_list = [{"id": t.id, "name": t.name, "count": 0} for t in tags]
 
     return {
         "id": item.id,
+        "category_id": item.category_id,
+        "category_name": category_name,
         "name": item.name,
-        "description": item.description,
         "icon": item.icon,
         "is_favorite": item.is_favorite,
         "field_count": field_count,
@@ -81,92 +197,289 @@ async def _build_item_response(session: AsyncSession, user_id: UUID, item: Vault
     }
 
 
-async def _build_detail_response(session: AsyncSession, user_id: UUID, item: VaultItem) -> dict:
-    """Build a full detail dict with masked fields and tags."""
-    fields_result = await session.execute(
-        select(VaultField)
-        .where(VaultField.vault_item_id == item.id)
-        .order_by(VaultField.position)
+async def _build_detail_response(
+    session: AsyncSession, user_id: UUID, item: VaultItem, app_secret: str
+) -> dict:
+    """Build full detail response with resolved sections and tags."""
+    cat_result = await session.execute(
+        select(VaultCategory.name).where(VaultCategory.id == item.category_id)
     )
-    fields = [_mask_field(f) for f in fields_result.scalars().all()]
+    category_name = cat_result.scalar_one_or_none() or ""
+
+    sections = await _build_resolved_sections(session, item, app_secret, user_id)
 
     tags = await tag_service.get_tags_for_entity(session, ENTITY_TYPE, item.id)
     tag_list = [{"id": t.id, "name": t.name, "count": 0} for t in tags]
 
     return {
         "id": item.id,
+        "category_id": item.category_id,
+        "category_name": category_name,
         "name": item.name,
-        "description": item.description,
         "icon": item.icon,
         "is_favorite": item.is_favorite,
-        "fields": fields,
+        "sections": sections,
         "tags": tag_list,
     }
 
 
-# ── Vault Item CRUD ───────────────────────────────────────────────────────────
+# ── Category CRUD ─────────────────────────────────────────────────────────────
 
-async def create_item(session: AsyncSession, user_id: UUID, data: VaultItemCreate) -> dict:
-    item = VaultItem(
+async def create_category(session: AsyncSession, user_id: UUID, data: CategoryCreate) -> dict:
+    pos_result = await session.execute(
+        select(func.max(VaultCategory.position)).where(VaultCategory.user_id == user_id)
+    )
+    max_pos = pos_result.scalar() or -1
+
+    cat = VaultCategory(
         user_id=user_id,
         name=data.name,
-        description=data.description,
+        icon=data.icon,
+        position=max_pos + 1,
+    )
+    session.add(cat)
+    await session.commit()
+    await session.refresh(cat)
+    return {"id": cat.id, "name": cat.name, "icon": cat.icon, "position": cat.position, "item_count": 0}
+
+
+async def get_categories(session: AsyncSession, user_id: UUID) -> List[dict]:
+    result = await session.execute(
+        select(VaultCategory).where(VaultCategory.user_id == user_id).order_by(VaultCategory.position)
+    )
+    categories = result.scalars().all()
+
+    out = []
+    for cat in categories:
+        count_result = await session.execute(
+            select(func.count(VaultItem.id)).where(VaultItem.category_id == cat.id)
+        )
+        item_count = count_result.scalar() or 0
+        out.append({
+            "id": cat.id,
+            "name": cat.name,
+            "icon": cat.icon,
+            "position": cat.position,
+            "item_count": item_count,
+        })
+    return out
+
+
+async def update_category(
+    session: AsyncSession, user_id: UUID, category_id: UUID, data: CategoryUpdate
+) -> dict:
+    cat = await _get_category_or_404(session, user_id, category_id)
+    for k, v in data.model_dump(exclude_none=True).items():
+        setattr(cat, k, v)
+    await session.commit()
+    await session.refresh(cat)
+    count_result = await session.execute(
+        select(func.count(VaultItem.id)).where(VaultItem.category_id == cat.id)
+    )
+    item_count = count_result.scalar() or 0
+    return {"id": cat.id, "name": cat.name, "icon": cat.icon, "position": cat.position, "item_count": item_count}
+
+
+async def delete_category(session: AsyncSession, user_id: UUID, category_id: UUID) -> None:
+    cat = await _get_category_or_404(session, user_id, category_id)
+    # Clean up tag associations for all items in this category
+    items_result = await session.execute(
+        select(VaultItem.id).where(VaultItem.category_id == category_id)
+    )
+    item_ids = [row[0] for row in items_result.all()]
+    if item_ids:
+        await session.execute(
+            delete(Taggable).where(
+                Taggable.entity_type == ENTITY_TYPE,
+                Taggable.entity_id.in_(item_ids),
+            )
+        )
+    await session.delete(cat)
+    await session.commit()
+
+
+async def reorder_categories(session: AsyncSession, user_id: UUID, ordered_ids: list[UUID]) -> None:
+    for position, cat_id in enumerate(ordered_ids):
+        result = await session.execute(
+            select(VaultCategory).where(VaultCategory.id == cat_id, VaultCategory.user_id == user_id)
+        )
+        cat = result.scalar_one_or_none()
+        if cat:
+            cat.position = position
+    await session.commit()
+
+
+# ── Field Template CRUD ───────────────────────────────────────────────────────
+
+async def create_template(
+    session: AsyncSession, user_id: UUID, category_id: UUID, data: FieldTemplateCreate
+) -> dict:
+    await _get_category_or_404(session, user_id, category_id)
+
+    pos_result = await session.execute(
+        select(func.max(VaultFieldTemplate.position)).where(VaultFieldTemplate.category_id == category_id)
+    )
+    max_pos = pos_result.scalar() or -1
+
+    tpl = VaultFieldTemplate(
+        user_id=user_id,
+        category_id=category_id,
+        field_name=data.field_name,
+        field_type=data.field_type,
+        section=data.section,
+        position=max_pos + 1,
+    )
+    session.add(tpl)
+    await session.commit()
+    await session.refresh(tpl)
+    return {
+        "id": tpl.id,
+        "category_id": tpl.category_id,
+        "field_name": tpl.field_name,
+        "field_type": tpl.field_type,
+        "section": tpl.section,
+        "position": tpl.position,
+    }
+
+
+async def get_templates(session: AsyncSession, user_id: UUID, category_id: UUID) -> List[dict]:
+    await _get_category_or_404(session, user_id, category_id)
+    result = await session.execute(
+        select(VaultFieldTemplate)
+        .where(VaultFieldTemplate.category_id == category_id)
+        .order_by(VaultFieldTemplate.section, VaultFieldTemplate.position)
+    )
+    templates = result.scalars().all()
+    return [
+        {
+            "id": t.id,
+            "category_id": t.category_id,
+            "field_name": t.field_name,
+            "field_type": t.field_type,
+            "section": t.section,
+            "position": t.position,
+        }
+        for t in templates
+    ]
+
+
+async def update_template(
+    session: AsyncSession, user_id: UUID, category_id: UUID, template_id: UUID, data: FieldTemplateUpdate
+) -> dict:
+    tpl = await _get_template_or_404(session, user_id, category_id, template_id)
+    for k, v in data.model_dump(exclude_none=True).items():
+        setattr(tpl, k, v)
+    await session.commit()
+    await session.refresh(tpl)
+    return {
+        "id": tpl.id,
+        "category_id": tpl.category_id,
+        "field_name": tpl.field_name,
+        "field_type": tpl.field_type,
+        "section": tpl.section,
+        "position": tpl.position,
+    }
+
+
+async def delete_template(
+    session: AsyncSession, user_id: UUID, category_id: UUID, template_id: UUID
+) -> None:
+    tpl = await _get_template_or_404(session, user_id, category_id, template_id)
+    # ON DELETE SET NULL is handled by DB constraint
+    # Values with this template_id will have template_id set to NULL automatically
+    # We copy name/type/section to those values so they become proper standalones
+    orphaned_result = await session.execute(
+        select(VaultFieldValue).where(VaultFieldValue.template_id == template_id)
+    )
+    for val in orphaned_result.scalars().all():
+        val.field_name = tpl.field_name
+        val.field_type = tpl.field_type
+        val.section = tpl.section
+        val.template_id = None
+    await session.flush()
+    await session.delete(tpl)
+    await session.commit()
+
+
+async def reorder_templates(
+    session: AsyncSession, user_id: UUID, category_id: UUID, ordered_ids: list[UUID]
+) -> None:
+    await _get_category_or_404(session, user_id, category_id)
+    for position, tpl_id in enumerate(ordered_ids):
+        result = await session.execute(
+            select(VaultFieldTemplate).where(
+                VaultFieldTemplate.id == tpl_id,
+                VaultFieldTemplate.category_id == category_id,
+                VaultFieldTemplate.user_id == user_id,
+            )
+        )
+        tpl = result.scalar_one_or_none()
+        if tpl:
+            tpl.position = position
+    await session.commit()
+
+
+# ── Vault Item CRUD ───────────────────────────────────────────────────────────
+
+async def create_item(
+    session: AsyncSession, user_id: UUID, data: VaultItemCreate, app_secret: str
+) -> dict:
+    await _get_category_or_404(session, user_id, data.category_id)
+    item = VaultItem(
+        user_id=user_id,
+        category_id=data.category_id,
+        name=data.name,
         icon=data.icon,
         is_favorite=False,
     )
     session.add(item)
     await session.commit()
     await session.refresh(item)
-    return await _build_detail_response(session, user_id, item)
+    return await _build_detail_response(session, user_id, item, app_secret)
 
 
 async def get_items(
     session: AsyncSession,
     user_id: UUID,
-    tag: Optional[str] = None,
+    category_id: Optional[UUID] = None,
     search: Optional[str] = None,
-    favorites: Optional[bool] = None,
+    is_favorite: Optional[bool] = None,
 ) -> List[dict]:
     query = select(VaultItem).where(VaultItem.user_id == user_id)
 
-    if tag:
-        tagged_ids = await tag_service.get_entities_by_tag(session, user_id, ENTITY_TYPE, tag)
-        if not tagged_ids:
-            return []
-        query = query.where(VaultItem.id.in_(tagged_ids))
-
+    if category_id:
+        query = query.where(VaultItem.category_id == category_id)
     if search:
         query = query.where(VaultItem.name.ilike(f"%{search}%"))
-
-    if favorites is True:
+    if is_favorite is True:
         query = query.where(VaultItem.is_favorite == True)  # noqa: E712
 
     query = query.order_by(VaultItem.is_favorite.desc(), VaultItem.updated_at.desc())
     result = await session.execute(query)
     items = result.scalars().all()
-
     return [await _build_item_response(session, user_id, item) for item in items]
 
 
-async def get_item(session: AsyncSession, user_id: UUID, item_id: UUID) -> dict:
+async def get_item(session: AsyncSession, user_id: UUID, item_id: UUID, app_secret: str) -> dict:
     item = await _get_item_or_404(session, user_id, item_id)
-    return await _build_detail_response(session, user_id, item)
+    return await _build_detail_response(session, user_id, item, app_secret)
 
 
 async def update_item(
-    session: AsyncSession, user_id: UUID, item_id: UUID, data: VaultItemUpdate
+    session: AsyncSession, user_id: UUID, item_id: UUID, data: VaultItemUpdate, app_secret: str
 ) -> dict:
     item = await _get_item_or_404(session, user_id, item_id)
-    for field, value in data.model_dump(exclude_none=True).items():
-        setattr(item, field, value)
+    if data.category_id:
+        await _get_category_or_404(session, user_id, data.category_id)
+    for k, v in data.model_dump(exclude_none=True).items():
+        setattr(item, k, v)
     await session.commit()
     await session.refresh(item)
-    return await _build_detail_response(session, user_id, item)
+    return await _build_detail_response(session, user_id, item, app_secret)
 
 
 async def delete_item(session: AsyncSession, user_id: UUID, item_id: UUID) -> None:
     item = await _get_item_or_404(session, user_id, item_id)
-    # Remove tag associations
     await session.execute(
         delete(Taggable).where(
             Taggable.entity_type == ENTITY_TYPE,
@@ -177,109 +490,116 @@ async def delete_item(session: AsyncSession, user_id: UUID, item_id: UUID) -> No
     await session.commit()
 
 
-# ── Fields ────────────────────────────────────────────────────────────────────
+# ── Field Values ──────────────────────────────────────────────────────────────
 
-async def add_field(
-    session: AsyncSession,
-    user_id: UUID,
-    item_id: UUID,
-    data: VaultFieldCreate,
-    app_secret: str,
+async def add_field_value(
+    session: AsyncSession, user_id: UUID, item_id: UUID, data: FieldValueCreate, app_secret: str
 ) -> dict:
-    await _get_item_or_404(session, user_id, item_id)
+    item = await _get_item_or_404(session, user_id, item_id)
 
-    # Get next position
+    # Determine field_type for encryption decision
+    field_type = "text"
+    if data.template_id:
+        tpl_result = await session.execute(
+            select(VaultFieldTemplate).where(VaultFieldTemplate.id == data.template_id)
+        )
+        tpl = tpl_result.scalar_one_or_none()
+        if tpl:
+            field_type = tpl.field_type
+    elif data.field_type:
+        field_type = data.field_type
+
     pos_result = await session.execute(
-        select(func.max(VaultField.position)).where(VaultField.vault_item_id == item_id)
+        select(func.max(VaultFieldValue.position)).where(VaultFieldValue.item_id == item_id)
     )
     max_pos = pos_result.scalar() or -1
 
-    value = data.field_value
-    if data.field_type == "secret":
+    raw_value = data.field_value
+    if field_type == "secret" and raw_value:
         fernet = get_encryption_key(app_secret, user_id)
-        value = encrypt_value(data.field_value, fernet)
+        raw_value = encrypt_value(raw_value, fernet)
 
-    field = VaultField(
+    val = VaultFieldValue(
         user_id=user_id,
-        vault_item_id=item_id,
-        field_name=data.field_name,
-        field_value=value,
-        field_type=data.field_type,
+        item_id=item_id,
+        template_id=data.template_id,
+        field_name=data.field_name if not data.template_id else None,
+        field_type=data.field_type if not data.template_id else None,
+        section=data.section if not data.template_id else None,
+        field_value=raw_value,
         position=max_pos + 1,
     )
-    session.add(field)
+    session.add(val)
     await session.commit()
-    await session.refresh(field)
-    return _mask_field(field)
+    # Return the full resolved detail so UI can refresh
+    return await _build_detail_response(session, user_id, item, app_secret)
 
 
-async def update_field(
-    session: AsyncSession,
-    user_id: UUID,
-    item_id: UUID,
-    field_id: UUID,
-    data: VaultFieldUpdate,
-    app_secret: str,
+async def update_field_value(
+    session: AsyncSession, user_id: UUID, item_id: UUID, value_id: UUID, data: FieldValueUpdate, app_secret: str
 ) -> dict:
-    field = await _get_field_or_404(session, user_id, item_id, field_id)
+    val = await _get_field_value_or_404(session, user_id, item_id, value_id)
+    item = await _get_item_or_404(session, user_id, item_id)
+
+    # Determine field type (may be on template or standalone)
+    field_type = val.field_type or "text"
+    if val.template_id:
+        tpl_result = await session.execute(
+            select(VaultFieldTemplate).where(VaultFieldTemplate.id == val.template_id)
+        )
+        tpl = tpl_result.scalar_one_or_none()
+        if tpl:
+            field_type = tpl.field_type
 
     updates = data.model_dump(exclude_none=True)
 
-    # Determine final field_type (may have changed)
-    new_type = updates.get("field_type", field.field_type)
-
     if "field_value" in updates:
-        if new_type == "secret":
+        raw_value = updates["field_value"]
+        if field_type == "secret" and raw_value:
             fernet = get_encryption_key(app_secret, user_id)
-            updates["field_value"] = encrypt_value(updates["field_value"], fernet)
-        elif field.field_type == "secret" and new_type != "secret":
-            # Changing from secret to non-secret — store the new value plaintext
-            pass  # value is already in updates as plaintext
+            updates["field_value"] = encrypt_value(raw_value, fernet)
 
     for k, v in updates.items():
-        setattr(field, k, v)
+        setattr(val, k, v)
 
     await session.commit()
-    await session.refresh(field)
-    return _mask_field(field)
+    return await _build_detail_response(session, user_id, item, app_secret)
 
 
-async def delete_field(
-    session: AsyncSession, user_id: UUID, item_id: UUID, field_id: UUID
-) -> None:
-    field = await _get_field_or_404(session, user_id, item_id, field_id)
-    await session.delete(field)
-    await session.commit()
-
-
-async def reorder_fields(
-    session: AsyncSession, user_id: UUID, item_id: UUID, ordered_ids: list[UUID]
-) -> None:
-    await _get_item_or_404(session, user_id, item_id)
-    for position, field_id in enumerate(ordered_ids):
-        result = await session.execute(
-            select(VaultField).where(
-                VaultField.id == field_id,
-                VaultField.vault_item_id == item_id,
-                VaultField.user_id == user_id,
-            )
-        )
-        field = result.scalar_one_or_none()
-        if field:
-            field.position = position
-    await session.commit()
-
-
-async def reveal_field(
-    session: AsyncSession, user_id: UUID, item_id: UUID, field_id: UUID, app_secret: str
+async def delete_field_value(
+    session: AsyncSession, user_id: UUID, item_id: UUID, value_id: UUID, app_secret: str
 ) -> dict:
-    field = await _get_field_or_404(session, user_id, item_id, field_id)
-    if field.field_type == "secret":
+    val = await _get_field_value_or_404(session, user_id, item_id, value_id)
+    item = await _get_item_or_404(session, user_id, item_id)
+    await session.delete(val)
+    await session.commit()
+    return await _build_detail_response(session, user_id, item, app_secret)
+
+
+async def reveal_field_value(
+    session: AsyncSession, user_id: UUID, item_id: UUID, value_id: UUID, app_secret: str
+) -> dict:
+    val = await _get_field_value_or_404(session, user_id, item_id, value_id)
+
+    # Determine field type
+    field_type = val.field_type or "text"
+    field_name = val.field_name or ""
+    if val.template_id:
+        tpl_result = await session.execute(
+            select(VaultFieldTemplate).where(VaultFieldTemplate.id == val.template_id)
+        )
+        tpl = tpl_result.scalar_one_or_none()
+        if tpl:
+            field_type = tpl.field_type
+            field_name = tpl.field_name
+
+    if field_type == "secret" and val.field_value:
         fernet = get_encryption_key(app_secret, user_id)
-        plaintext = decrypt_value(field.field_value, fernet)
+        plaintext = decrypt_value(val.field_value, fernet)
     else:
-        plaintext = field.field_value
-    return {"id": field.id, "field_name": field.field_name, "field_type": field.field_type, "value": plaintext}
+        plaintext = val.field_value or ""
+
+    return {"id": val.id, "field_name": field_name, "field_type": field_type, "value": plaintext}
 
 
 # ── Tags ──────────────────────────────────────────────────────────────────────

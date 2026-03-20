@@ -11,7 +11,7 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.models import VaultItem, VaultField  # noqa: F401
+from app.models import VaultCategory, VaultFieldTemplate, VaultItem, VaultFieldValue  # noqa: F401
 from pos_contracts.models import UserScopedBase
 
 config = context.config
@@ -20,7 +20,7 @@ if config.config_file_name is not None:
 
 target_metadata = UserScopedBase.metadata
 
-OWNED_TABLES = {"vault_items", "vault_fields"}
+OWNED_TABLES = {"vault_categories", "vault_field_templates", "vault_items", "vault_field_values"}
 
 
 def include_object(object, name, type_, reflected, compare_to):

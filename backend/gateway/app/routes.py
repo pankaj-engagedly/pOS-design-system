@@ -14,6 +14,7 @@ ATTACHMENT_SERVICE_URL = "http://localhost:8003"
 NOTES_SERVICE_URL = "http://localhost:8004"
 DOCUMENTS_SERVICE_URL = "http://localhost:8005"
 VAULT_SERVICE_URL = "http://localhost:8006"
+KB_SERVICE_URL = "http://localhost:8007"
 
 
 @router.get("/api/")
@@ -25,11 +26,11 @@ async def api_root():
             "/api/auth": "Authentication service",
             "/api/todos": "Todo service",
             "/api/notes": "Notes service",
-            "/api/kb": "Knowledge Base service (Phase 2)",
-            "/api/vault": "Vault service (Phase 3)",
-            "/api/feeds": "Feed Watcher service (Phase 3)",
-            "/api/docs": "Documents service (Phase 4)",
-            "/api/photos": "Photos service (Phase 4)",
+            "/api/kb": "Knowledge Base service",
+            "/api/feeds": "Feed service",
+            "/api/vault": "Vault service",
+            "/api/docs": "Documents service",
+            "/api/photos": "Photos service (Phase 5)",
         },
     }
 
@@ -74,3 +75,17 @@ async def proxy_documents(request: Request, path: str):
 @router.api_route("/api/vault/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
 async def proxy_vault(request: Request, path: str):
     return await proxy_request(request, VAULT_SERVICE_URL, f"/api/vault/{path}")
+
+
+# --- KB service proxy ---
+
+@router.api_route("/api/kb/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
+async def proxy_kb(request: Request, path: str):
+    return await proxy_request(request, KB_SERVICE_URL, f"/api/kb/{path}")
+
+
+# --- Feed service proxy (same backend as KB) ---
+
+@router.api_route("/api/feeds/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
+async def proxy_feeds(request: Request, path: str):
+    return await proxy_request(request, KB_SERVICE_URL, f"/api/feeds/{path}")
