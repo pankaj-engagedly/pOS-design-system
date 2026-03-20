@@ -4,7 +4,7 @@ import { createStore } from '../../shared/services/state-store.js';
 
 const kbStore = createStore({
   // Sidebar-based navigation
-  selectedView: 'all',         // all | favourites | recent | feeds
+  selectedView: 'home',        // home | favourites | recent | top_rated | feeds
   selectedCollectionId: null,
   selectedCollectionName: '',
 

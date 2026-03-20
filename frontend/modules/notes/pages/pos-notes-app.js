@@ -69,10 +69,28 @@ class PosNotesApp extends HTMLElement {
     try {
       const folders = await notesApi.getFolders();
       notesStore.setState({ folders, loading: false });
+      this._loadCounts();
       await this.loadCurrentView();
     } catch (e) {
       notesStore.setState({ loading: false, error: e.message });
     }
+  }
+
+  async _loadCounts() {
+    try {
+      const [all, pinned, trash] = await Promise.all([
+        notesApi.getNotes(),
+        notesApi.getNotes({ is_pinned: true }),
+        notesApi.getNotes({ is_deleted: true }),
+      ]);
+      this._sidebarCounts = {
+        all: all.length,
+        pinned: pinned.length,
+        trash: trash.length,
+      };
+      const sidebar = this.shadow.querySelector('pos-folder-sidebar');
+      if (sidebar) sidebar.counts = this._sidebarCounts;
+    } catch { /* ignore */ }
   }
 
   async loadCurrentView() {
@@ -165,6 +183,7 @@ class PosNotesApp extends HTMLElement {
           folder_id: state.selectedFolderId || null,
         });
         await this.loadCurrentView();
+        this._loadCounts();
         await this.loadNote(note.id);
       } catch (err) {
         console.error('Failed to create note:', err);
@@ -187,13 +206,18 @@ class PosNotesApp extends HTMLElement {
 
     // Editor events
     this.shadow.addEventListener('note-content-change', async (e) => {
-      const { selectedNoteId } = notesStore.getState();
+      const { selectedNoteId, notes } = notesStore.getState();
       if (!selectedNoteId) return;
+      // Optimistic update: extract preview text from content JSON
+      const previewText = this._extractPreview(e.detail.content);
+      const updatedNotes = notes.map(n =>
+        n.id === selectedNoteId ? { ...n, preview_text: previewText } : n
+      );
+      notesStore.setState({ notes: updatedNotes });
       const editor = this.shadow.querySelector('pos-note-editor');
       try {
         await notesApi.updateNote(selectedNoteId, { content: e.detail.content });
         editor?.setSaveStatus('saved');
-        // Refresh the note list item (preview may have changed)
         await this.loadCurrentView();
       } catch (err) {
         editor?.setSaveStatus('error');
@@ -201,8 +225,13 @@ class PosNotesApp extends HTMLElement {
     });
 
     this.shadow.addEventListener('note-title-change', async (e) => {
-      const { selectedNoteId } = notesStore.getState();
+      const { selectedNoteId, notes } = notesStore.getState();
       if (!selectedNoteId) return;
+      // Optimistic update: reflect title in the note list immediately
+      const updatedNotes = notes.map(n =>
+        n.id === selectedNoteId ? { ...n, title: e.detail.title } : n
+      );
+      notesStore.setState({ notes: updatedNotes });
       const editor = this.shadow.querySelector('pos-note-editor');
       try {
         await notesApi.updateNote(selectedNoteId, { title: e.detail.title });
@@ -242,6 +271,7 @@ class PosNotesApp extends HTMLElement {
       try {
         await notesApi.updateNote(noteId, { is_pinned });
         await this.loadCurrentView();
+        this._loadCounts();
         const { selectedNoteId } = notesStore.getState();
         if (selectedNoteId === noteId) await this.loadNote(noteId);
       } catch (err) {
@@ -278,6 +308,7 @@ class PosNotesApp extends HTMLElement {
           notesStore.setState({ selectedNoteId: null, selectedNote: null });
         }
         await this.loadCurrentView();
+        this._loadCounts();
       } catch (err) {
         console.error('Failed to delete note:', err);
       }
@@ -287,6 +318,7 @@ class PosNotesApp extends HTMLElement {
       try {
         await notesApi.restoreNote(e.detail.noteId);
         await this.loadCurrentView();
+        this._loadCounts();
       } catch (err) {
         console.error('Failed to restore note:', err);
       }
@@ -301,10 +333,24 @@ class PosNotesApp extends HTMLElement {
           notesStore.setState({ selectedNoteId: null, selectedNote: null });
         }
         await this.loadCurrentView();
+        this._loadCounts();
       } catch (err) {
         console.error('Failed to permanently delete note:', err);
       }
     });
+  }
+
+  _extractPreview(content) {
+    if (!content || !content.content) return '';
+    const texts = [];
+    const walk = (nodes) => {
+      for (const node of nodes) {
+        if (node.text) texts.push(node.text);
+        if (node.content) walk(node.content);
+      }
+    };
+    walk(content.content);
+    return texts.join(' ').slice(0, 200);
   }
 
   // ─── Rendering ────────────────────────────────────────────
@@ -317,6 +363,7 @@ class PosNotesApp extends HTMLElement {
       sidebar.folders = state.folders;
       sidebar.selectedFolderId = state.selectedFolderId;
       sidebar.selectedView = state.selectedView;
+      if (this._sidebarCounts) sidebar.counts = this._sidebarCounts;
     }
 
     const noteList = this.shadow.querySelector('pos-note-list');
@@ -325,7 +372,7 @@ class PosNotesApp extends HTMLElement {
       noteList.selectedNoteId = state.selectedNoteId;
       noteList.viewMode = state.viewMode;
       const folder = state.folders?.find(f => f.id === state.selectedFolderId);
-      const viewLabels = { all: 'Notes', pinned: 'Pinned', trash: 'Trash' };
+      const viewLabels = { all: 'Notes', pinned: 'Favourites', trash: 'Trash' };
       noteList.folderName = folder?.name || viewLabels[state.selectedView] || 'Notes';
     }
 

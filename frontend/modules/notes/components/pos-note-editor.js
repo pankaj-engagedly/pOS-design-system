@@ -3,6 +3,7 @@
 // Dispatches: note-content-change { title, content }, note-title-change { title }
 
 import { Editor, StarterKit, Link, Placeholder } from '../editor.bundle.js';
+import { getTags } from '../services/notes-api.js';
 import './pos-note-toolbar.js';
 
 class PosNoteEditor extends HTMLElement {
@@ -15,6 +16,9 @@ class PosNoteEditor extends HTMLElement {
     this._titleTimer = null;
     this._saving = false;
     this._saveStatus = ''; // '', 'saving', 'saved', 'error'
+    this._allTags = [];
+    this._tagQuery = '';
+    this._addingTag = false;
   }
 
   set note(val) {
@@ -24,8 +28,13 @@ class PosNoteEditor extends HTMLElement {
       // Note changed — rebuild DOM then mount fresh editor
       this._editor?.destroy();
       this._editor = null;
+      this._addingTag = false;
+      this._tagQuery = '';
       this.render();
-      if (val) this._mountEditor();
+      if (val) {
+        this._mountEditor();
+        getTags().then(tags => { this._allTags = tags; }).catch(() => {});
+      }
     } else if (val) {
       // Same note — only refresh tags area (don't destroy editor)
       this._renderTags();
@@ -162,29 +171,67 @@ class PosNoteEditor extends HTMLElement {
       }
     });
 
-    // Tag remove (event delegation — works after any DOM rebuild)
+    // Tag actions (event delegation — works after any DOM rebuild)
     this.shadow.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-action="remove-tag"]');
-      if (btn) {
+      const removeBtn = e.target.closest('[data-action="remove-tag"]');
+      if (removeBtn) {
         this.dispatchEvent(new CustomEvent('tag-remove', {
           bubbles: true, composed: true,
-          detail: { tagId: btn.dataset.tagId },
+          detail: { tagId: removeBtn.dataset.tagId },
         }));
+        return;
+      }
+
+      // "Add" button → show tag input
+      const addBtn = e.target.closest('[data-action="add-tag"]');
+      if (addBtn) {
+        this._addingTag = true;
+        this._tagQuery = '';
+        this._renderTagsInline();
+        setTimeout(() => this.shadow.getElementById('tag-input')?.focus(), 0);
+        return;
+      }
+
+      // Tag suggestion click
+      const suggestion = e.target.closest('.tag-suggestion');
+      if (suggestion) {
+        const tagName = suggestion.dataset.suggestionName;
+        if (tagName) {
+          this.dispatchEvent(new CustomEvent('tag-add', {
+            bubbles: true, composed: true, detail: { name: tagName },
+          }));
+          this._addingTag = false;
+          this._tagQuery = '';
+        }
+        return;
       }
     });
 
-    // Tag add via input (use delegation to handle DOM rebuilds)
+    // Tag input typing → update suggestions
+    this.shadow.addEventListener('input', (e) => {
+      if (e.target.id === 'tag-input') {
+        this._tagQuery = e.target.value;
+        this._renderTagSuggestions();
+      }
+    });
+
+    // Tag input Enter → submit, Escape → cancel
     this.shadow.addEventListener('keydown', (e) => {
-      if (!e.target.classList.contains('tag-input')) return;
-      if (e.key === 'Enter' || e.key === ',') {
+      if (e.target.id !== 'tag-input') return;
+      if (e.key === 'Enter') {
         e.preventDefault();
-        const name = e.target.value.trim().replace(/,$/, '');
+        const name = e.target.value.trim();
         if (name) {
           this.dispatchEvent(new CustomEvent('tag-add', {
             bubbles: true, composed: true, detail: { name },
           }));
-          e.target.value = '';
+          this._addingTag = false;
+          this._tagQuery = '';
         }
+      } else if (e.key === 'Escape') {
+        this._addingTag = false;
+        this._tagQuery = '';
+        this._renderTagsInline();
       }
     });
   }
@@ -192,6 +239,8 @@ class PosNoteEditor extends HTMLElement {
   _renderTags() {
     const tagsArea = this.shadow.querySelector('.tags-area');
     if (!tagsArea || !this._note) return;
+    this._addingTag = false;
+    this._tagQuery = '';
     tagsArea.innerHTML = `
       <span class="tag-label">Tags:</span>
       ${(this._note.tags || []).map(t => `
@@ -200,7 +249,7 @@ class PosNoteEditor extends HTMLElement {
           <button class="tag-remove" data-action="remove-tag" data-tag-id="${t.id}">✕</button>
         </span>
       `).join('')}
-      <input class="tag-input" placeholder="Add tag…" />
+      <button class="add-tag-btn" data-action="add-tag">+ Add</button>
     `;
   }
 
@@ -363,16 +412,68 @@ class PosNoteEditor extends HTMLElement {
         }
         .tag-remove:hover { opacity: 1; }
 
+        .tag-input-wrap {
+          position: relative;
+          min-width: 100px;
+          flex: 1;
+        }
         .tag-input {
-          border: 1px dashed var(--pos-color-border, #ddd);
+          border: 1px solid var(--pos-color-primary-400, #4f8ef7);
           border-radius: 12px;
           padding: 2px 8px;
           font-size: 12px;
           outline: none;
-          width: 80px;
-          background: transparent;
+          width: 100%;
+          box-sizing: border-box;
+          background: var(--pos-color-background-primary, #fff);
+          color: var(--pos-color-text-primary, #1a1a1a);
+          font-family: inherit;
         }
-        .tag-input:focus { border-color: var(--pos-color-primary-400, #4f8ef7); width: 120px; }
+        .add-tag-btn {
+          border: 1px dashed var(--pos-color-border, #ddd);
+          border-radius: 12px;
+          padding: 2px 8px;
+          font-size: 12px;
+          background: transparent;
+          color: var(--pos-color-text-secondary, #777);
+          cursor: pointer;
+          font-family: inherit;
+        }
+        .add-tag-btn:hover {
+          border-color: var(--pos-color-primary-400, #4f8ef7);
+          color: var(--pos-color-primary-400, #4f8ef7);
+        }
+
+        .tag-suggestions {
+          position: absolute;
+          bottom: 100%;
+          left: 0;
+          right: 0;
+          background: var(--pos-color-background-primary, #fff);
+          border: 1px solid var(--pos-color-border, #e5e5e5);
+          border-radius: 6px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+          max-height: 150px;
+          overflow-y: auto;
+          z-index: 100;
+          margin-bottom: 2px;
+          display: none;
+        }
+        .tag-suggestions.visible { display: block; }
+        .tag-suggestion {
+          padding: 6px 10px;
+          font-size: 12px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .tag-suggestion:hover { background: var(--pos-color-background-secondary, #f5f5f5); }
+        .tag-suggestion .new-badge {
+          font-size: 10px;
+          color: var(--pos-color-primary-400, #4f8ef7);
+          font-style: italic;
+        }
 
         .tag-label {
           font-size: 11px;
@@ -390,11 +491,11 @@ class PosNoteEditor extends HTMLElement {
         <span class="save-status"></span>
       </div>
 
-      <pos-note-toolbar></pos-note-toolbar>
-
       <div class="editor-area">
         <div class="editor-content"></div>
       </div>
+
+      <pos-note-toolbar></pos-note-toolbar>
 
       <div class="tags-area">
         <span class="tag-label">Tags:</span>
@@ -404,13 +505,89 @@ class PosNoteEditor extends HTMLElement {
             <button class="tag-remove" data-action="remove-tag" data-tag-id="${t.id}">✕</button>
           </span>
         `).join('')}
-        <input class="tag-input" placeholder="Add tag…" />
+        ${this._addingTag
+          ? `<div class="tag-input-wrap">
+              <input class="tag-input" id="tag-input" placeholder="Search or create tag…" value="${this._escAttr(this._tagQuery)}" />
+              <div class="tag-suggestions" id="tag-suggestions"></div>
+            </div>`
+          : `<button class="add-tag-btn" data-action="add-tag">+ Add</button>`
+        }
       </div>
     `;
 
     // Re-bind after DOM rebuild (guard prevents stacking)
     this._eventsBound = false;
     this._bindAllEvents();
+
+    if (this._addingTag) {
+      setTimeout(() => this.shadow.getElementById('tag-input')?.focus(), 0);
+    }
+  }
+
+  _renderTagsInline() {
+    const tagsArea = this.shadow.querySelector('.tags-area');
+    if (!tagsArea || !this._note) return;
+    tagsArea.innerHTML = `
+      <span class="tag-label">Tags:</span>
+      ${(this._note.tags || []).map(t => `
+        <span class="tag-badge" data-tag-id="${t.id}">
+          ${t.name}
+          <button class="tag-remove" data-action="remove-tag" data-tag-id="${t.id}">✕</button>
+        </span>
+      `).join('')}
+      ${this._addingTag
+        ? `<div class="tag-input-wrap">
+            <input class="tag-input" id="tag-input" placeholder="Search or create tag…" value="${this._escAttr(this._tagQuery)}" />
+            <div class="tag-suggestions" id="tag-suggestions"></div>
+          </div>`
+        : `<button class="add-tag-btn" data-action="add-tag">+ Add</button>`
+      }
+    `;
+    if (this._addingTag) {
+      setTimeout(() => this.shadow.getElementById('tag-input')?.focus(), 0);
+    }
+  }
+
+  _getTagSuggestions() {
+    const q = this._tagQuery.toLowerCase().trim();
+    if (!q) return [];
+    const existingNames = new Set((this._note?.tags || []).map(t => t.name.toLowerCase()));
+    const matches = this._allTags
+      .filter(t => t.name.toLowerCase().includes(q) && !existingNames.has(t.name.toLowerCase()))
+      .slice(0, 8)
+      .map(t => ({ name: t.name, isNew: false }));
+    const exactMatch = this._allTags.some(t => t.name.toLowerCase() === q) || existingNames.has(q);
+    if (!exactMatch && q.length > 0) {
+      matches.push({ name: this._tagQuery.trim(), isNew: true });
+    }
+    return matches;
+  }
+
+  _renderTagSuggestions() {
+    const container = this.shadow.getElementById('tag-suggestions');
+    if (!container) return;
+    const suggestions = this._getTagSuggestions();
+    if (!suggestions.length) {
+      container.classList.remove('visible');
+      return;
+    }
+    container.innerHTML = suggestions.map(s => `
+      <div class="tag-suggestion" data-suggestion-name="${this._escAttr(s.name)}">
+        ${this._esc(s.name)}
+        ${s.isNew ? '<span class="new-badge">new</span>' : ''}
+      </div>
+    `).join('');
+    container.classList.add('visible');
+  }
+
+  _esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+  }
+
+  _escAttr(str) {
+    return (str || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
 }

@@ -44,10 +44,11 @@ kbSheet.replaceSync(`
 `);
 
 const SMART_VIEWS = [
-  { key: 'all',        label: 'All Items',       iconName: 'layers' },
-  { key: 'favourites', label: 'Favourites',       iconName: 'star' },
-  { key: 'top_rated',  label: 'Top Rated',        iconName: 'award' },
+  { key: 'home',       label: 'Home',             iconName: 'home' },
+  { key: 'favourites', label: 'Favourites',        iconName: 'star' },
   { key: 'recent',     label: 'Recently Added',   iconName: 'clock' },
+  { key: 'top_rated',  label: 'Top Rated',        iconName: 'award' },
+  { key: 'all',        label: 'All Items',        iconName: 'layers' },
 ];
 
 class PosKBSidebar extends HTMLElement {
@@ -55,7 +56,7 @@ class PosKBSidebar extends HTMLElement {
     super();
     this.shadow = this.attachShadow({ mode: 'open' });
     this.shadow.adoptedStyleSheets = [SIDEBAR_NAV_SHEET, kbSheet];
-    this._selectedView = 'all';
+    this._selectedView = 'home';
     this._selectedCollectionId = null;
     this._collections = [];
     this._stats = {};
@@ -113,6 +114,8 @@ class PosKBSidebar extends HTMLElement {
               ${count > 0 ? `<span class="nav-count">${count}</span>` : ''}
             </div>`;
         }).join('')}
+
+        <div class="divider"></div>
 
         ${pinned.map(c => this._renderCollectionItem(c)).join('')}
 

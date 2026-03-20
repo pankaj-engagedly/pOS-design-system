@@ -109,7 +109,7 @@ class PosNoteToolbar extends HTMLElement {
           align-items: center;
           gap: 2px;
           padding: 4px 8px;
-          border-bottom: 1px solid var(--pos-color-border, #e5e5e5);
+          border-top: 1px solid var(--pos-color-border, #e5e5e5);
           flex-wrap: wrap;
           flex-shrink: 0;
           background: var(--pos-color-surface-alt, #fafafa);
@@ -147,7 +147,7 @@ class PosNoteToolbar extends HTMLElement {
 
         .heading-menu {
           position: absolute;
-          top: calc(100% + 4px);
+          bottom: calc(100% + 4px);
           left: 8px;
           background: var(--pos-color-surface, #fff);
           border: 1px solid var(--pos-color-border, #e5e5e5);

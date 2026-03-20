@@ -2,14 +2,121 @@
 // Composes: pos-note-list-item, pos-note-card
 // Dispatches: note-select, note-create, search-change, view-mode-change
 
+import { icon } from '../../../shared/utils/icons.js';
 import './pos-note-list-item.js';
 import './pos-note-card.js';
-import '../../../shared/components/pos-page-header.js';
+
+const listSheet = new CSSStyleSheet();
+listSheet.replaceSync(`
+  :host {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* Header row */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: var(--pos-space-sm);
+    padding: var(--pos-space-md) var(--pos-space-md) var(--pos-space-sm);
+    flex-shrink: 0;
+  }
+  .header-title {
+    font-size: var(--pos-font-size-lg);
+    font-weight: var(--pos-font-weight-bold);
+    color: var(--pos-color-text-primary);
+    margin: 0;
+    flex: 1;
+  }
+  .header-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px var(--pos-space-sm);
+    border: 1px solid var(--pos-color-border-default);
+    border-radius: var(--pos-radius-sm);
+    background: transparent;
+    color: var(--pos-color-text-secondary);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .header-btn:hover { background: var(--pos-color-background-secondary); }
+  .header-btn.active {
+    background: var(--pos-color-action-primary);
+    color: #fff;
+    border-color: var(--pos-color-action-primary);
+  }
+  .header-btn svg { pointer-events: none; }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--pos-space-sm);
+    padding: var(--pos-space-sm);
+    border-bottom: 1px solid var(--pos-color-border-default);
+    flex-shrink: 0;
+  }
+
+  .search-input {
+    flex: 1;
+    border: 1px solid var(--pos-color-border-default);
+    border-radius: var(--pos-radius-sm);
+    padding: 6px 10px;
+    font-size: var(--pos-font-size-sm);
+    font-family: inherit;
+    outline: none;
+    background: var(--pos-color-background-secondary);
+    color: var(--pos-color-text-primary);
+  }
+  .search-input:focus {
+    border-color: var(--pos-color-action-primary);
+    background: var(--pos-color-background-primary);
+  }
+
+  .notes-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .notes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: var(--pos-space-md);
+    padding: 4px;
+  }
+  .notes-grid pos-note-card {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--pos-color-text-secondary);
+    font-size: var(--pos-font-size-sm);
+    gap: 8px;
+  }
+  .empty-icon {
+    display: flex;
+    color: var(--pos-color-text-secondary);
+    opacity: 0.4;
+  }
+`);
 
 class PosNoteList extends HTMLElement {
   constructor() {
     super();
     this.shadow = this.attachShadow({ mode: 'open' });
+    this.shadow.adoptedStyleSheets = [listSheet];
     this._notes = [];
     this._selectedNoteId = null;
     this._viewMode = 'list';
@@ -22,7 +129,6 @@ class PosNoteList extends HTMLElement {
   set notes(val) {
     this._notes = val || [];
     this._renderNotes();
-    this._updateHeader();
   }
 
   set selectedNoteId(val) {
@@ -33,12 +139,12 @@ class PosNoteList extends HTMLElement {
   set viewMode(val) {
     this._viewMode = val;
     this._renderNotes();
-    this._updateToolbar();
+    this._updateViewButtons();
   }
 
   set folderName(val) {
     this._folderName = val || 'Notes';
-    this._updateHeader();
+    this._updateTitle();
   }
 
   connectedCallback() {
@@ -51,14 +157,18 @@ class PosNoteList extends HTMLElement {
     this._eventsBound = true;
 
     this.shadow.addEventListener('click', (e) => {
-      const action = e.target.closest('[data-action]')?.dataset.action;
+      const actionEl = e.target.closest('[data-action]');
+      if (!actionEl) return;
+      const action = actionEl.dataset.action;
       if (action === 'new-note') {
         this.dispatchEvent(new CustomEvent('note-create', { bubbles: true, composed: true }));
-      } else if (action === 'toggle-grid') {
-        const newMode = this._viewMode === 'grid' ? 'list' : 'grid';
-        this.dispatchEvent(new CustomEvent('view-mode-change', {
-          bubbles: true, composed: true, detail: { viewMode: newMode },
-        }));
+      } else if (action === 'set-view') {
+        const view = actionEl.dataset.view;
+        if (view !== this._viewMode) {
+          this.dispatchEvent(new CustomEvent('view-mode-change', {
+            bubbles: true, composed: true, detail: { viewMode: view },
+          }));
+        }
       }
     });
 
@@ -74,7 +184,6 @@ class PosNoteList extends HTMLElement {
       }
     });
 
-    // Note selection events bubble up from child components
     this.shadow.addEventListener('note-select', (e) => {
       this.dispatchEvent(new CustomEvent('note-select', {
         bubbles: true, composed: true, detail: e.detail,
@@ -82,125 +191,41 @@ class PosNoteList extends HTMLElement {
     });
   }
 
-  _updateToolbar() {
-    const btn = this.shadow.querySelector('[data-action="toggle-grid"]');
-    if (btn) btn.textContent = this._viewMode === 'grid' ? '☰' : '⊞';
+  _updateViewButtons() {
+    this.shadow.querySelectorAll('[data-action="set-view"]').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.view === this._viewMode);
+    });
+  }
+
+  _updateTitle() {
+    const el = this.shadow.querySelector('#header-title');
+    if (el) el.textContent = this._folderName;
   }
 
   render() {
     this.shadow.innerHTML = `
-      <style>
-        :host {
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-          overflow: hidden;
-        }
-
-        .toolbar {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 10px 12px;
-          border-bottom: 1px solid var(--pos-color-border, #e5e5e5);
-          flex-shrink: 0;
-        }
-
-        .search-input {
-          flex: 1;
-          border: 1px solid var(--pos-color-border, #e0e0e0);
-          border-radius: 6px;
-          padding: 6px 10px;
-          font-size: 13px;
-          outline: none;
-          background: var(--pos-color-surface-alt, #f9f9f9);
-        }
-        .search-input:focus {
-          border-color: var(--pos-color-primary-400, #4f8ef7);
-          background: #fff;
-        }
-
-        .toolbar-btn {
-          border: 1px solid var(--pos-color-border, #e0e0e0);
-          border-radius: 6px;
-          padding: 6px 10px;
-          cursor: pointer;
-          background: var(--pos-color-surface, #fff);
-          font-size: 16px;
-          line-height: 1;
-          color: var(--pos-color-text-secondary, #555);
-        }
-        .toolbar-btn:hover {
-          background: var(--pos-color-surface-hover, #f0f0f0);
-        }
-
-        .new-note-btn {
-          border: none;
-          border-radius: 6px;
-          padding: 7px 14px;
-          cursor: pointer;
-          background: var(--pos-color-primary-600, #1a73e8);
-          color: #fff;
-          font-size: 13px;
-          font-weight: 500;
-          white-space: nowrap;
-        }
-        .new-note-btn:hover {
-          background: var(--pos-color-primary-700, #1557b0);
-        }
-
-        .notes-container {
-          flex: 1;
-          overflow-y: auto;
-          padding: 8px;
-        }
-
-        .notes-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-          gap: 10px;
-          padding: 4px;
-        }
-
-        .empty-state {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          height: 200px;
-          color: var(--pos-color-text-muted, #aaa);
-          font-size: 14px;
-          gap: 8px;
-        }
-
-        .empty-icon { font-size: 40px; }
-      </style>
-
-      <pos-page-header id="page-header">
-        ${this._esc(this._folderName)}
-        <span slot="subtitle">${this._notes.length} note${this._notes.length !== 1 ? 's' : ''}</span>
-      </pos-page-header>
+      <div class="header">
+        <h2 class="header-title" id="header-title">${this._esc(this._folderName)}</h2>
+        <button class="header-btn ${this._viewMode === 'list' ? 'active' : ''}" data-action="set-view" data-view="list" title="List view">${icon('list', 14)}</button>
+        <button class="header-btn ${this._viewMode === 'grid' ? 'active' : ''}" data-action="set-view" data-view="grid" title="Grid view">${icon('grid', 14)}</button>
+        <button class="header-btn" data-action="new-note" title="New Note">${icon('plus', 14)}</button>
+      </div>
 
       <div class="toolbar">
         <input class="search-input" placeholder="Search notes..." value="${this._searchValue}" />
-        <button class="toolbar-btn" data-action="toggle-grid" title="Toggle view">
-          ${this._viewMode === 'grid' ? '☰' : '⊞'}
-        </button>
-        <button class="new-note-btn" data-action="new-note">＋ New Note</button>
       </div>
 
       <div class="notes-container">
         ${this._renderNotesHTML()}
       </div>
     `;
-
   }
 
   _renderNotesHTML() {
     if (this._notes.length === 0) {
       return `
         <div class="empty-state">
-          <span class="empty-icon">📝</span>
+          <div class="empty-icon">${icon('file-text', 40)}</div>
           <span>No notes yet</span>
         </div>
       `;
@@ -215,7 +240,6 @@ class PosNoteList extends HTMLElement {
   _renderNotes() {
     const container = this.shadow.querySelector('#notes-list, #notes-grid');
     if (!container) {
-      // Need full re-render (switching view modes)
       this.render();
       return;
     }
@@ -237,15 +261,6 @@ class PosNoteList extends HTMLElement {
         container.appendChild(item);
       });
     }
-  }
-
-  _updateHeader() {
-    const header = this.shadow.querySelector('#page-header');
-    if (!header) return;
-    header.innerHTML = `
-      ${this._esc(this._folderName)}
-      <span slot="subtitle">${this._notes.length} note${this._notes.length !== 1 ? 's' : ''}</span>
-    `;
   }
 
   _esc(str) {

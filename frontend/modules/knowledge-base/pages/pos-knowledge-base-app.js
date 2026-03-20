@@ -2,13 +2,14 @@
 
 import '../../../shared/components/pos-module-layout.js';
 import '../components/pos-kb-sidebar.js';
+import '../components/pos-kb-home.js';
 import '../components/pos-kb-list-page.js';
 import '../components/pos-kb-item-detail.js';
 import '../components/pos-kb-add-content-dialog.js';
 import '../components/pos-kb-feed-timeline.js';
 import '../components/pos-kb-subscribe-dialog.js';
 import store from '../store.js';
-import { getItems, getItem, updateItem, deleteItem, addTag, getStats, getTags } from '../services/kb-api.js';
+import { getItems, getCollections, getItem, updateItem, deleteItem, addTag, getStats, getTags } from '../services/kb-api.js';
 import { getFeedItems, getFeedSources, updateFeedItem, saveFeedItemToKB, markAllRead } from '../services/feed-api.js';
 import { confirmDialog } from '../../../shared/components/pos-confirm-dialog.js';
 
@@ -16,6 +17,7 @@ const TAG = 'pos-knowledge-base-app';
 const KB_VIEW_KEY = 'pos-kb-view';
 
 const VIEW_TITLES = {
+  home: 'Home',
   all: 'All Items',
   favourites: 'Favourites',
   top_rated: 'Top Rated',
@@ -37,6 +39,8 @@ class PosKnowledgeBaseApp extends HTMLElement {
 
     if (store.getState().selectedView === 'feeds') {
       this._loadFeedsPage();
+    } else if (store.getState().selectedView === 'home') {
+      this._loadHomePage();
     } else {
       this._loadItems();
     }
@@ -102,6 +106,38 @@ class PosKnowledgeBaseApp extends HTMLElement {
     }
   }
 
+  async _loadHomePage() {
+    store.setState({ loading: true });
+    try {
+      const [recentItems, stats, allCollections] = await Promise.all([
+        getItems({ sort_by: 'created_at', limit: 6 }),
+        getStats(),
+        getCollections().catch(() => []),
+      ]);
+
+      const pinnedCollections = allCollections.filter(c => c.is_pinned);
+
+      // Load items for each pinned collection in parallel
+      const pinnedWithItems = await Promise.all(
+        pinnedCollections.map(async (col) => {
+          const items = await getItems({ collection_id: col.id, limit: 4 }).catch(() => []);
+          return { ...col, items };
+        })
+      );
+
+      store.setState({ stats, loading: false });
+
+      const homeEl = this.shadow.querySelector('pos-kb-home');
+      if (homeEl) {
+        homeEl.totalCount = stats.total || 0;
+        homeEl.recentItems = recentItems;
+        homeEl.pinnedCollections = pinnedWithItems;
+      }
+    } catch (err) {
+      store.setState({ loading: false, error: err.message });
+    }
+  }
+
   _render() {
     this.shadow.innerHTML = `
       <style>
@@ -114,7 +150,7 @@ class PosKnowledgeBaseApp extends HTMLElement {
           flex-direction: column;
           min-width: 0;
         }
-        pos-kb-list-page, pos-kb-feed-timeline {
+        pos-kb-home, pos-kb-list-page, pos-kb-feed-timeline {
           flex: 1;
           min-height: 0;
         }
@@ -126,7 +162,8 @@ class PosKnowledgeBaseApp extends HTMLElement {
       <pos-module-layout>
         <pos-kb-sidebar slot="panel"></pos-kb-sidebar>
         <div class="main">
-          <pos-kb-list-page></pos-kb-list-page>
+          <pos-kb-home style="display:none"></pos-kb-home>
+          <pos-kb-list-page style="display:none"></pos-kb-list-page>
           <pos-kb-feed-timeline style="display:none"></pos-kb-feed-timeline>
           <pos-kb-item-detail></pos-kb-item-detail>
         </div>
@@ -141,10 +178,12 @@ class PosKnowledgeBaseApp extends HTMLElement {
 
   _update() {
     const state = store.getState();
+    const homeEl = this.shadow.querySelector('pos-kb-home');
     const listPage = this.shadow.querySelector('pos-kb-list-page');
     const feedTimeline = this.shadow.querySelector('pos-kb-feed-timeline');
     const sidebar = this.shadow.querySelector('pos-kb-sidebar');
     const isFeeds = state.selectedView === 'feeds' && !state.selectedCollectionId;
+    const isHome = state.selectedView === 'home' && !state.selectedCollectionId;
 
     if (sidebar) {
       sidebar.selectedView = state.selectedView;
@@ -152,9 +191,13 @@ class PosKnowledgeBaseApp extends HTMLElement {
       sidebar.stats = state.stats;
     }
 
+    if (homeEl) {
+      homeEl.style.display = isHome ? '' : 'none';
+    }
+
     if (listPage) {
-      listPage.style.display = isFeeds ? 'none' : '';
-      if (!isFeeds) {
+      listPage.style.display = (!isHome && !isFeeds) ? '' : 'none';
+      if (!isHome && !isFeeds) {
         listPage.items = state.items;
         listPage.tags = state.tags;
         listPage.activeTag = state.activeTag;
@@ -199,6 +242,8 @@ class PosKnowledgeBaseApp extends HTMLElement {
 
       if (view === 'feeds') {
         this._loadFeedsPage();
+      } else if (view === 'home') {
+        this._loadHomePage();
       } else {
         this._loadItems();
       }
@@ -320,7 +365,12 @@ class PosKnowledgeBaseApp extends HTMLElement {
     });
 
     this.shadow.addEventListener('item-saved', () => {
-      this._loadItems();
+      const view = store.getState().selectedView;
+      if (view === 'home') {
+        this._loadHomePage();
+      } else if (view !== 'feeds') {
+        this._loadItems();
+      }
       this.shadow.querySelector('pos-kb-sidebar')?.refreshData();
     });
 
@@ -369,9 +419,9 @@ class PosKnowledgeBaseApp extends HTMLElement {
 
     // Back from feed timeline
     this.shadow.addEventListener('navigate-back', () => {
-      store.setState({ selectedView: 'all', selectedCollectionId: null, selectedCollectionName: '' });
+      store.setState({ selectedView: 'home', selectedCollectionId: null, selectedCollectionName: '' });
       this._saveViewState();
-      this._loadItems();
+      this._loadHomePage();
     });
   }
 
@@ -384,8 +434,10 @@ class PosKnowledgeBaseApp extends HTMLElement {
       const saved = sessionStorage.getItem(KB_VIEW_KEY);
       if (saved) {
         const { view, collectionId, collectionName } = JSON.parse(saved);
+        // Migrate 'all' → 'home' (view was removed, home is the new landing)
+        const restoredView = (view === 'all' || !view) ? 'home' : view;
         store.setState({
-          selectedView: view || 'all',
+          selectedView: restoredView,
           selectedCollectionId: collectionId || null,
           selectedCollectionName: collectionName || '',
         });
