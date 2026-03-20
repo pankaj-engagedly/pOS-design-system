@@ -1,0 +1,613 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		2CE0099D2F6C11F100978D0D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CE0099C2F6C11F100978D0D /* AppDelegate.swift */; };
+		2CE009A12F6C11F100978D0D /* Main.html in Resources */ = {isa = PBXBuildFile; fileRef = 2CE0099F2F6C11F100978D0D /* Main.html */; };
+		2CE009A32F6C11F100978D0D /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = 2CE009A22F6C11F100978D0D /* Icon.png */; };
+		2CE009A52F6C11F100978D0D /* Style.css in Resources */ = {isa = PBXBuildFile; fileRef = 2CE009A42F6C11F100978D0D /* Style.css */; };
+		2CE009A72F6C11F100978D0D /* Script.js in Resources */ = {isa = PBXBuildFile; fileRef = 2CE009A62F6C11F100978D0D /* Script.js */; };
+		2CE009A92F6C11F100978D0D /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CE009A82F6C11F100978D0D /* ViewController.swift */; };
+		2CE009AC2F6C11F100978D0D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 2CE009AA2F6C11F100978D0D /* Main.storyboard */; };
+		2CE009AE2F6C11F100978D0D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2CE009AD2F6C11F100978D0D /* Assets.xcassets */; };
+		2CE009B52F6C11F100978D0D /* pOS Knowledge Base Extension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 2CE009B42F6C11F100978D0D /* pOS Knowledge Base Extension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		2CE009BA2F6C11F100978D0D /* SafariWebExtensionHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CE009B92F6C11F100978D0D /* SafariWebExtensionHandler.swift */; };
+		2CE009CB2F6C11F200978D0D /* popup.js in Resources */ = {isa = PBXBuildFile; fileRef = 2CE009C62F6C11F200978D0D /* popup.js */; };
+		2CE009CC2F6C11F200978D0D /* background.js in Resources */ = {isa = PBXBuildFile; fileRef = 2CE009C72F6C11F200978D0D /* background.js */; };
+		2CE009CD2F6C11F200978D0D /* popup.html in Resources */ = {isa = PBXBuildFile; fileRef = 2CE009C82F6C11F200978D0D /* popup.html */; };
+		2CE009CE2F6C11F200978D0D /* icons in Resources */ = {isa = PBXBuildFile; fileRef = 2CE009C92F6C11F200978D0D /* icons */; };
+		2CE009CF2F6C11F200978D0D /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = 2CE009CA2F6C11F200978D0D /* manifest.json */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		2CE009B62F6C11F100978D0D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2CE009912F6C11F000978D0D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2CE009B32F6C11F100978D0D;
+			remoteInfo = "pOS Knowledge Base Extension";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		2CE009C12F6C11F100978D0D /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				2CE009B52F6C11F100978D0D /* pOS Knowledge Base Extension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		2CE009992F6C11F000978D0D /* pOS Knowledge Base.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "pOS Knowledge Base.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2CE0099C2F6C11F100978D0D /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		2CE009A02F6C11F100978D0D /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = Base; path = Base.lproj/Main.html; sourceTree = "<group>"; };
+		2CE009A22F6C11F100978D0D /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
+		2CE009A42F6C11F100978D0D /* Style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; path = Style.css; sourceTree = "<group>"; };
+		2CE009A62F6C11F100978D0D /* Script.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Script.js; sourceTree = "<group>"; };
+		2CE009A82F6C11F100978D0D /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		2CE009AB2F6C11F100978D0D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		2CE009AD2F6C11F100978D0D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		2CE009AF2F6C11F100978D0D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		2CE009B42F6C11F100978D0D /* pOS Knowledge Base Extension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "pOS Knowledge Base Extension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2CE009B92F6C11F100978D0D /* SafariWebExtensionHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafariWebExtensionHandler.swift; sourceTree = "<group>"; };
+		2CE009BB2F6C11F100978D0D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		2CE009C62F6C11F200978D0D /* popup.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = popup.js; path = Resources/popup.js; sourceTree = "<group>"; };
+		2CE009C72F6C11F200978D0D /* background.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = background.js; path = Resources/background.js; sourceTree = "<group>"; };
+		2CE009C82F6C11F200978D0D /* popup.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = popup.html; path = Resources/popup.html; sourceTree = "<group>"; };
+		2CE009C92F6C11F200978D0D /* icons */ = {isa = PBXFileReference; lastKnownFileType = folder; name = icons; path = Resources/icons; sourceTree = "<group>"; };
+		2CE009CA2F6C11F200978D0D /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = manifest.json; path = Resources/manifest.json; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2CE009962F6C11F000978D0D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2CE009B12F6C11F100978D0D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2CE009902F6C11F000978D0D = {
+			isa = PBXGroup;
+			children = (
+				2CE0099B2F6C11F000978D0D /* pOS Knowledge Base */,
+				2CE009B82F6C11F100978D0D /* pOS Knowledge Base Extension */,
+				2CE0099A2F6C11F000978D0D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		2CE0099A2F6C11F000978D0D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2CE009992F6C11F000978D0D /* pOS Knowledge Base.app */,
+				2CE009B42F6C11F100978D0D /* pOS Knowledge Base Extension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2CE0099B2F6C11F000978D0D /* pOS Knowledge Base */ = {
+			isa = PBXGroup;
+			children = (
+				2CE0099C2F6C11F100978D0D /* AppDelegate.swift */,
+				2CE009A82F6C11F100978D0D /* ViewController.swift */,
+				2CE009AA2F6C11F100978D0D /* Main.storyboard */,
+				2CE009AD2F6C11F100978D0D /* Assets.xcassets */,
+				2CE009AF2F6C11F100978D0D /* Info.plist */,
+				2CE0099E2F6C11F100978D0D /* Resources */,
+			);
+			path = "pOS Knowledge Base";
+			sourceTree = "<group>";
+		};
+		2CE0099E2F6C11F100978D0D /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				2CE0099F2F6C11F100978D0D /* Main.html */,
+				2CE009A22F6C11F100978D0D /* Icon.png */,
+				2CE009A42F6C11F100978D0D /* Style.css */,
+				2CE009A62F6C11F100978D0D /* Script.js */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		2CE009B82F6C11F100978D0D /* pOS Knowledge Base Extension */ = {
+			isa = PBXGroup;
+			children = (
+				2CE009C52F6C11F200978D0D /* Resources */,
+				2CE009B92F6C11F100978D0D /* SafariWebExtensionHandler.swift */,
+				2CE009BB2F6C11F100978D0D /* Info.plist */,
+			);
+			path = "pOS Knowledge Base Extension";
+			sourceTree = "<group>";
+		};
+		2CE009C52F6C11F200978D0D /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				2CE009C62F6C11F200978D0D /* popup.js */,
+				2CE009C72F6C11F200978D0D /* background.js */,
+				2CE009C82F6C11F200978D0D /* popup.html */,
+				2CE009C92F6C11F200978D0D /* icons */,
+				2CE009CA2F6C11F200978D0D /* manifest.json */,
+			);
+			name = Resources;
+			path = "pOS Knowledge Base Extension";
+			sourceTree = SOURCE_ROOT;
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2CE009982F6C11F000978D0D /* pOS Knowledge Base */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2CE009C22F6C11F100978D0D /* Build configuration list for PBXNativeTarget "pOS Knowledge Base" */;
+			buildPhases = (
+				2CE009952F6C11F000978D0D /* Sources */,
+				2CE009962F6C11F000978D0D /* Frameworks */,
+				2CE009972F6C11F000978D0D /* Resources */,
+				2CE009C12F6C11F100978D0D /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2CE009B72F6C11F100978D0D /* PBXTargetDependency */,
+			);
+			name = "pOS Knowledge Base";
+			packageProductDependencies = (
+			);
+			productName = "pOS Knowledge Base";
+			productReference = 2CE009992F6C11F000978D0D /* pOS Knowledge Base.app */;
+			productType = "com.apple.product-type.application";
+		};
+		2CE009B32F6C11F100978D0D /* pOS Knowledge Base Extension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2CE009BE2F6C11F100978D0D /* Build configuration list for PBXNativeTarget "pOS Knowledge Base Extension" */;
+			buildPhases = (
+				2CE009B02F6C11F100978D0D /* Sources */,
+				2CE009B12F6C11F100978D0D /* Frameworks */,
+				2CE009B22F6C11F100978D0D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "pOS Knowledge Base Extension";
+			packageProductDependencies = (
+			);
+			productName = "pOS Knowledge Base Extension";
+			productReference = 2CE009B42F6C11F100978D0D /* pOS Knowledge Base Extension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		2CE009912F6C11F000978D0D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2630;
+				LastUpgradeCheck = 2630;
+				TargetAttributes = {
+					2CE009982F6C11F000978D0D = {
+						CreatedOnToolsVersion = 26.3;
+					};
+					2CE009B32F6C11F100978D0D = {
+						CreatedOnToolsVersion = 26.3;
+					};
+				};
+			};
+			buildConfigurationList = 2CE009942F6C11F000978D0D /* Build configuration list for PBXProject "pOS Knowledge Base" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 2CE009902F6C11F000978D0D;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 2CE0099A2F6C11F000978D0D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				2CE009982F6C11F000978D0D /* pOS Knowledge Base */,
+				2CE009B32F6C11F100978D0D /* pOS Knowledge Base Extension */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		2CE009972F6C11F000978D0D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2CE009A32F6C11F100978D0D /* Icon.png in Resources */,
+				2CE009AC2F6C11F100978D0D /* Main.storyboard in Resources */,
+				2CE009A72F6C11F100978D0D /* Script.js in Resources */,
+				2CE009A12F6C11F100978D0D /* Main.html in Resources */,
+				2CE009AE2F6C11F100978D0D /* Assets.xcassets in Resources */,
+				2CE009A52F6C11F100978D0D /* Style.css in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2CE009B22F6C11F100978D0D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2CE009CC2F6C11F200978D0D /* background.js in Resources */,
+				2CE009CE2F6C11F200978D0D /* icons in Resources */,
+				2CE009CF2F6C11F200978D0D /* manifest.json in Resources */,
+				2CE009CD2F6C11F200978D0D /* popup.html in Resources */,
+				2CE009CB2F6C11F200978D0D /* popup.js in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		2CE009952F6C11F000978D0D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2CE009A92F6C11F100978D0D /* ViewController.swift in Sources */,
+				2CE0099D2F6C11F100978D0D /* AppDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2CE009B02F6C11F100978D0D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2CE009BA2F6C11F100978D0D /* SafariWebExtensionHandler.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		2CE009B72F6C11F100978D0D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2CE009B32F6C11F100978D0D /* pOS Knowledge Base Extension */;
+			targetProxy = 2CE009B62F6C11F100978D0D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		2CE0099F2F6C11F100978D0D /* Main.html */ = {
+			isa = PBXVariantGroup;
+			children = (
+				2CE009A02F6C11F100978D0D /* Base */,
+			);
+			name = Main.html;
+			sourceTree = "<group>";
+		};
+		2CE009AA2F6C11F100978D0D /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				2CE009AB2F6C11F100978D0D /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		2CE009BC2F6C11F100978D0D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		2CE009BD2F6C11F100978D0D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		2CE009BF2F6C11F100978D0D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "pOS Knowledge Base Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "pOS Knowledge Base Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pos.pOS-Knowledge-Base.Extension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		2CE009C02F6C11F100978D0D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "pOS Knowledge Base Extension/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "pOS Knowledge Base Extension";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pos.pOS-Knowledge-Base.Extension";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		2CE009C32F6C11F100978D0D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "pOS Knowledge Base/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "pOS Knowledge Base";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pos.pOS-Knowledge-Base";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		2CE009C42F6C11F100978D0D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "pOS Knowledge Base/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "pOS Knowledge Base";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainStoryboardFile = Main;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = (
+					"-framework",
+					SafariServices,
+					"-framework",
+					WebKit,
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.pos.pOS-Knowledge-Base";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2CE009942F6C11F000978D0D /* Build configuration list for PBXProject "pOS Knowledge Base" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2CE009BC2F6C11F100978D0D /* Debug */,
+				2CE009BD2F6C11F100978D0D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2CE009BE2F6C11F100978D0D /* Build configuration list for PBXNativeTarget "pOS Knowledge Base Extension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2CE009BF2F6C11F100978D0D /* Debug */,
+				2CE009C02F6C11F100978D0D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2CE009C22F6C11F100978D0D /* Build configuration list for PBXNativeTarget "pOS Knowledge Base" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2CE009C32F6C11F100978D0D /* Debug */,
+				2CE009C42F6C11F100978D0D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 2CE009912F6C11F000978D0D /* Project object */;
+}
