@@ -26,6 +26,9 @@ docker-volumes/
 backend/data/attachments/*
 !backend/data/attachments/.gitkeep
 
+# User-uploaded photos (photos service local storage)
+backend/data/photos/
+
 # IDE
 .idea/
 .vscode/

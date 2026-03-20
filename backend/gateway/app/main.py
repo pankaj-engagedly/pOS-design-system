@@ -21,6 +21,7 @@ class GatewayConfig(BaseServiceConfig):
     DOCUMENTS_SERVICE_URL: str = "http://localhost:8005"
     VAULT_SERVICE_URL: str = "http://localhost:8006"
     KB_SERVICE_URL: str = "http://localhost:8007"
+    PHOTOS_SERVICE_URL: str = "http://localhost:8008"
 
 
 config = GatewayConfig()
@@ -37,6 +38,7 @@ async def lifespan(app: FastAPI):
     routes_module.DOCUMENTS_SERVICE_URL = config.DOCUMENTS_SERVICE_URL
     routes_module.VAULT_SERVICE_URL = config.VAULT_SERVICE_URL
     routes_module.KB_SERVICE_URL = config.KB_SERVICE_URL
+    routes_module.PHOTOS_SERVICE_URL = config.PHOTOS_SERVICE_URL
     logger.info("Gateway ready")
     yield
     logger.info("Gateway stopped")

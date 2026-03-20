@@ -37,7 +37,7 @@ async def proxy_request(
                 url=url,
                 headers=headers,
                 content=body,
-                timeout=30.0,
+                timeout=60.0,
             )
         except httpx.ConnectError:
             return Response(

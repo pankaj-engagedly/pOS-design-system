@@ -15,6 +15,7 @@ NOTES_SERVICE_URL = "http://localhost:8004"
 DOCUMENTS_SERVICE_URL = "http://localhost:8005"
 VAULT_SERVICE_URL = "http://localhost:8006"
 KB_SERVICE_URL = "http://localhost:8007"
+PHOTOS_SERVICE_URL = "http://localhost:8008"
 
 
 @router.get("/api/")
@@ -89,3 +90,15 @@ async def proxy_kb(request: Request, path: str):
 @router.api_route("/api/feeds/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
 async def proxy_feeds(request: Request, path: str):
     return await proxy_request(request, KB_SERVICE_URL, f"/api/feeds/{path}")
+
+
+# --- Photos service proxy ---
+
+@router.api_route("/api/photos", methods=["GET"])
+async def proxy_photos_base(request: Request):
+    return await proxy_request(request, PHOTOS_SERVICE_URL, "/api/photos")
+
+
+@router.api_route("/api/photos/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
+async def proxy_photos(request: Request, path: str):
+    return await proxy_request(request, PHOTOS_SERVICE_URL, f"/api/photos/{path}")

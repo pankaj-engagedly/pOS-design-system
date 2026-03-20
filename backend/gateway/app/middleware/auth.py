@@ -35,15 +35,20 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if request.method == "OPTIONS":
             return await call_next(request)
 
-        # Extract token from Authorization header
+        # Extract token from Authorization header or ?token= query param
+        # (query param needed for <img>/<video> src which can't set headers)
         auth_header = request.headers.get("Authorization")
-        if not auth_header or not auth_header.startswith("Bearer "):
+        token = None
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ", 1)[1]
+        elif request.query_params.get("token"):
+            token = request.query_params.get("token")
+
+        if not token:
             return JSONResponse(
                 status_code=401,
                 content={"detail": "Not authenticated"},
             )
-
-        token = auth_header.split(" ", 1)[1]
 
         try:
             user_id = validate_token(
