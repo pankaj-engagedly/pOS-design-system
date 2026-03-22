@@ -85,6 +85,12 @@ sheet.replaceSync(`
     height: 100%;
   }
 
+  /* Header padding handled by .content — zero it out */
+  pos-page-header {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
   .card-list {
     max-width: 720px;
     margin: 0 auto;
@@ -167,14 +173,14 @@ class PosKBListPage extends HTMLElement {
     this._viewMode = sessionStorage.getItem(KB_VIEW_MODE_KEY) || 'grid';
   }
 
-  set listTitle(val) { this._title = val; this._renderHeader(); this._renderItems(); }
-  set items(val) { this._items = val || []; this._renderHeader(); this._renderItems(); }
+  set listTitle(val) { this._title = val; this._renderItems(); }
+  set items(val) { this._items = val || []; this._renderItems(); }
   set tags(val) { this._tags = val || []; this._renderItems(); }
   set activeTag(val) { this._activeTag = val; this._renderItems(); }
   set minRating(val) { this._minRating = val; this._renderItems(); }
   set showRatingFilter(val) { this._showRatingFilter = val; this._renderItems(); }
   set selectedItemId(val) { this._selectedItemId = val; this._renderItems(); }
-  set viewMode(val) { this._viewMode = val; this._renderHeader(); this._renderItems(); }
+  set viewMode(val) { this._viewMode = val; this._renderItems(); }
 
   connectedCallback() {
     this._render();
@@ -183,10 +189,8 @@ class PosKBListPage extends HTMLElement {
 
   _render() {
     this.shadow.innerHTML = `
-      <pos-page-header id="header"></pos-page-header>
       <div class="content" id="content"></div>
     `;
-    this._renderHeader();
     this._renderItems();
   }
 
@@ -207,18 +211,6 @@ class PosKBListPage extends HTMLElement {
         <button class="header-btn" data-action="add-text" title="Add Text">${icon('file-text', 15)}</button>
       </span>
     `;
-  }
-
-  _renderHeader() {
-    const header = this.shadow.getElementById('header');
-    if (!header) return;
-    // In list view, header is rendered inside .card-list — hide the top-level one
-    if (this._viewMode === 'list') {
-      header.style.display = 'none';
-    } else {
-      header.style.display = '';
-      header.innerHTML = this._getHeaderHtml();
-    }
   }
 
   _getFiltersHtml() {
@@ -262,36 +254,34 @@ class PosKBListPage extends HTMLElement {
 
     const filtersHtml = this._getFiltersHtml();
 
+    const headerHtml = `<pos-page-header>${this._getHeaderHtml()}</pos-page-header>`;
+    const isGrid = this._viewMode === 'grid';
+
     if (!this._items.length) {
-      const emptyContent = `
+      const emptyHtml = `
         ${filtersHtml}
         <div class="empty">
           <div class="empty-icon">${icon('layers', 40)}</div>
           <button class="empty-add-btn" data-action="add-url">${icon('plus', 13)} Add Content</button>
         </div>
       `;
-      if (this._viewMode === 'list') {
-        content.innerHTML = `<div class="card-list"><pos-page-header id="list-header" style="padding-left:0;padding-right:0"></pos-page-header>${emptyContent}</div>`;
-        const listHeader = content.querySelector('#list-header');
-        if (listHeader) listHeader.innerHTML = this._getHeaderHtml();
+      if (isGrid) {
+        content.innerHTML = `${headerHtml}${emptyHtml}`;
       } else {
-        content.innerHTML = emptyContent;
+        content.innerHTML = `<div class="card-list">${headerHtml}${emptyHtml}</div>`;
       }
       return;
     }
 
-    const isGrid = this._viewMode === 'grid';
     const compactAttr = isGrid ? ' compact' : '';
     const cardsHtml = this._items.map(it =>
       `<pos-kb-item-card data-id="${it.id}"${compactAttr}></pos-kb-item-card>`
     ).join('');
 
     if (isGrid) {
-      content.innerHTML = `${filtersHtml}<div class="card-grid">${cardsHtml}</div>`;
+      content.innerHTML = `${headerHtml}${filtersHtml}<div class="card-grid">${cardsHtml}</div>`;
     } else {
-      content.innerHTML = `<div class="card-list"><pos-page-header id="list-header" style="padding-left:0;padding-right:0"></pos-page-header>${filtersHtml}${cardsHtml}</div>`;
-      const listHeader = content.querySelector('#list-header');
-      if (listHeader) listHeader.innerHTML = this._getHeaderHtml();
+      content.innerHTML = `<div class="card-list">${headerHtml}${filtersHtml}${cardsHtml}</div>`;
     }
 
     content.querySelectorAll('pos-kb-item-card').forEach(card => {
@@ -307,8 +297,8 @@ class PosKBListPage extends HTMLElement {
     this.shadow.addEventListener('click', (e) => {
       const action = e.target.closest('[data-action]')?.dataset.action;
 
-      if (action === 'set-view-list') { this._viewMode = 'list'; sessionStorage.setItem(KB_VIEW_MODE_KEY, 'list'); this._renderHeader(); this._renderItems(); return; }
-      if (action === 'set-view-grid') { this._viewMode = 'grid'; sessionStorage.setItem(KB_VIEW_MODE_KEY, 'grid'); this._renderHeader(); this._renderItems(); return; }
+      if (action === 'set-view-list') { this._viewMode = 'list'; sessionStorage.setItem(KB_VIEW_MODE_KEY, 'list'); this._renderItems(); return; }
+      if (action === 'set-view-grid') { this._viewMode = 'grid'; sessionStorage.setItem(KB_VIEW_MODE_KEY, 'grid'); this._renderItems(); return; }
 
       if (action === 'add-url' || action === 'add-media' || action === 'add-text') {
         this.dispatchEvent(new CustomEvent('open-add-content', {

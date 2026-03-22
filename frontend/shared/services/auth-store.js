@@ -97,14 +97,32 @@ async function _doRefresh(refreshToken) {
   });
 
   if (!res.ok) {
+    console.warn('[auth] Token refresh failed:', res.status, await res.text().catch(() => ''));
     _clearTokens();
     throw new Error('Token refresh failed');
   }
 
   const data = await res.json();
   accessToken = data.access_token;
+  // Save new refresh token BEFORE returning — critical for rotation
   localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
   return data.access_token;
+}
+
+// Proactive refresh — schedule before expiry
+let _refreshTimer = null;
+function _scheduleProactiveRefresh(expireMinutes) {
+  if (_refreshTimer) clearTimeout(_refreshTimer);
+  // Refresh 2 minutes before expiry
+  const ms = Math.max((expireMinutes - 2) * 60000, 60000);
+  _refreshTimer = setTimeout(async () => {
+    try {
+      await refreshAccessToken();
+      _scheduleProactiveRefresh(expireMinutes);
+    } catch {
+      // Silent — will prompt login on next API call
+    }
+  }, ms);
 }
 
 export async function tryRestoreSession() {
@@ -119,6 +137,7 @@ export async function tryRestoreSession() {
     });
     if (res.ok) {
       user = await res.json();
+      _scheduleProactiveRefresh(120);
       emit('auth:changed', { authenticated: true, user });
       return true;
     }
@@ -133,12 +152,14 @@ function _setTokens(newAccessToken, refreshToken, userData) {
   accessToken = newAccessToken;
   user = userData;
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  _scheduleProactiveRefresh(120); // match server config
   emit('auth:changed', { authenticated: true, user });
 }
 
 function _clearTokens() {
   accessToken = null;
   user = null;
+  if (_refreshTimer) { clearTimeout(_refreshTimer); _refreshTimer = null; }
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   emit('auth:changed', { authenticated: false, user: null });
 }

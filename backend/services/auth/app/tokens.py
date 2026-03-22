@@ -9,6 +9,7 @@ auth-service concern. If we add claims (roles, scopes) in the future, only
 this file changes — not a shared library and not every service.
 """
 
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
@@ -44,6 +45,7 @@ def create_refresh_token(
         "sub": user_id,
         "exp": expire,
         "type": "refresh",
+        "jti": str(uuid.uuid4()),  # unique ID to prevent hash collisions
     }
     return jwt.encode(payload, secret_key, algorithm=algorithm)
 

@@ -5,8 +5,11 @@ import { navigate } from './router.js';
 
 export const API_BASE_URL = '';
 
+let _loggingOut = false;
+
 export async function apiFetch(path, options = {}) {
-  const token = getAccessToken();
+  // Use the latest token (may have been refreshed by another call)
+  let token = getAccessToken();
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -22,7 +25,7 @@ export async function apiFetch(path, options = {}) {
   });
 
   // On 401, try refreshing the token once
-  if (response.status === 401 && token) {
+  if (response.status === 401) {
     try {
       const newToken = await refreshAccessToken();
       headers['Authorization'] = `Bearer ${newToken}`;
@@ -31,8 +34,13 @@ export async function apiFetch(path, options = {}) {
         headers,
       });
     } catch {
-      await logout();
-      navigate('#/login');
+      // Only logout once — prevent cascade from parallel requests
+      if (!_loggingOut) {
+        _loggingOut = true;
+        await logout();
+        navigate('#/login');
+        _loggingOut = false;
+      }
       throw new Error('Session expired');
     }
   }

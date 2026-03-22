@@ -39,7 +39,7 @@ class BaseServiceConfig(BaseSettings):
     # Other services trust the X-User-Id header set by the gateway.
     JWT_SECRET_KEY: str = "dev-secret-change-in-production"
     JWT_ALGORITHM: str = "HS256"
-    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     model_config = {

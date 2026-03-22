@@ -38,9 +38,12 @@ class PosKnowledgeBaseApp extends HTMLElement {
     this._unsub = store.subscribe(() => this._update());
     this._bindEvents();
 
-    if (store.getState().selectedView === 'feeds') {
+    const initState = store.getState();
+    if (initState.selectedCollectionId) {
+      this._loadItems();
+    } else if (initState.selectedView === 'feeds') {
       this._loadFeedsPage();
-    } else if (store.getState().selectedView === 'home') {
+    } else if (initState.selectedView === 'home') {
       this._loadHomePage();
     } else {
       this._loadItems();
@@ -454,8 +457,7 @@ class PosKnowledgeBaseApp extends HTMLElement {
       const saved = sessionStorage.getItem(KB_VIEW_KEY);
       if (saved) {
         const { view, collectionId, collectionName } = JSON.parse(saved);
-        // Migrate 'all' → 'home' (view was removed, home is the new landing)
-        const restoredView = (view === 'all' || !view) ? 'home' : view;
+        const restoredView = view || 'home';
         store.setState({
           selectedView: restoredView,
           selectedCollectionId: collectionId || null,
