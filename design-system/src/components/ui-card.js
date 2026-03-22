@@ -1,6 +1,42 @@
 import { PosBaseElement } from '../core/pos-base-element.js';
 import { define } from '../core/define.js';
 
+/**
+ * Shared card behaviour stylesheet — import and adopt in any component
+ * that renders card-like elements. Provides consistent border, radius,
+ * hover shadow, active/selected state, and transition.
+ *
+ * Usage (in a module component):
+ *   import { CARD_STYLES } from '../../design-system/src/components/ui-card.js';
+ *   // then in CSS or adoptedStyleSheets:
+ *   this.shadow.adoptedStyleSheets = [CARD_STYLES, ...];
+ *
+ * Apply to your card element: <div class="pos-card">
+ * Add .interactive for hover effects, .active for selected state.
+ */
+export const CARD_STYLES = new CSSStyleSheet();
+CARD_STYLES.replaceSync(`
+  .pos-card {
+    background: var(--pos-color-background-primary, #fff);
+    border: 1px solid var(--pos-color-border-default, #e2e2e8);
+    border-radius: var(--pos-radius-md, 8px);
+    overflow: hidden;
+    transition: box-shadow 0.15s, border-color 0.15s;
+  }
+
+  .pos-card.interactive {
+    cursor: pointer;
+  }
+  .pos-card.interactive:hover {
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
+  }
+
+  .pos-card.active {
+    border-color: var(--pos-color-action-primary, #4361ee);
+    border-width: 2px;
+  }
+`);
+
 const CSS = `
   :host {
     display: block;

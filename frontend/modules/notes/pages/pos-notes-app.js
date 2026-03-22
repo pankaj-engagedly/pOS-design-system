@@ -112,6 +112,11 @@ class PosNotesApp extends HTMLElement {
       }
       notesStore.setState({ notes, loading: false });
       this._persistSelection();
+
+      // Auto-select first note if none selected
+      if (notes.length > 0 && !notesStore.getState().selectedNoteId) {
+        await this.loadNote(notes[0].id);
+      }
     } catch (e) {
       notesStore.setState({ loading: false, error: e.message });
     }
@@ -338,6 +343,20 @@ class PosNotesApp extends HTMLElement {
         console.error('Failed to permanently delete note:', err);
       }
     });
+
+    this.shadow.addEventListener('empty-trash', async () => {
+      const state = notesStore.getState();
+      const count = state.notes?.length || 0;
+      if (!await confirmDialog(`Permanently delete ${count} note${count !== 1 ? 's' : ''} in trash? This cannot be undone.`, { confirmLabel: 'Empty Trash', danger: true })) return;
+      try {
+        await notesApi.emptyTrash();
+        notesStore.setState({ selectedNoteId: null, selectedNote: null });
+        await this.loadCurrentView();
+        this._loadCounts();
+      } catch (err) {
+        console.error('Failed to empty trash:', err);
+      }
+    });
   }
 
   _extractPreview(content) {
@@ -374,6 +393,7 @@ class PosNotesApp extends HTMLElement {
       const folder = state.folders?.find(f => f.id === state.selectedFolderId);
       const viewLabels = { all: 'Notes', pinned: 'Favourites', trash: 'Trash' };
       noteList.folderName = folder?.name || viewLabels[state.selectedView] || 'Notes';
+      noteList.isTrash = state.selectedView === 'trash';
     }
 
     const editor = this.shadow.querySelector('pos-note-editor');

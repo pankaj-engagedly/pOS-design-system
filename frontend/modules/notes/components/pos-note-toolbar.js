@@ -24,6 +24,13 @@ class PosNoteToolbar extends HTMLElement {
     if (this._eventsBound) return;
     this._eventsBound = true;
 
+    // Prevent toolbar buttons from stealing focus from the editor
+    this.shadow.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.btn, .heading-item')) {
+        e.preventDefault();
+      }
+    });
+
     this.shadow.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;

@@ -76,6 +76,10 @@ export function restoreNote(id) {
   return apiFetch(`/api/notes/notes/${id}/restore`, { method: 'POST' });
 }
 
+export function emptyTrash() {
+  return apiFetch('/api/notes/notes/trash', { method: 'DELETE' });
+}
+
 export function reorderNotes(orderedIds) {
   return apiFetch('/api/notes/notes/reorder', {
     method: 'PATCH',

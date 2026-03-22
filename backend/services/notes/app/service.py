@@ -267,6 +267,20 @@ async def permanent_delete_note(
     await session.commit()
 
 
+@trace
+async def empty_trash(session: AsyncSession, user_id: UUID) -> int:
+    """Permanently delete all trashed notes for a user. Returns count deleted."""
+    result = await session.execute(
+        select(Note).where(Note.user_id == user_id, Note.is_deleted.is_(True))
+    )
+    notes = result.scalars().all()
+    count = len(notes)
+    for note in notes:
+        await session.delete(note)
+    await session.commit()
+    return count
+
+
 # --- Tags ---
 
 

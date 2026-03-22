@@ -3,8 +3,10 @@
 // Dispatches: note-content-change { title, content }, note-title-change { title }
 
 import { Editor, StarterKit, Link, Placeholder } from '../editor.bundle.js';
+import { icon } from '../../../shared/utils/icons.js';
 import { getTags } from '../services/notes-api.js';
 import './pos-note-toolbar.js';
+import '../../../../design-system/src/components/ui-tag-input.js';
 
 class PosNoteEditor extends HTMLElement {
   constructor() {
@@ -17,8 +19,6 @@ class PosNoteEditor extends HTMLElement {
     this._saving = false;
     this._saveStatus = ''; // '', 'saving', 'saved', 'error'
     this._allTags = [];
-    this._tagQuery = '';
-    this._addingTag = false;
   }
 
   set note(val) {
@@ -28,12 +28,13 @@ class PosNoteEditor extends HTMLElement {
       // Note changed — rebuild DOM then mount fresh editor
       this._editor?.destroy();
       this._editor = null;
-      this._addingTag = false;
-      this._tagQuery = '';
       this.render();
       if (val) {
         this._mountEditor();
-        getTags().then(tags => { this._allTags = tags; }).catch(() => {});
+        getTags().then(tags => {
+          this._allTags = tags;
+          this._renderTags();
+        }).catch(() => {});
       }
     } else if (val) {
       // Same note — only refresh tags area (don't destroy editor)
@@ -171,86 +172,15 @@ class PosNoteEditor extends HTMLElement {
       }
     });
 
-    // Tag actions (event delegation — works after any DOM rebuild)
-    this.shadow.addEventListener('click', (e) => {
-      const removeBtn = e.target.closest('[data-action="remove-tag"]');
-      if (removeBtn) {
-        this.dispatchEvent(new CustomEvent('tag-remove', {
-          bubbles: true, composed: true,
-          detail: { tagId: removeBtn.dataset.tagId },
-        }));
-        return;
-      }
-
-      // "Add" button → show tag input
-      const addBtn = e.target.closest('[data-action="add-tag"]');
-      if (addBtn) {
-        this._addingTag = true;
-        this._tagQuery = '';
-        this._renderTagsInline();
-        setTimeout(() => this.shadow.getElementById('tag-input')?.focus(), 0);
-        return;
-      }
-
-      // Tag suggestion click
-      const suggestion = e.target.closest('.tag-suggestion');
-      if (suggestion) {
-        const tagName = suggestion.dataset.suggestionName;
-        if (tagName) {
-          this.dispatchEvent(new CustomEvent('tag-add', {
-            bubbles: true, composed: true, detail: { name: tagName },
-          }));
-          this._addingTag = false;
-          this._tagQuery = '';
-        }
-        return;
-      }
-    });
-
-    // Tag input typing → update suggestions
-    this.shadow.addEventListener('input', (e) => {
-      if (e.target.id === 'tag-input') {
-        this._tagQuery = e.target.value;
-        this._renderTagSuggestions();
-      }
-    });
-
-    // Tag input Enter → submit, Escape → cancel
-    this.shadow.addEventListener('keydown', (e) => {
-      if (e.target.id !== 'tag-input') return;
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const name = e.target.value.trim();
-        if (name) {
-          this.dispatchEvent(new CustomEvent('tag-add', {
-            bubbles: true, composed: true, detail: { name },
-          }));
-          this._addingTag = false;
-          this._tagQuery = '';
-        }
-      } else if (e.key === 'Escape') {
-        this._addingTag = false;
-        this._tagQuery = '';
-        this._renderTagsInline();
-      }
-    });
+    // Tag component events (tag-add and tag-remove bubble up from ui-tag-input)
+    // No additional handling needed — pos-notes-app listens for these directly
   }
 
   _renderTags() {
-    const tagsArea = this.shadow.querySelector('.tags-area');
-    if (!tagsArea || !this._note) return;
-    this._addingTag = false;
-    this._tagQuery = '';
-    tagsArea.innerHTML = `
-      <span class="tag-label">Tags:</span>
-      ${(this._note.tags || []).map(t => `
-        <span class="tag-badge" data-tag-id="${t.id}">
-          ${t.name}
-          <button class="tag-remove" data-action="remove-tag" data-tag-id="${t.id}">✕</button>
-        </span>
-      `).join('')}
-      <button class="add-tag-btn" data-action="add-tag">+ Add</button>
-    `;
+    const tagInput = this.shadow.getElementById('tag-input');
+    if (!tagInput || !this._note) return;
+    tagInput.tags = this._note.tags || [];
+    tagInput.allTags = this._allTags;
   }
 
   render() {
@@ -260,12 +190,12 @@ class PosNoteEditor extends HTMLElement {
           :host { display: flex; align-items: center; justify-content: center; height: 100%; }
           .empty {
             display: flex; flex-direction: column; align-items: center; gap: 12px;
-            color: var(--pos-color-text-muted, #aaa); font-size: 15px;
+            color: var(--pos-color-text-secondary, #9b9bb0); font-size: 14px;
           }
-          .empty-icon { font-size: 48px; }
+          .empty-icon { opacity: 0.3; }
         </style>
         <div class="empty">
-          <span class="empty-icon">📝</span>
+          <span class="empty-icon">${icon('file-text', 48)}</span>
           <span>Select a note or create a new one</span>
         </div>
       `;
@@ -380,105 +310,10 @@ class PosNoteEditor extends HTMLElement {
         .editor-content a { color: var(--pos-color-primary-600, #1a73e8); text-decoration: underline; }
 
         .tags-area {
-          display: flex;
-          align-items: center;
-          gap: 6px;
           padding: 8px 20px;
           border-top: 1px solid var(--pos-color-border, #e5e5e5);
-          flex-wrap: wrap;
           flex-shrink: 0;
           background: var(--pos-color-surface-alt, #fafafa);
-        }
-
-        .tag-badge {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          background: var(--pos-color-primary-100, #e8f0fe);
-          color: var(--pos-color-primary-700, #1557b0);
-          border-radius: 12px;
-          padding: 2px 8px;
-          font-size: 12px;
-        }
-        .tag-remove {
-          cursor: pointer;
-          opacity: 0.6;
-          border: none;
-          background: none;
-          padding: 0;
-          font-size: 12px;
-          line-height: 1;
-          color: inherit;
-        }
-        .tag-remove:hover { opacity: 1; }
-
-        .tag-input-wrap {
-          position: relative;
-          min-width: 100px;
-          flex: 1;
-        }
-        .tag-input {
-          border: 1px solid var(--pos-color-primary-400, #4f8ef7);
-          border-radius: 12px;
-          padding: 2px 8px;
-          font-size: 12px;
-          outline: none;
-          width: 100%;
-          box-sizing: border-box;
-          background: var(--pos-color-background-primary, #fff);
-          color: var(--pos-color-text-primary, #1a1a1a);
-          font-family: inherit;
-        }
-        .add-tag-btn {
-          border: 1px dashed var(--pos-color-border, #ddd);
-          border-radius: 12px;
-          padding: 2px 8px;
-          font-size: 12px;
-          background: transparent;
-          color: var(--pos-color-text-secondary, #777);
-          cursor: pointer;
-          font-family: inherit;
-        }
-        .add-tag-btn:hover {
-          border-color: var(--pos-color-primary-400, #4f8ef7);
-          color: var(--pos-color-primary-400, #4f8ef7);
-        }
-
-        .tag-suggestions {
-          position: absolute;
-          bottom: 100%;
-          left: 0;
-          right: 0;
-          background: var(--pos-color-background-primary, #fff);
-          border: 1px solid var(--pos-color-border, #e5e5e5);
-          border-radius: 6px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-          max-height: 150px;
-          overflow-y: auto;
-          z-index: 100;
-          margin-bottom: 2px;
-          display: none;
-        }
-        .tag-suggestions.visible { display: block; }
-        .tag-suggestion {
-          padding: 6px 10px;
-          font-size: 12px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-        .tag-suggestion:hover { background: var(--pos-color-background-secondary, #f5f5f5); }
-        .tag-suggestion .new-badge {
-          font-size: 10px;
-          color: var(--pos-color-primary-400, #4f8ef7);
-          font-style: italic;
-        }
-
-        .tag-label {
-          font-size: 11px;
-          color: var(--pos-color-text-muted, #aaa);
-          margin-right: 2px;
         }
       </style>
 
@@ -498,86 +333,16 @@ class PosNoteEditor extends HTMLElement {
       <pos-note-toolbar></pos-note-toolbar>
 
       <div class="tags-area">
-        <span class="tag-label">Tags:</span>
-        ${(this._note.tags || []).map(t => `
-          <span class="tag-badge" data-tag-id="${t.id}">
-            ${t.name}
-            <button class="tag-remove" data-action="remove-tag" data-tag-id="${t.id}">✕</button>
-          </span>
-        `).join('')}
-        ${this._addingTag
-          ? `<div class="tag-input-wrap">
-              <input class="tag-input" id="tag-input" placeholder="Search or create tag…" value="${this._escAttr(this._tagQuery)}" />
-              <div class="tag-suggestions" id="tag-suggestions"></div>
-            </div>`
-          : `<button class="add-tag-btn" data-action="add-tag">+ Add</button>`
-        }
+        <ui-tag-input id="tag-input" label="Tags:"></ui-tag-input>
       </div>
     `;
 
-    // Re-bind after DOM rebuild (guard prevents stacking)
-    this._eventsBound = false;
+    // Events are bound once in connectedCallback — no re-binding needed
+    // Event delegation on shadow root handles all DOM rebuilds
     this._bindAllEvents();
 
-    if (this._addingTag) {
-      setTimeout(() => this.shadow.getElementById('tag-input')?.focus(), 0);
-    }
-  }
-
-  _renderTagsInline() {
-    const tagsArea = this.shadow.querySelector('.tags-area');
-    if (!tagsArea || !this._note) return;
-    tagsArea.innerHTML = `
-      <span class="tag-label">Tags:</span>
-      ${(this._note.tags || []).map(t => `
-        <span class="tag-badge" data-tag-id="${t.id}">
-          ${t.name}
-          <button class="tag-remove" data-action="remove-tag" data-tag-id="${t.id}">✕</button>
-        </span>
-      `).join('')}
-      ${this._addingTag
-        ? `<div class="tag-input-wrap">
-            <input class="tag-input" id="tag-input" placeholder="Search or create tag…" value="${this._escAttr(this._tagQuery)}" />
-            <div class="tag-suggestions" id="tag-suggestions"></div>
-          </div>`
-        : `<button class="add-tag-btn" data-action="add-tag">+ Add</button>`
-      }
-    `;
-    if (this._addingTag) {
-      setTimeout(() => this.shadow.getElementById('tag-input')?.focus(), 0);
-    }
-  }
-
-  _getTagSuggestions() {
-    const q = this._tagQuery.toLowerCase().trim();
-    if (!q) return [];
-    const existingNames = new Set((this._note?.tags || []).map(t => t.name.toLowerCase()));
-    const matches = this._allTags
-      .filter(t => t.name.toLowerCase().includes(q) && !existingNames.has(t.name.toLowerCase()))
-      .slice(0, 8)
-      .map(t => ({ name: t.name, isNew: false }));
-    const exactMatch = this._allTags.some(t => t.name.toLowerCase() === q) || existingNames.has(q);
-    if (!exactMatch && q.length > 0) {
-      matches.push({ name: this._tagQuery.trim(), isNew: true });
-    }
-    return matches;
-  }
-
-  _renderTagSuggestions() {
-    const container = this.shadow.getElementById('tag-suggestions');
-    if (!container) return;
-    const suggestions = this._getTagSuggestions();
-    if (!suggestions.length) {
-      container.classList.remove('visible');
-      return;
-    }
-    container.innerHTML = suggestions.map(s => `
-      <div class="tag-suggestion" data-suggestion-name="${this._escAttr(s.name)}">
-        ${this._esc(s.name)}
-        ${s.isNew ? '<span class="new-badge">new</span>' : ''}
-      </div>
-    `).join('');
-    container.classList.add('visible');
+    // Populate tag component
+    this._renderTags();
   }
 
   _esc(str) {

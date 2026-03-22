@@ -96,15 +96,15 @@ listItemSheet.replaceSync(`
     display: none;
     position: absolute;
     right: 6px;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 6px;
     align-items: center;
     gap: 2px;
-    background: inherit;
+    background: var(--pos-color-background-secondary, #f5f5f5);
     border-radius: var(--pos-radius-sm, 4px);
     padding: 2px;
   }
   .item:hover .actions { display: flex; }
+  .item:hover .fav-icon { display: none; }
   .action-btn {
     display: flex;
     align-items: center;
@@ -121,6 +121,9 @@ listItemSheet.replaceSync(`
   .action-btn:hover {
     background: var(--pos-color-border-default, #e5e5e5);
     color: var(--pos-color-text-primary, #333);
+  }
+  .action-btn.pinned {
+    color: var(--pos-color-action-primary, #1a73e8);
   }
   .action-btn.delete:hover {
     color: var(--pos-color-priority-urgent, #dc2626);
@@ -199,7 +202,7 @@ class PosNoteListItem extends HTMLElement {
           <div class="meta">${date}</div>
         </div>
         <div class="actions">
-          <button class="action-btn" data-action="favourite" title="${note.is_pinned ? 'Unfavourite' : 'Favourite'}">
+          <button class="action-btn ${note.is_pinned ? 'pinned' : ''}" data-action="favourite" title="${note.is_pinned ? 'Unfavourite' : 'Favourite'}">
             ${icon('star', 13)}
           </button>
           <button class="action-btn delete" data-action="delete" title="Delete">

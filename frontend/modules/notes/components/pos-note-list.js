@@ -95,6 +95,13 @@ listSheet.replaceSync(`
     overflow: hidden;
   }
 
+  #notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px;
+  }
+
   .empty-state {
     display: flex;
     flex-direction: column;
@@ -124,6 +131,12 @@ class PosNoteList extends HTMLElement {
     this._searchTimer = null;
     this._eventsBound = false;
     this._folderName = 'Notes';
+    this._isTrash = false;
+  }
+
+  set isTrash(val) {
+    this._isTrash = !!val;
+    this._updateTrashButton();
   }
 
   set notes(val) {
@@ -160,7 +173,9 @@ class PosNoteList extends HTMLElement {
       const actionEl = e.target.closest('[data-action]');
       if (!actionEl) return;
       const action = actionEl.dataset.action;
-      if (action === 'new-note') {
+      if (action === 'empty-trash') {
+        this.dispatchEvent(new CustomEvent('empty-trash', { bubbles: true, composed: true }));
+      } else if (action === 'new-note') {
         this.dispatchEvent(new CustomEvent('note-create', { bubbles: true, composed: true }));
       } else if (action === 'set-view') {
         const view = actionEl.dataset.view;
@@ -202,10 +217,20 @@ class PosNoteList extends HTMLElement {
     if (el) el.textContent = this._folderName;
   }
 
+  _updateTrashButton() {
+    const wrap = this.shadow.querySelector('#trash-btn-wrap');
+    if (wrap) wrap.style.display = this._isTrash ? 'inline-flex' : 'none';
+  }
+
   render() {
     this.shadow.innerHTML = `
       <div class="header">
         <h2 class="header-title" id="header-title">${this._esc(this._folderName)}</h2>
+        <span id="trash-btn-wrap" style="display:${this._isTrash ? 'inline-flex' : 'none'}">
+          <button class="header-btn" data-action="empty-trash" title="Empty Trash" style="font-size:var(--pos-font-size-xs);gap:4px;color:var(--pos-color-priority-urgent,#ef4444);">
+            ${icon('trash', 13)} Empty
+          </button>
+        </span>
         <button class="header-btn ${this._viewMode === 'list' ? 'active' : ''}" data-action="set-view" data-view="list" title="List view">${icon('list', 14)}</button>
         <button class="header-btn ${this._viewMode === 'grid' ? 'active' : ''}" data-action="set-view" data-view="grid" title="Grid view">${icon('grid', 14)}</button>
         <button class="header-btn" data-action="new-note" title="New Note">${icon('plus', 14)}</button>

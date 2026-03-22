@@ -170,6 +170,15 @@ async def update_note(
         _handle_not_found(e)
 
 
+@router.delete("/notes/trash", status_code=200)
+async def empty_trash(
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    count = await service.empty_trash(session, user_id)
+    return {"deleted": count}
+
+
 @router.delete("/notes/{note_id}", status_code=204)
 async def delete_note(
     note_id: UUID,

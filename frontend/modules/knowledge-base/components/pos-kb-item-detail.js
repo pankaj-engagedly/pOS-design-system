@@ -2,14 +2,13 @@
 
 import { icon } from '../../../shared/utils/icons.js';
 import { getCollections, addToCollection, removeFromCollection, getTags } from '../services/kb-api.js';
+import '../../../../design-system/src/components/ui-tag-input.js';
 
 class PosKBItemDetail extends HTMLElement {
   constructor() {
     super();
     this.shadow = this.attachShadow({ mode: 'open' });
     this._item = null;
-    this._addingTag = false;
-    this._tagQuery = '';
     this._allTags = [];
     this._collections = [];
     this._itemCollectionIds = new Set();
@@ -17,11 +16,13 @@ class PosKBItemDetail extends HTMLElement {
 
   openForItem(item) {
     this._item = item;
-    this._addingTag = false;
-    this._tagQuery = '';
     this._itemCollectionIds = new Set((item.collection_ids || []).map(String));
     this._loadCollections();
-    getTags().then(tags => { this._allTags = tags; }).catch(() => {});
+    getTags().then(tags => {
+      this._allTags = tags;
+      const tagEl = this.shadow.getElementById('tag-input');
+      if (tagEl) tagEl.allTags = tags;
+    }).catch(() => {});
     this._render();
     this._bindDetailEvents();
     this.setAttribute('open', '');
@@ -174,85 +175,7 @@ class PosKBItemDetail extends HTMLElement {
         .star-btn.filled { color: #f59e0b; }
         .star-btn:hover { color: #f59e0b; }
 
-        .tags-wrap {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 4px;
-          align-items: center;
-        }
-        .tag-chip {
-          display: flex;
-          align-items: center;
-          gap: 3px;
-          padding: 2px 8px;
-          background: var(--pos-color-background-secondary);
-          border-radius: 99px;
-          font-size: var(--pos-font-size-xs);
-          color: var(--pos-color-text-secondary);
-        }
-        .tag-remove {
-          background: none; border: none; cursor: pointer; padding: 0;
-          color: var(--pos-color-text-secondary); display: flex; align-items: center;
-        }
-        .tag-remove:hover { color: var(--pos-color-priority-urgent); }
-        .add-tag-btn {
-          padding: 2px 8px;
-          border: 1px dashed var(--pos-color-border-default);
-          border-radius: 99px;
-          background: transparent;
-          color: var(--pos-color-text-secondary);
-          font-size: var(--pos-font-size-xs);
-          font-family: inherit;
-          cursor: pointer;
-        }
-        .add-tag-btn:hover { border-color: var(--pos-color-action-primary); color: var(--pos-color-action-primary); }
-        .tag-input-wrap {
-          position: relative;
-          flex: 1;
-          min-width: 100px;
-        }
-        .tag-input {
-          padding: 2px 8px;
-          border: 1px solid var(--pos-color-action-primary);
-          border-radius: 99px;
-          font-size: var(--pos-font-size-xs);
-          font-family: inherit;
-          outline: none;
-          width: 100%;
-          box-sizing: border-box;
-          background: var(--pos-color-background-primary);
-          color: var(--pos-color-text-primary);
-        }
-        .tag-suggestions {
-          position: absolute;
-          top: 100%;
-          left: 0;
-          right: 0;
-          background: var(--pos-color-background-primary);
-          border: 1px solid var(--pos-color-border-default);
-          border-radius: var(--pos-radius-sm);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-          max-height: 150px;
-          overflow-y: auto;
-          z-index: 100;
-          margin-top: 2px;
-          display: none;
-        }
-        .tag-suggestions.visible { display: block; }
-        .tag-suggestion {
-          padding: 6px var(--pos-space-sm);
-          font-size: var(--pos-font-size-xs);
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: var(--pos-space-xs);
-        }
-        .tag-suggestion:hover { background: var(--pos-color-background-secondary); }
-        .tag-suggestion .new-badge {
-          font-size: 10px;
-          color: var(--pos-color-action-primary);
-          font-style: italic;
-        }
+        /* Tags — uses ui-tag-input component */
 
         .meta-info {
           font-size: var(--pos-font-size-xs);
@@ -322,21 +245,7 @@ class PosKBItemDetail extends HTMLElement {
 
         <div class="field">
           <div class="field-label">Tags</div>
-          <div class="tags-wrap">
-            ${(it.tags || []).map(t => `
-              <span class="tag-chip">
-                ${this._esc(t.name)}
-                <button class="tag-remove" data-action="remove-tag" data-tag-id="${t.id}">${icon('x', 10)}</button>
-              </span>
-            `).join('')}
-            ${this._addingTag
-              ? `<div class="tag-input-wrap">
-                  <input class="tag-input" id="tag-input" placeholder="Search or create tag\u2026" value="${this._escAttr(this._tagQuery)}" />
-                  <div class="tag-suggestions" id="tag-suggestions"></div>
-                </div>`
-              : `<button class="add-tag-btn" data-action="add-tag">${icon('plus', 10)} Add</button>`
-            }
-          </div>
+          <ui-tag-input id="tag-input"></ui-tag-input>
         </div>
 
         ${it.preview_text ? `
@@ -361,8 +270,11 @@ class PosKBItemDetail extends HTMLElement {
       </div>
     `;
 
-    if (this._addingTag) {
-      setTimeout(() => this.shadow.getElementById('tag-input')?.focus(), 0);
+    // Populate tag component
+    const tagEl = this.shadow.getElementById('tag-input');
+    if (tagEl) {
+      tagEl.tags = it.tags || [];
+      tagEl.allTags = this._allTags;
     }
   }
 
@@ -379,31 +291,26 @@ class PosKBItemDetail extends HTMLElement {
 
   _bindDetailEvents() {
     this.shadow.addEventListener('click', (e) => {
-      const suggestion = e.target.closest('.tag-suggestion');
-      if (suggestion) {
-        const tagName = suggestion.dataset.suggestionName;
-        this.dispatchEvent(new CustomEvent('detail-action', {
-          bubbles: true, composed: true,
-          detail: { action: 'add-tag-submit', itemId: this._item?.id, tagName },
-        }));
-        this._addingTag = false;
-        this._tagQuery = '';
+      const action = e.target.closest('[data-action]')?.dataset.action;
+      if (!action) {
+        // Collection chip
+        const colChip = e.target.closest('[data-col-id]');
+        if (colChip) { this._toggleCollection(colChip.dataset.colId); return; }
+        // Rating star
+        const star = e.target.closest('[data-rating]');
+        if (star) {
+          this.dispatchEvent(new CustomEvent('detail-action', {
+            bubbles: true, composed: true,
+            detail: { action: 'update-rating', itemId: this._item?.id, rating: parseInt(star.dataset.rating) },
+          }));
+          return;
+        }
         return;
       }
-
-      const action = e.target.closest('[data-action]')?.dataset.action;
-      if (!action) return;
 
       if (action === 'close') { this.close(); return; }
       if (action === 'open-url' && this._item?.url) {
         window.open(this._item.url, '_blank', 'noopener');
-        return;
-      }
-      if (action === 'add-tag') {
-        this._addingTag = true;
-        this._tagQuery = '';
-        this._render();
-        this._bindDetailEvents();
         return;
       }
 
@@ -413,55 +320,19 @@ class PosKBItemDetail extends HTMLElement {
       }));
     });
 
-    this.shadow.addEventListener('click', (e) => {
-      const colChip = e.target.closest('[data-col-id]');
-      if (colChip) {
-        this._toggleCollection(colChip.dataset.colId);
-      }
+    // Tag component events → bridge to detail-action
+    this.shadow.addEventListener('tag-add', (e) => {
+      this.dispatchEvent(new CustomEvent('detail-action', {
+        bubbles: true, composed: true,
+        detail: { action: 'add-tag-submit', itemId: this._item?.id, tagName: e.detail.name },
+      }));
     });
 
-    this.shadow.addEventListener('click', (e) => {
-      const star = e.target.closest('[data-rating]');
-      if (star) {
-        this.dispatchEvent(new CustomEvent('detail-action', {
-          bubbles: true, composed: true,
-          detail: { action: 'update-rating', itemId: this._item?.id, rating: parseInt(star.dataset.rating) },
-        }));
-      }
-    });
-
-    this.shadow.addEventListener('input', (e) => {
-      const tagInput = e.target.closest('#tag-input');
-      if (tagInput) {
-        this._tagQuery = tagInput.value;
-        this._renderTagSuggestions();
-      }
-    });
-
-    this.shadow.addEventListener('keydown', (e) => {
-      const tagInput = e.target.closest('#tag-input');
-      if (tagInput) {
-        if (e.key === 'Enter' && tagInput.value.trim()) {
-          this.dispatchEvent(new CustomEvent('detail-action', {
-            bubbles: true, composed: true,
-            detail: { action: 'add-tag-submit', itemId: this._item?.id, tagName: tagInput.value.trim() },
-          }));
-          this._addingTag = false;
-          this._tagQuery = '';
-        }
-        if (e.key === 'Escape') {
-          this._addingTag = false;
-          this._tagQuery = '';
-          this._render();
-          this._bindDetailEvents();
-        }
-      }
-    });
-
-    this.shadow.addEventListener('focusout', (e) => {
-      if (e.target.closest('#tag-input')) {
-        setTimeout(() => { if (this._addingTag) { this._addingTag = false; this._tagQuery = ''; this._render(); this._bindDetailEvents(); } }, 150);
-      }
+    this.shadow.addEventListener('tag-remove', (e) => {
+      this.dispatchEvent(new CustomEvent('detail-action', {
+        bubbles: true, composed: true,
+        detail: { action: 'remove-tag', itemId: this._item?.id, tagId: e.detail.tagId },
+      }));
     });
   }
 
@@ -483,38 +354,6 @@ class PosKBItemDetail extends HTMLElement {
     } catch (err) {
       console.error('Failed to toggle collection', err);
     }
-  }
-
-  _getTagSuggestions() {
-    const q = this._tagQuery.toLowerCase().trim();
-    if (!q) return [];
-    const existingNames = new Set((this._item?.tags || []).map(t => t.name.toLowerCase()));
-    const matches = this._allTags
-      .filter(t => t.name.toLowerCase().includes(q) && !existingNames.has(t.name.toLowerCase()))
-      .slice(0, 8)
-      .map(t => ({ name: t.name, isNew: false }));
-    const exactMatch = this._allTags.some(t => t.name.toLowerCase() === q) || existingNames.has(q);
-    if (!exactMatch && q.length > 0) {
-      matches.push({ name: this._tagQuery.trim(), isNew: true });
-    }
-    return matches;
-  }
-
-  _renderTagSuggestions() {
-    const container = this.shadow.getElementById('tag-suggestions');
-    if (!container) return;
-    const suggestions = this._getTagSuggestions();
-    if (!suggestions.length) {
-      container.classList.remove('visible');
-      return;
-    }
-    container.innerHTML = suggestions.map(s => `
-      <div class="tag-suggestion" data-suggestion-name="${this._escAttr(s.name)}">
-        ${this._esc(s.name)}
-        ${s.isNew ? '<span class="new-badge">new</span>' : ''}
-      </div>
-    `).join('');
-    container.classList.add('visible');
   }
 
   _shortenUrl(url) {

@@ -2,6 +2,7 @@
 // Dispatches: note-select, note-pin, note-delete
 
 import { icon } from '../../../shared/utils/icons.js';
+import { CARD_STYLES } from '../../../../design-system/src/components/ui-card.js';
 
 function relativeDate(isoString) {
   if (!isoString) return '';
@@ -29,18 +30,11 @@ cardSheet.replaceSync(`
   :host { display: block; }
   .card {
     position: relative;
-    border-radius: 8px;
     padding: 10px 12px;
-    cursor: pointer;
-    transition: box-shadow 0.15s, transform 0.1s;
     min-height: 80px;
     display: flex;
     flex-direction: column;
     gap: 4px;
-  }
-  .card:hover {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transform: translateY(-1px);
   }
   .header {
     display: flex;
@@ -106,6 +100,7 @@ cardSheet.replaceSync(`
     padding: 2px;
   }
   .card:hover .actions { display: flex; }
+  .card:hover .fav-icon { display: none; }
   .action-btn {
     display: flex;
     align-items: center;
@@ -123,6 +118,9 @@ cardSheet.replaceSync(`
     background: rgba(0,0,0,0.08);
     color: var(--pos-color-text-primary, #333);
   }
+  .action-btn.pinned {
+    color: var(--pos-color-action-primary, #1a73e8);
+  }
   .action-btn.delete:hover {
     color: var(--pos-color-priority-urgent, #dc2626);
   }
@@ -133,7 +131,7 @@ class PosNoteCard extends HTMLElement {
   constructor() {
     super();
     this.shadow = this.attachShadow({ mode: 'open' });
-    this.shadow.adoptedStyleSheets = [cardSheet];
+    this.shadow.adoptedStyleSheets = [CARD_STYLES, cardSheet];
     this._note = null;
     this._active = false;
   }
@@ -186,14 +184,13 @@ class PosNoteCard extends HTMLElement {
     if (!note) { this.shadow.innerHTML = ''; return; }
 
     const bgColor = note.color ? (COLOR_MAP[note.color] || '#fff') : 'var(--pos-color-background-primary, #fff)';
-    const borderColor = this._active ? 'var(--pos-color-action-primary, #4f8ef7)' : 'var(--pos-color-border-default, #e5e5e5)';
     const tags = (note.tags || []).slice(0, 3);
     const date = relativeDate(note.updated_at);
 
     this.shadow.innerHTML = `
-      <div class="card" style="background:${bgColor};border:1px solid ${borderColor};${this._active ? 'box-shadow:0 0 0 2px color-mix(in srgb, var(--pos-color-action-primary) 30%, transparent)' : ''}">
+      <div class="pos-card interactive card ${this._active ? 'active' : ''}" style="background:${bgColor}">
         <div class="actions">
-          <button class="action-btn" data-action="favourite" title="${note.is_pinned ? 'Unfavourite' : 'Favourite'}">
+          <button class="action-btn ${note.is_pinned ? 'pinned' : ''}" data-action="favourite" title="${note.is_pinned ? 'Unfavourite' : 'Favourite'}">
             ${icon('star', 13)}
           </button>
           <button class="action-btn delete" data-action="delete" title="Delete">
