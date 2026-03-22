@@ -16,6 +16,8 @@ DOCUMENTS_SERVICE_URL = "http://localhost:8005"
 VAULT_SERVICE_URL = "http://localhost:8006"
 KB_SERVICE_URL = "http://localhost:8007"
 PHOTOS_SERVICE_URL = "http://localhost:8008"
+WATCHLIST_SERVICE_URL = "http://localhost:8009"
+PORTFOLIO_SERVICE_URL = "http://localhost:8010"
 
 
 @router.get("/api/")
@@ -32,6 +34,8 @@ async def api_root():
             "/api/vault": "Vault service",
             "/api/docs": "Documents service",
             "/api/photos": "Photos service (Phase 5)",
+            "/api/watchlist": "Watchlist service",
+            "/api/portfolio": "Portfolio service",
         },
     }
 
@@ -102,3 +106,17 @@ async def proxy_photos_base(request: Request):
 @router.api_route("/api/photos/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
 async def proxy_photos(request: Request, path: str):
     return await proxy_request(request, PHOTOS_SERVICE_URL, f"/api/photos/{path}")
+
+
+# --- Watchlist service proxy ---
+
+@router.api_route("/api/watchlist/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
+async def proxy_watchlist(request: Request, path: str):
+    return await proxy_request(request, WATCHLIST_SERVICE_URL, f"/api/watchlist/{path}")
+
+
+# --- Portfolio service proxy ---
+
+@router.api_route("/api/portfolio/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
+async def proxy_portfolio(request: Request, path: str):
+    return await proxy_request(request, PORTFOLIO_SERVICE_URL, f"/api/portfolio/{path}")

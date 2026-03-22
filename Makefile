@@ -21,10 +21,12 @@ documents  ?= $(LOG_LEVEL)
 vault      ?= $(LOG_LEVEL)
 kb         ?= $(LOG_LEVEL)
 photos     ?= $(LOG_LEVEL)
+watchlist  ?= $(LOG_LEVEL)
+portfolio  ?= $(LOG_LEVEL)
 gateway    ?= $(LOG_LEVEL)
 
 dev:
-	@auth=$(auth) todos=$(todos) notes=$(notes) documents=$(documents) vault=$(vault) kb=$(kb) photos=$(photos) gateway=$(gateway) bash infra/scripts/dev-start.sh
+	@auth=$(auth) todos=$(todos) notes=$(notes) documents=$(documents) vault=$(vault) kb=$(kb) photos=$(photos) watchlist=$(watchlist) portfolio=$(portfolio) gateway=$(gateway) bash infra/scripts/dev-start.sh
 
 dev-infra:
 	docker compose -f backend/docker-compose.yml up -d

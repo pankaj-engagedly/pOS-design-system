@@ -68,4 +68,6 @@ registerRoute('/documents', { module: 'documents', label: 'Documents', icon: 'fo
 registerRoute('/documents/shared', { module: 'documents', page: 'pos-documents-shared-app', label: 'Shared with Me', hidden: true });
 registerRoute('/documents/recent', { module: 'documents', page: 'pos-documents-recent-app', label: 'Recent Documents', hidden: true });
 registerRoute('/photos', { module: 'photos', label: 'Photos', icon: 'image' });
+registerRoute('/watchlist', { module: 'watchlist', label: 'Watchlist', icon: 'trending-up' });
+registerRoute('/portfolio', { module: 'portfolio', label: 'Portfolio', icon: 'briefcase' });
 registerRoute('/settings', { module: 'settings', label: 'Settings', icon: 'settings' });
