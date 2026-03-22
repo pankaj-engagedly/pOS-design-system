@@ -61,7 +61,9 @@ class PhotoSummary(BaseModel):
     is_favourite: bool
     caption: str | None
     rating: int | None
+    duration: float | None = None
     source_type: str
+    source_removed: bool = False
     processing_status: str
     exif_data: dict | None = None
     tags: list[TagInfo] = []
@@ -90,8 +92,10 @@ class PhotoResponse(BaseModel):
     is_favourite: bool
     caption: str | None
     rating: int | None
+    duration: float | None = None
     source_type: str
     source_account: str | None
+    source_removed: bool = False
     processing_status: str
     tags: list[TagInfo] = []
     people: list[PersonInfo] = []
@@ -225,3 +229,33 @@ class PhotoStatsResponse(BaseModel):
     by_source: dict[str, int] = {}
     date_range: dict | None = None
     storage_used: int = 0
+
+
+# ── Photo Sources ───────────────────────────────────────
+
+
+class PhotoSourceCreate(BaseModel):
+    provider: str = Field(..., pattern=r"^(folder|apple_photos)$")
+    source_path: str = Field(..., min_length=1, max_length=1000)
+    label: str | None = Field(None, max_length=255)
+
+
+class PhotoSourceUpdate(BaseModel):
+    label: str | None = Field(None, max_length=255)
+    is_active: bool | None = None
+
+
+class PhotoSourceResponse(BaseModel):
+    id: UUID
+    provider: str
+    source_path: str
+    label: str | None
+    is_active: bool
+    sync_status: str
+    last_sync_at: datetime | None
+    last_error: str | None
+    photo_count: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}

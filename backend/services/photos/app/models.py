@@ -52,9 +52,11 @@ class Photo(UserScopedBase):
     is_favourite = Column(Boolean, nullable=False, default=False)
     caption = Column(Text, nullable=True)
     rating = Column(Integer, nullable=True)
+    duration = Column(Float, nullable=True)  # video duration in seconds
     source_type = Column(String(30), nullable=False, default="upload")
     source_id = Column(String(500), nullable=True)
     source_account = Column(String(255), nullable=True)
+    source_removed = Column(Boolean, nullable=False, default=False)
     processing_status = Column(String(20), nullable=False, default="pending")
 
     comments = relationship("PhotoComment", back_populates="photo", cascade="all, delete-orphan")
@@ -167,3 +169,24 @@ class PhotoPerson(UserScopedBase):
 
     photo = relationship("Photo", back_populates="people_links")
     person = relationship("Person", back_populates="photo_links")
+
+
+# ── Photo Sources ─────────────────────────────────────
+
+class PhotoSource(UserScopedBase):
+    """A configured sync source — folder path or Apple Photos library."""
+
+    __tablename__ = "photo_sources"
+    __table_args__ = (
+        UniqueConstraint("user_id", "provider", "source_path", name="uq_photo_sources_user_provider_path"),
+    )
+
+    provider = Column(String(30), nullable=False)  # "folder" | "apple_photos"
+    source_path = Column(String(1000), nullable=False)
+    label = Column(String(255), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    sync_status = Column(String(20), nullable=False, default="idle")  # idle | syncing | error
+    last_sync_at = Column(DateTime(timezone=True), nullable=True)
+    last_error = Column(Text, nullable=True)
+    photo_count = Column(Integer, nullable=False, default=0)
+    config = Column(JSONB, nullable=True)  # provider-specific settings (future)

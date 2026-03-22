@@ -25,6 +25,14 @@ sheet.replaceSync(`
   .photo-card:hover {
     box-shadow: 0 2px 12px rgba(0,0,0,0.12);
   }
+  .photo-card.selected {
+    border-color: var(--pos-color-action-primary);
+    box-shadow: 0 0 0 1px var(--pos-color-action-primary);
+  }
+  .photo-card.selected .photo-overlay { opacity: 1; }
+  .photo-card.selected .photo-thumb img {
+    transform: scale(1.03);
+  }
 
   .photo-thumb {
     position: relative;
@@ -219,7 +227,7 @@ class PosPhotosGrid extends HTMLElement {
           const exif = this._getExifSummary(p);
 
           return `
-            <div class="photo-card" data-photo-id="${p.id}">
+            <div class="photo-card ${this._selectedIds.includes(p.id) ? 'selected' : ''}" data-photo-id="${p.id}">
               <div class="photo-thumb">
                 <img src="${thumbUrl(p.id, 'sm')}" alt="${this._escAttr(p.filename)}" loading="lazy" />
                 <div class="photo-overlay">
@@ -228,15 +236,21 @@ class PosPhotosGrid extends HTMLElement {
                          data-action="select" data-id="${p.id}">
                       ${this._selectedIds.includes(p.id) ? icon('check', 12) : ''}
                     </div>
-                    <button class="overlay-btn ${p.is_favourite ? 'active' : ''}"
-                            data-action="favourite" data-id="${p.id}" title="Favourite">
-                      ${icon('star', 13)}
-                    </button>
+                    <div style="display:flex;gap:4px;">
+                      <button class="overlay-btn ${p.is_favourite ? 'active' : ''}"
+                              data-action="favourite" data-id="${p.id}" title="Favourite">
+                        ${icon('star', 13)}
+                      </button>
+                      <button class="overlay-btn" data-action="delete" data-id="${p.id}" title="Delete">
+                        ${icon('trash', 13)}
+                      </button>
+                    </div>
                   </div>
                 </div>
-                ${commentCount > 0 ? `
+                ${commentCount > 0 || p.duration ? `
                   <div class="card-indicators">
-                    <span class="indicator">${icon('message-circle', 10)} ${commentCount}</span>
+                    ${p.duration ? `<span class="indicator">${icon('play', 8)} ${this._formatDuration(p.duration)}</span>` : ''}
+                    ${commentCount > 0 ? `<span class="indicator">${icon('message-circle', 10)} ${commentCount}</span>` : ''}
                   </div>
                 ` : ''}
                 ${exif ? `<div class="exif-tooltip">${exif}</div>` : ''}
@@ -270,6 +284,13 @@ class PosPhotosGrid extends HTMLElement {
     return parts.length ? parts.join(' · ') : '';
   }
 
+  _formatDuration(seconds) {
+    if (!seconds) return '';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `0:${String(s).padStart(2, '0')}`;
+  }
+
   _bindEvents() {
     this.shadow.addEventListener('click', (e) => {
       const cell = e.target.closest('.photo-card');
@@ -293,6 +314,16 @@ class PosPhotosGrid extends HTMLElement {
         this.dispatchEvent(new CustomEvent('photo-action', {
           bubbles: true, composed: true,
           detail: { action: 'favourite', photoId },
+        }));
+        return;
+      }
+
+      const delBtn = e.target.closest('[data-action="delete"]');
+      if (delBtn) {
+        e.stopPropagation();
+        this.dispatchEvent(new CustomEvent('photo-action', {
+          bubbles: true, composed: true,
+          detail: { action: 'delete', photoId },
         }));
         return;
       }

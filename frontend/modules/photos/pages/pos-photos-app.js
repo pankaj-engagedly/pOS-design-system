@@ -8,6 +8,7 @@ import '../components/pos-photos-timeline.js';
 import '../components/pos-photos-lightbox.js';
 import '../components/pos-photos-upload-dialog.js';
 import '../components/pos-photos-album-detail.js';
+import '../components/pos-photos-source-dialog.js';
 import { icon } from '../../../shared/utils/icons.js';
 import store from '../store.js';
 import {
@@ -34,6 +35,7 @@ class PosPhotosApp extends HTMLElement {
     this._unsub = store.subscribe(() => this._update());
     this._bindEvents();
     this._loadCurrentView();
+    this._handleOAuthReturn();
   }
 
   disconnectedCallback() {
@@ -181,6 +183,83 @@ class PosPhotosApp extends HTMLElement {
           color: var(--pos-color-action-primary);
         }
         .header-btn svg { pointer-events: none; }
+
+        /* Bulk action bar */
+        .bulk-bar {
+          position: absolute;
+          bottom: 16px;
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 16px;
+          background: var(--pos-color-background-primary);
+          border: 1px solid var(--pos-color-border-default);
+          border-radius: var(--pos-radius-lg);
+          box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+          z-index: 10;
+          animation: bulk-bar-in 0.15s ease-out;
+        }
+        @keyframes bulk-bar-in {
+          from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        .bulk-count {
+          font-size: var(--pos-font-size-sm);
+          font-weight: var(--pos-font-weight-semibold);
+          color: var(--pos-color-text-primary);
+          white-space: nowrap;
+          padding-right: 4px;
+        }
+        .bulk-divider {
+          width: 1px;
+          height: 20px;
+          background: var(--pos-color-border-default);
+        }
+        .bulk-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 5px 10px;
+          border: none;
+          border-radius: var(--pos-radius-sm);
+          background: transparent;
+          color: var(--pos-color-text-secondary);
+          font-size: var(--pos-font-size-xs);
+          font-family: inherit;
+          cursor: pointer;
+          transition: background 0.1s, color 0.1s;
+          white-space: nowrap;
+        }
+        .bulk-btn:hover {
+          background: var(--pos-color-background-secondary);
+          color: var(--pos-color-text-primary);
+        }
+        .bulk-btn.danger:hover {
+          background: rgba(239,68,68,0.1);
+          color: #ef4444;
+        }
+        .bulk-btn svg { pointer-events: none; }
+        .bulk-cancel {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 22px;
+          height: 22px;
+          border: none;
+          border-radius: 50%;
+          background: transparent;
+          color: var(--pos-color-text-tertiary);
+          cursor: pointer;
+          padding: 0;
+          transition: background 0.1s;
+        }
+        .bulk-cancel:hover {
+          background: var(--pos-color-background-secondary);
+          color: var(--pos-color-text-primary);
+        }
+        .bulk-cancel svg { pointer-events: none; }
       </style>
 
       <pos-module-layout>
@@ -196,11 +275,21 @@ class PosPhotosApp extends HTMLElement {
             <pos-photos-grid style="display:none"></pos-photos-grid>
             <pos-photos-album-detail style="display:none"></pos-photos-album-detail>
           </div>
+          <div class="bulk-bar" id="bulk-bar" style="display:none">
+            <span class="bulk-count" id="bulk-count"></span>
+            <div class="bulk-divider"></div>
+            <button class="bulk-btn" id="bulk-fav">${icon('star', 13)} Favourite</button>
+            <button class="bulk-btn" id="bulk-album">${icon('folder', 13)} Add to Album</button>
+            <button class="bulk-btn danger" id="bulk-delete">${icon('trash', 13)} Delete</button>
+            <div class="bulk-divider"></div>
+            <button class="bulk-cancel" id="bulk-cancel" title="Clear selection">${icon('x', 12)}</button>
+          </div>
         </div>
       </pos-module-layout>
 
       <pos-photos-lightbox></pos-photos-lightbox>
       <pos-photos-upload-dialog></pos-photos-upload-dialog>
+      <pos-photos-source-dialog></pos-photos-source-dialog>
     `;
 
     this._update();
@@ -255,6 +344,15 @@ class PosPhotosApp extends HTMLElement {
     if (lightbox) {
       lightbox.photos = state.photos;
     }
+
+    // Bulk action bar
+    const bulkBar = this.shadow.getElementById('bulk-bar');
+    const bulkCount = this.shadow.getElementById('bulk-count');
+    if (bulkBar) {
+      const count = state.selectedPhotoIds?.length || 0;
+      bulkBar.style.display = count > 0 ? '' : 'none';
+      if (bulkCount) bulkCount.textContent = `${count} selected`;
+    }
   }
 
   _updateHeader(state, isTimeline, isAlbum) {
@@ -290,20 +388,16 @@ class PosPhotosApp extends HTMLElement {
     titleEl.textContent = title;
     metaEl.textContent = `${count} photo${count !== 1 ? 's' : ''}`;
 
-    // Actions: upload button (always), plus album-specific context
-    if (isAlbum) {
-      actionsEl.innerHTML = `
-        <button class="header-btn" id="header-upload-btn">
-          ${icon('upload', 14)} Upload to Album
-        </button>
-      `;
-    } else {
-      actionsEl.innerHTML = `
-        <button class="header-btn" id="header-upload-btn">
-          ${icon('upload', 14)} Upload
-        </button>
-      `;
-    }
+    // Actions: sources settings + upload button
+    const uploadLabel = isAlbum ? 'Upload to Album' : 'Upload';
+    actionsEl.innerHTML = `
+      <button class="header-btn" id="header-sources-btn" title="Sync Sources">
+        ${icon('settings', 14)}
+      </button>
+      <button class="header-btn" id="header-upload-btn">
+        ${icon('upload', 14)} ${uploadLabel}
+      </button>
+    `;
   }
 
   // ── Events ────────────────────────────────────────────
@@ -394,6 +488,11 @@ class PosPhotosApp extends HTMLElement {
           await updatePhoto(photoId, { is_favourite: !photo.is_favourite });
           this._loadCurrentView();
         }
+      } else if (action === 'delete') {
+        if (!await confirmDialog('Delete this photo?', { confirmLabel: 'Delete', danger: true })) return;
+        await deletePhoto(photoId);
+        this._loadCurrentView();
+        this.shadow.querySelector('pos-photos-sidebar')?.refreshData();
       }
     });
 
@@ -496,11 +595,51 @@ class PosPhotosApp extends HTMLElement {
       }
     });
 
-    // ── Header upload button ──
+    // ── Bulk actions ──
 
-    this.shadow.addEventListener('click', (e) => {
+    this.shadow.addEventListener('click', async (e) => {
+      if (e.target.closest('#bulk-cancel')) {
+        store.setState({ selectedPhotoIds: [], selectionMode: false });
+        return;
+      }
+
+      if (e.target.closest('#bulk-fav')) {
+        const ids = store.getState().selectedPhotoIds;
+        for (const id of ids) {
+          const photo = this._findPhoto(id);
+          if (photo && !photo.is_favourite) {
+            await updatePhoto(id, { is_favourite: true });
+          }
+        }
+        store.setState({ selectedPhotoIds: [], selectionMode: false });
+        this._loadCurrentView();
+        return;
+      }
+
+      if (e.target.closest('#bulk-delete')) {
+        const ids = store.getState().selectedPhotoIds;
+        const count = ids.length;
+        if (!await confirmDialog(`Delete ${count} photo${count !== 1 ? 's' : ''}?`, { confirmLabel: 'Delete', danger: true })) return;
+        for (const id of ids) {
+          await deletePhoto(id);
+        }
+        store.setState({ selectedPhotoIds: [], selectionMode: false });
+        this._loadCurrentView();
+        this.shadow.querySelector('pos-photos-sidebar')?.refreshData();
+        return;
+      }
+
+      if (e.target.closest('#bulk-album')) {
+        await this._showAlbumPicker();
+        return;
+      }
+
+      // ── Header buttons ──
       if (e.target.closest('#header-upload-btn')) {
         this.shadow.querySelector('pos-photos-upload-dialog')?.open();
+      }
+      if (e.target.closest('#header-sources-btn')) {
+        this.shadow.querySelector('pos-photos-source-dialog')?.open();
       }
     });
 
@@ -508,6 +647,16 @@ class PosPhotosApp extends HTMLElement {
 
     this.shadow.addEventListener('open-upload', () => {
       this.shadow.querySelector('pos-photos-upload-dialog')?.open();
+    });
+
+    // ── Source events ──
+
+    this.shadow.addEventListener('open-sources', () => {
+      this.shadow.querySelector('pos-photos-source-dialog')?.open();
+    });
+
+    this.shadow.addEventListener('source-changed', () => {
+      this.shadow.querySelector('pos-photos-sidebar')?.refreshData();
     });
 
     this.shadow.addEventListener('upload-complete', async (e) => {
@@ -529,6 +678,102 @@ class PosPhotosApp extends HTMLElement {
   }
 
   // ── Helpers ───────────────────────────────────────────
+
+  async _showAlbumPicker() {
+    try {
+      const albums = await getAlbums();
+      if (!albums.length) {
+        await confirmDialog('No albums yet. Create one from the sidebar first.', { confirmLabel: 'OK', danger: false });
+        return;
+      }
+      // Build a simple picker dialog using confirmDialog pattern
+      const names = albums.map(a => a.name);
+      const picked = await this._pickAlbum(albums);
+      if (!picked) return;
+
+      const ids = store.getState().selectedPhotoIds;
+      await addPhotosToAlbum(picked.id, ids);
+      store.setState({ selectedPhotoIds: [], selectionMode: false });
+      this._loadCurrentView();
+      this.shadow.querySelector('pos-photos-sidebar')?.refreshData();
+    } catch (err) {
+      console.error('Failed to add to album', err);
+    }
+  }
+
+  _pickAlbum(albums) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
+      const panel = document.createElement('div');
+      panel.style.cssText = 'background:var(--pos-color-background-primary);border-radius:var(--pos-radius-lg);padding:16px;min-width:240px;max-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.2);';
+      panel.innerHTML = `
+        <div style="font-weight:var(--pos-font-weight-semibold);font-size:var(--pos-font-size-sm);margin-bottom:12px;color:var(--pos-color-text-primary);">Add to Album</div>
+        <div id="album-list" style="display:flex;flex-direction:column;gap:4px;max-height:300px;overflow-y:auto;">
+          ${albums.map(a => `
+            <button data-album-id="${a.id}" style="
+              text-align:left;padding:8px 12px;border:1px solid var(--pos-color-border-default);
+              border-radius:var(--pos-radius-sm);background:transparent;cursor:pointer;
+              font-size:var(--pos-font-size-sm);font-family:inherit;
+              color:var(--pos-color-text-primary);transition:background 0.1s;
+            ">${a.name}${a.photo_count ? ` <span style="color:var(--pos-color-text-tertiary);">(${a.photo_count})</span>` : ''}</button>
+          `).join('')}
+        </div>
+        <button id="album-cancel" style="
+          margin-top:12px;width:100%;padding:6px;border:1px solid var(--pos-color-border-default);
+          border-radius:var(--pos-radius-sm);background:transparent;cursor:pointer;
+          font-size:var(--pos-font-size-xs);font-family:inherit;color:var(--pos-color-text-secondary);
+        ">Cancel</button>
+      `;
+
+      panel.querySelector('#album-cancel').addEventListener('click', () => {
+        overlay.remove();
+        resolve(null);
+      });
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) { overlay.remove(); resolve(null); }
+      });
+      panel.querySelector('#album-list').addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-album-id]');
+        if (btn) {
+          const album = albums.find(a => a.id === btn.dataset.albumId);
+          overlay.remove();
+          resolve(album);
+        }
+      });
+      // Hover styles
+      panel.querySelector('#album-list').addEventListener('mouseover', (e) => {
+        const btn = e.target.closest('[data-album-id]');
+        if (btn) btn.style.background = 'var(--pos-color-background-secondary)';
+      });
+      panel.querySelector('#album-list').addEventListener('mouseout', (e) => {
+        const btn = e.target.closest('[data-album-id]');
+        if (btn) btn.style.background = 'transparent';
+      });
+
+      overlay.appendChild(panel);
+      document.body.appendChild(overlay);
+    });
+  }
+
+  _handleOAuthReturn() {
+    const hash = window.location.hash;
+    if (hash.includes('google_connected=1')) {
+      // Refresh sidebar and sources after Google OAuth success
+      setTimeout(() => {
+        this.shadow.querySelector('pos-photos-sidebar')?.refreshData();
+        this._loadCurrentView();
+      }, 500);
+      // Clean up URL
+      window.location.hash = '#/photos';
+    } else if (hash.includes('google_error=')) {
+      const match = hash.match(/google_error=([^&]*)/);
+      const error = match ? decodeURIComponent(match[1]) : 'Unknown error';
+      console.error('Google OAuth error:', error);
+      // Clean up URL
+      window.location.hash = '#/photos';
+    }
+  }
 
   _findPhoto(photoId) {
     return store.getState().photos.find(p => p.id === photoId);

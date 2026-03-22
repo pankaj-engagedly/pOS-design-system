@@ -230,3 +230,39 @@ export function mergePeople(sourceId, targetId) {
     body: JSON.stringify({ merge_into_id: targetId }),
   });
 }
+
+// ── Sources ────────────────────────────────────────────
+
+export function getSources() {
+  return apiFetch('/api/photos/sources');
+}
+
+export function createSource(data) {
+  return apiFetch('/api/photos/sources', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateSource(id, data) {
+  return apiFetch(`/api/photos/sources/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteSource(id) {
+  return apiFetch(`/api/photos/sources/${id}`, { method: 'DELETE' });
+}
+
+export function triggerSync(id) {
+  return apiFetch(`/api/photos/sources/${id}/sync`, { method: 'POST' });
+}
+
+export function getProviders() {
+  return apiFetch('/api/photos/sources/providers');
+}
+
+export function getGoogleAuthUrl() {
+  return apiFetch('/api/photos/sources/google/auth');
+}

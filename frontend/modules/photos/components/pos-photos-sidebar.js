@@ -1,4 +1,4 @@
-// pos-photos-sidebar — Smart views + albums + people
+// pos-photos-sidebar — Smart views + albums + people + settings cog
 // Composes: pos-sidebar (shell + scroll + footer)
 
 import { SIDEBAR_NAV_SHEET } from '../../../shared/components/pos-sidebar.js';
@@ -62,6 +62,7 @@ class PosPhotosSidebar extends HTMLElement {
     this._stats = {};
     this._addingAlbum = false;
     this._renamingAlbumId = null;
+    this._renamingPersonId = null;
   }
 
   set selectedView(val) { if (this._selectedView !== val) { this._selectedView = val; this._render(); } }
@@ -136,19 +137,7 @@ class PosPhotosSidebar extends HTMLElement {
         <div class="divider"></div>
         <div class="section-label">People</div>
 
-        ${this._people.map(p => `
-          <div class="nav-item ${this._selectedPersonId === p.id ? 'active' : ''}"
-               data-person-id="${p.id}" data-person-name="${this._escAttr(p.name)}">
-            ${icon('user', 15)}
-            <span class="nav-label">${this._esc(p.name)}</span>
-            ${p.photo_count ? `<span class="nav-count">${p.photo_count}</span>` : ''}
-            <div class="nav-actions">
-              <button class="nav-action-btn delete" data-action="delete-person" data-id="${p.id}" title="Delete">
-                ${icon('trash', 13)}
-              </button>
-            </div>
-          </div>
-        `).join('')}
+        ${this._people.map(p => this._renderPersonItem(p)).join('')}
 
         <div slot="footer">
           <button class="new-item-btn" id="upload-btn">
@@ -165,6 +154,13 @@ class PosPhotosSidebar extends HTMLElement {
     if (this._renamingAlbumId) {
       setTimeout(() => {
         const inp = this.shadow.getElementById('rename-input');
+        inp?.focus();
+        inp?.select();
+      }, 0);
+    }
+    if (this._renamingPersonId) {
+      setTimeout(() => {
+        const inp = this.shadow.getElementById('rename-person-input');
         inp?.focus();
         inp?.select();
       }, 0);
@@ -187,6 +183,28 @@ class PosPhotosSidebar extends HTMLElement {
             ${icon('edit', 13)}
           </button>
           <button class="nav-action-btn delete" data-action="delete-album" data-id="${a.id}" title="Delete">
+            ${icon('trash', 13)}
+          </button>
+        </div>
+      </div>`;
+  }
+
+  _renderPersonItem(p) {
+    if (this._renamingPersonId === p.id) {
+      return `<div class="rename-wrap">
+        <input class="rename-input" id="rename-person-input" value="${this._escAttr(p.name)}" data-person-id="${p.id}" />
+      </div>`;
+    }
+    return `<div class="nav-item ${this._selectedPersonId === p.id ? 'active' : ''}"
+                data-person-id="${p.id}" data-person-name="${this._escAttr(p.name)}">
+        ${icon('user', 15)}
+        <span class="nav-label">${this._esc(p.name)}</span>
+        ${p.photo_count ? `<span class="nav-count">${p.photo_count}</span>` : ''}
+        <div class="nav-actions">
+          <button class="nav-action-btn" data-action="rename-person" data-id="${p.id}" title="Rename">
+            ${icon('edit', 13)}
+          </button>
+          <button class="nav-action-btn delete" data-action="delete-person" data-id="${p.id}" title="Delete">
             ${icon('trash', 13)}
           </button>
         </div>
@@ -218,6 +236,9 @@ class PosPhotosSidebar extends HTMLElement {
           this._render();
         } else if (action === 'delete-album') {
           this._deleteAlbum(id);
+        } else if (action === 'rename-person') {
+          this._renamingPersonId = id;
+          this._render();
         } else if (action === 'delete-person') {
           this._deletePerson(id);
         }
@@ -262,6 +283,15 @@ class PosPhotosSidebar extends HTMLElement {
           this._renameAlbum(renameInput.dataset.albumId, renameInput.value.trim());
         }
         if (e.key === 'Escape') { this._renamingAlbumId = null; this._render(); }
+        return;
+      }
+
+      const renamePersonInput = e.target.closest('#rename-person-input');
+      if (renamePersonInput) {
+        if (e.key === 'Enter' && renamePersonInput.value.trim()) {
+          this._renamePerson(renamePersonInput.dataset.personId, renamePersonInput.value.trim());
+        }
+        if (e.key === 'Escape') { this._renamingPersonId = null; this._render(); }
       }
     });
 
@@ -274,6 +304,11 @@ class PosPhotosSidebar extends HTMLElement {
       if (e.target.closest('#rename-input')) {
         setTimeout(() => {
           if (this._renamingAlbumId) { this._renamingAlbumId = null; this._render(); }
+        }, 150);
+      }
+      if (e.target.closest('#rename-person-input')) {
+        setTimeout(() => {
+          if (this._renamingPersonId) { this._renamingPersonId = null; this._render(); }
         }, 150);
       }
     });
@@ -309,6 +344,18 @@ class PosPhotosSidebar extends HTMLElement {
       this.dispatchEvent(new CustomEvent('sidebar-changed', { bubbles: true, composed: true }));
     } catch (err) {
       console.error('Failed to delete album', err);
+    }
+  }
+
+  async _renamePerson(id, name) {
+    try {
+      const { updatePerson } = await import('../services/photos-api.js');
+      await updatePerson(id, { name });
+      this._renamingPersonId = null;
+      await this.refreshData();
+      this.dispatchEvent(new CustomEvent('sidebar-changed', { bubbles: true, composed: true }));
+    } catch (err) {
+      console.error('Failed to rename person', err);
     }
   }
 

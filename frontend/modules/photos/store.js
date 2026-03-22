@@ -15,6 +15,7 @@ const photosStore = createStore({
   timelineGroups: [],            // [{ date, photos }]
   albums: [],
   people: [],
+  sources: [],                   // sync sources
   stats: {},
   tags: [],
 

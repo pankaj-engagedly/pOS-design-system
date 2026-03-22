@@ -22,6 +22,7 @@ class GatewayConfig(BaseServiceConfig):
     VAULT_SERVICE_URL: str = "http://localhost:8006"
     KB_SERVICE_URL: str = "http://localhost:8007"
     PHOTOS_SERVICE_URL: str = "http://localhost:8008"
+    WATCHLIST_SERVICE_URL: str = "http://localhost:8009"
 
 
 config = GatewayConfig()
@@ -39,6 +40,7 @@ async def lifespan(app: FastAPI):
     routes_module.VAULT_SERVICE_URL = config.VAULT_SERVICE_URL
     routes_module.KB_SERVICE_URL = config.KB_SERVICE_URL
     routes_module.PHOTOS_SERVICE_URL = config.PHOTOS_SERVICE_URL
+    routes_module.WATCHLIST_SERVICE_URL = config.WATCHLIST_SERVICE_URL
     logger.info("Gateway ready")
     yield
     logger.info("Gateway stopped")
