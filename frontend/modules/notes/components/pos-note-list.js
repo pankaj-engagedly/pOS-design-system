@@ -117,6 +117,42 @@ listSheet.replaceSync(`
     color: var(--pos-color-text-secondary);
     opacity: 0.4;
   }
+  /* Empty state — create card / row */
+  .new-note-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 100px;
+    border: 1px dashed var(--pos-color-border-default);
+    border-radius: var(--pos-radius-md, 8px);
+    cursor: pointer;
+    color: var(--pos-color-text-tertiary);
+    font-size: var(--pos-font-size-sm);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .new-note-card:hover {
+    border-color: var(--pos-color-action-primary);
+    color: var(--pos-color-action-primary);
+  }
+
+  .new-note-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 14px;
+    border: 1px dashed var(--pos-color-border-default);
+    border-radius: var(--pos-radius-md, 8px);
+    cursor: pointer;
+    color: var(--pos-color-text-tertiary);
+    font-size: var(--pos-font-size-sm);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .new-note-row:hover {
+    border-color: var(--pos-color-action-primary);
+    color: var(--pos-color-action-primary);
+  }
 `);
 
 class PosNoteList extends HTMLElement {
@@ -233,7 +269,7 @@ class PosNoteList extends HTMLElement {
         </span>
         <button class="header-btn ${this._viewMode === 'list' ? 'active' : ''}" data-action="set-view" data-view="list" title="List view">${icon('list', 14)}</button>
         <button class="header-btn ${this._viewMode === 'grid' ? 'active' : ''}" data-action="set-view" data-view="grid" title="Grid view">${icon('grid', 14)}</button>
-        <button class="header-btn" data-action="new-note" title="New Note">${icon('plus', 14)}</button>
+        ${!this._isTrash ? `<button class="header-btn" data-action="new-note" title="New Note">${icon('plus', 14)}</button>` : ''}
       </div>
 
       <div class="toolbar">
@@ -248,12 +284,18 @@ class PosNoteList extends HTMLElement {
 
   _renderNotesHTML() {
     if (this._notes.length === 0) {
-      return `
-        <div class="empty-state">
-          <div class="empty-icon">${icon('file-text', 40)}</div>
-          <span>No notes yet</span>
-        </div>
-      `;
+      if (this._isTrash) {
+        return `
+          <div class="empty-state">
+            <div class="empty-icon">${icon('trash', 40)}</div>
+            <span>Trash is empty</span>
+          </div>
+        `;
+      }
+      if (this._viewMode === 'grid') {
+        return `<div class="notes-grid"><div class="new-note-card" data-action="new-note">${icon('plus', 24)}<span>New Note</span></div></div>`;
+      }
+      return `<div id="notes-list"><div class="new-note-row" data-action="new-note">${icon('plus', 16)} <span>New Note</span></div></div>`;
     }
 
     if (this._viewMode === 'grid') {
@@ -263,6 +305,12 @@ class PosNoteList extends HTMLElement {
   }
 
   _renderNotes() {
+    // Empty state — full re-render to show placeholder card
+    if (this._notes.length === 0) {
+      this.render();
+      return;
+    }
+
     const container = this.shadow.querySelector('#notes-list, #notes-grid');
     if (!container) {
       this.render();

@@ -33,7 +33,6 @@ CARD_STYLES.replaceSync(`
 
   .pos-card.active {
     border-color: var(--pos-color-action-primary, #4361ee);
-    border-width: 2px;
   }
 `);
 

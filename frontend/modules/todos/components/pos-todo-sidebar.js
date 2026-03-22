@@ -11,6 +11,7 @@ todoSheet.replaceSync(`
     align-items: center;
     gap: var(--pos-space-xs);
     width: 100%;
+    margin-top: var(--pos-space-sm);
     padding: 6px var(--pos-space-sm);
     border: 1px dashed var(--pos-color-border-default);
     border-radius: var(--pos-radius-sm);
@@ -109,14 +110,12 @@ class PosTodoSidebar extends HTMLElement {
              </div>`
         ).join('')}
 
-        <div slot="footer">
-          ${this._showNewInput
-            ? `<input class="new-list-input" id="new-list-input" placeholder="List name…" />`
-            : `<button class="new-list-btn" id="new-list-btn">
-                 ${icon('plus', 13)} New list
-               </button>`
-          }
-        </div>
+        ${this._showNewInput
+          ? `<input class="new-list-input" id="new-list-input" placeholder="List name…" />`
+          : `<button class="new-list-btn" id="new-list-btn">
+               ${icon('plus', 13)} New list
+             </button>`
+        }
 
       </pos-sidebar>
     `;

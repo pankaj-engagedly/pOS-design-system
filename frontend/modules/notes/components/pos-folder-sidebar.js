@@ -13,6 +13,7 @@ notesSheet.replaceSync(`
     align-items: center;
     gap: var(--pos-space-xs);
     width: 100%;
+    margin-top: var(--pos-space-sm);
     padding: 6px var(--pos-space-sm);
     border: 1px dashed var(--pos-color-border-default);
     border-radius: var(--pos-radius-sm);
@@ -67,13 +68,11 @@ class PosFolderSidebar extends HTMLElement {
 
   set selectedFolderId(val) {
     this._selectedFolderId = val;
-    this._selectedView = null;
     this.render();
   }
 
   set selectedView(val) {
     this._selectedView = val;
-    this._selectedFolderId = null;
     this.render();
   }
 
@@ -225,14 +224,12 @@ class PosFolderSidebar extends HTMLElement {
           ${this._folders.map(f => this._renderFolderItem(f)).join('')}
         ` : ''}
 
-        <div slot="footer">
-          ${this._showNewInput
-            ? `<input class="new-folder-input" placeholder="Folder name\u2026" />`
-            : `<button class="new-folder-btn" data-action="new-folder">
-                 ${icon('plus', 13)} New Folder
-               </button>`
-          }
-        </div>
+        ${this._showNewInput
+          ? `<input class="new-folder-input" placeholder="Folder name\u2026" />`
+          : `<button class="new-folder-btn" data-action="new-folder">
+               ${icon('plus', 13)} New Folder
+             </button>`
+        }
 
       </pos-sidebar>
     `;
