@@ -86,17 +86,39 @@ class PosSubtaskList extends HTMLElement {
 
         .add-row {
           display: flex;
-          gap: var(--pos-space-sm);
+          align-items: center;
+          gap: var(--pos-space-xs);
           margin-top: var(--pos-space-sm);
         }
 
         .add-row ui-input {
           flex: 1;
         }
+
+        .add-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 4px 10px;
+          border: 1px solid var(--pos-color-border-default);
+          border-radius: var(--pos-radius-sm);
+          background: transparent;
+          color: var(--pos-color-text-secondary);
+          font-size: var(--pos-font-size-xs);
+          font-family: inherit;
+          cursor: pointer;
+          transition: border-color 0.1s, color 0.1s;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .add-btn:hover {
+          border-color: var(--pos-color-action-primary);
+          color: var(--pos-color-action-primary);
+        }
       </style>
 
       <div class="header">
-        <span class="count">${total > 0 ? `${completed}/${total} completed` : 'Subtasks'}</span>
+        <span class="count">${total > 0 ? `Subtasks ${completed}/${total}` : 'Subtasks'}</span>
       </div>
 
       ${this._subtasks.map(s => `
@@ -109,6 +131,7 @@ class PosSubtaskList extends HTMLElement {
 
       <div class="add-row">
         <ui-input id="new-subtask" placeholder="Add subtask..." size="sm"></ui-input>
+        <button class="add-btn" id="add-subtask-btn">Add</button>
       </div>
     `;
   }
@@ -133,15 +156,22 @@ class PosSubtaskList extends HTMLElement {
     });
 
     const uiInput = this.shadow.getElementById('new-subtask');
-    uiInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && uiInput.value.trim()) {
+    const addSubtask = () => {
+      if (uiInput && uiInput.value.trim()) {
         this.dispatchEvent(new CustomEvent('subtask-add', {
           bubbles: true, composed: true,
           detail: { taskId: this._taskId, title: uiInput.value.trim() },
         }));
         uiInput.value = '';
+        uiInput.focus();
       }
+    };
+
+    uiInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addSubtask();
     });
+
+    this.shadow.getElementById('add-subtask-btn')?.addEventListener('click', addSubtask);
   }
 
   _escapeHtml(str) {

@@ -194,6 +194,13 @@ class PosAppSidebar extends HTMLElement {
         /* Label hidden when collapsed */
         :host([collapsed]) .nav-label { display: none; }
 
+        /* ── Divider between groups ── */
+        .nav-divider {
+          height: 1px;
+          background: var(--pos-color-border-default);
+          margin: var(--pos-space-xs) 10px;
+        }
+
         /* ── Hover tooltip (collapsed only) ── */
         .nav-tooltip {
           position: absolute;
@@ -242,15 +249,18 @@ class PosAppSidebar extends HTMLElement {
       </div>
 
       <nav>
-        ${routes.map(r => `
+        ${routes.map((r, i) => {
+          const prevGroup = i > 0 ? routes[i - 1].group : null;
+          const divider = prevGroup && r.group && r.group !== prevGroup ? '<div class="nav-divider"></div>' : '';
+          return `${divider}
           <div class="nav-item-wrap">
             <div class="nav-item ${this._activePath === r.path ? 'active' : ''}" data-path="${r.path}" tabindex="0" role="button">
               <span class="nav-icon">${icon(r.icon, 16)}</span>
               <span class="nav-label">${r.label}</span>
             </div>
             <span class="nav-tooltip">${r.label}</span>
-          </div>
-        `).join('')}
+          </div>`;
+        }).join('')}
       </nav>
     `;
 

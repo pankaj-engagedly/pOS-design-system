@@ -57,17 +57,26 @@ export function initRouter() {
 registerRoute('/login', { module: 'auth', page: 'pos-auth-login', label: 'Login', hidden: true, public: true });
 registerRoute('/register', { module: 'auth', page: 'pos-auth-register', label: 'Register', hidden: true, public: true });
 
-// App routes
-registerRoute('/overview', { module: 'overview', label: 'Overview', icon: 'home' });
-registerRoute('/todos', { module: 'todos', label: 'Todos', icon: 'check-square' });
-registerRoute('/notes', { module: 'notes', label: 'Notes', icon: 'file-text' });
-registerRoute('/knowledge-base', { module: 'knowledge-base', label: 'Knowledge Base', icon: 'book-open' });
-registerRoute('/vault', { module: 'vault', label: 'Vault', icon: 'lock' });
-registerRoute('/feeds', { module: 'feed-watcher', label: 'Feeds', icon: 'rss', hidden: true });
-registerRoute('/documents', { module: 'documents', label: 'Documents', icon: 'folder' });
+// App routes — grouped: Overview | Work | Storage | Finance | Settings
+registerRoute('/overview', { module: 'overview', label: 'Overview', icon: 'home', group: 'overview' });
+
+// Work
+registerRoute('/todos', { module: 'todos', label: 'Todos', icon: 'check-square', group: 'work' });
+registerRoute('/notes', { module: 'notes', label: 'Notes', icon: 'file-text', group: 'work' });
+registerRoute('/knowledge-base', { module: 'knowledge-base', label: 'Knowledge Base', icon: 'book-open', group: 'work' });
+
+// Storage
+registerRoute('/documents', { module: 'documents', label: 'Documents', icon: 'folder', group: 'storage' });
 registerRoute('/documents/shared', { module: 'documents', page: 'pos-documents-shared-app', label: 'Shared with Me', hidden: true });
 registerRoute('/documents/recent', { module: 'documents', page: 'pos-documents-recent-app', label: 'Recent Documents', hidden: true });
-registerRoute('/photos', { module: 'photos', label: 'Photos', icon: 'image' });
-registerRoute('/watchlist', { module: 'watchlist', label: 'Watchlist', icon: 'trending-up' });
-registerRoute('/portfolio', { module: 'portfolio', label: 'Portfolio', icon: 'briefcase' });
-registerRoute('/settings', { module: 'settings', label: 'Settings', icon: 'settings' });
+registerRoute('/photos', { module: 'photos', label: 'Photos', icon: 'image', group: 'storage' });
+registerRoute('/vault', { module: 'vault', label: 'Vault', icon: 'lock', group: 'storage' });
+
+// Finance
+registerRoute('/watchlist', { module: 'watchlist', label: 'Watchlist', icon: 'trending-up', group: 'finance' });
+registerRoute('/portfolio', { module: 'portfolio', label: 'Portfolio', icon: 'briefcase', group: 'finance' });
+
+// Feeds (hidden — accessed from KB sidebar)
+registerRoute('/feeds', { module: 'feed-watcher', label: 'Feeds', icon: 'rss', hidden: true });
+
+registerRoute('/settings', { module: 'settings', label: 'Settings', icon: 'settings', group: 'settings' });

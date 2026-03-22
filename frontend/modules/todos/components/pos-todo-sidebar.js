@@ -64,12 +64,13 @@ class PosTodoSidebar extends HTMLElement {
   }
 
   _render() {
-    const { inbox = 0, today = 0, upcoming = 0, completed = 0 } = this._smartCounts;
+    const { inbox = 0, today = 0, tomorrow = 0, upcoming = 0, nextWeek = 0, completed = 0 } = this._smartCounts;
 
     const SMART_VIEWS = [
-      { view: 'inbox',     label: 'Inbox',     iconName: 'folder',        count: inbox },
+      { view: 'inbox',     label: 'Inbox',     iconName: 'inbox',         count: inbox },
       { view: 'today',     label: 'Today',     iconName: 'check-square',  count: today },
-      { view: 'upcoming',  label: 'Upcoming',  iconName: 'chevron-right', count: upcoming },
+      { view: 'tomorrow',  label: 'Tomorrow',  iconName: 'chevron-right', count: tomorrow },
+      { view: 'upcoming',  label: 'Upcoming',  iconName: 'calendar',      count: upcoming },
       { view: 'completed', label: 'Completed', iconName: 'check',         count: completed },
     ];
 

@@ -146,14 +146,18 @@ class PosTodosApp extends HTMLElement {
     const allTasks = state.allTasks || [];
     const today = new Date().toISOString().slice(0, 10);
 
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
     let filtered;
     switch (view) {
       case 'inbox':
-        // All tasks across all lists — the universal lobby
         filtered = allTasks.filter(t => t.status !== 'done');
         break;
       case 'today':
         filtered = allTasks.filter(t => t.due_date === today && t.status !== 'done');
+        break;
+      case 'tomorrow':
+        filtered = allTasks.filter(t => t.due_date === tomorrow && t.status !== 'done');
         break;
       case 'upcoming':
         filtered = allTasks.filter(t => t.due_date && t.due_date > today && t.status !== 'done');
@@ -175,9 +179,11 @@ class PosTodosApp extends HTMLElement {
   _getSmartCounts() {
     const allTasks = todoStore.getState().allTasks || [];
     const today = new Date().toISOString().slice(0, 10);
+    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
     return {
       inbox: allTasks.filter(t => t.status !== 'done').length,
       today: allTasks.filter(t => t.due_date === today && t.status !== 'done').length,
+      tomorrow: allTasks.filter(t => t.due_date === tomorrow && t.status !== 'done').length,
       upcoming: allTasks.filter(t => t.due_date && t.due_date > today && t.status !== 'done').length,
       completed: allTasks.filter(t => t.status === 'done').length,
     };
@@ -227,7 +233,7 @@ class PosTodosApp extends HTMLElement {
       taskList.viewMode = state.selectedView || null;
 
       if (state.selectedView) {
-        const viewLabels = { inbox: 'Inbox', today: 'Today', upcoming: 'Upcoming', completed: 'Completed' };
+        const viewLabels = { inbox: 'Inbox', today: 'Today', tomorrow: 'Tomorrow', upcoming: 'Upcoming', completed: 'Completed' };
         taskList.listName = viewLabels[state.selectedView] || '';
       } else {
         const selectedList = state.lists.find(l => l.id === state.selectedListId);

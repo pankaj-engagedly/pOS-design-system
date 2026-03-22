@@ -2,6 +2,7 @@
 // Emits: task-submit, task-cancel, attachment-upload
 
 import { icon } from '../../../shared/utils/icons.js';
+import '../../../../design-system/src/components/ui-date-picker.js';
 
 const PRIORITIES = [
   { value: 'none',   label: 'Priority' },
@@ -15,8 +16,8 @@ class PosTaskForm extends HTMLElement {
   constructor() {
     super();
     this.shadow = this.attachShadow({ mode: 'open' });
-    this._dueDate = '';
-    this._priority = 'none';
+    this._dueDate = new Date().toISOString().slice(0, 10); // default to today
+    this._priority = 'medium'; // default to medium
     this._pendingAttachments = []; // full objects {id, filename}
     this._showPriorityMenu = false;
     this._menuCoords = null; // fixed coords for priority dropdown
@@ -26,6 +27,16 @@ class PosTaskForm extends HTMLElement {
   }
 
   connectedCallback() {
+    // Default date based on view context (set via data-view attribute)
+    const view = this.dataset.view;
+    if (view === 'tomorrow') {
+      this._dueDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    } else if (view === 'upcoming') {
+      // Default to next Monday for upcoming view
+      const today = new Date();
+      const daysUntilMon = (8 - today.getDay()) % 7 || 7;
+      this._dueDate = new Date(today.getTime() + daysUntilMon * 86400000).toISOString().slice(0, 10);
+    }
     this._render();
     this._bindEvents();
     setTimeout(() => this.shadow.getElementById('title-input')?.focus(), 0);
@@ -181,22 +192,7 @@ class PosTaskForm extends HTMLElement {
           min-width: 0;
         }
 
-        /* Date input: invisible overlay on chip so showPicker() works */
-        .date-chip-wrap {
-          position: relative;
-          display: inline-flex;
-        }
-        #date-input {
-          position: absolute;
-          inset: 0;
-          opacity: 0;
-          pointer-events: none;
-          width: 100%;
-          height: 100%;
-          cursor: pointer;
-          border: none;
-          padding: 0;
-        }
+        /* Date picker component */
 
         /* File input hidden */
         #file-input { display: none; }
@@ -285,16 +281,7 @@ class PosTaskForm extends HTMLElement {
         </div>
 
         <div class="chips-row">
-          <div class="date-chip-wrap">
-            ${dateLabel
-              ? `<button class="chip active" id="date-chip">
-                   ${icon('check-square', 12)} ${dateLabel}
-                   <button class="chip-clear" id="date-clear">×</button>
-                 </button>`
-              : `<button class="chip" id="date-chip">${icon('check-square', 12)} Due date</button>`
-            }
-            <input type="date" id="date-input" value="${this._dueDate}" tabindex="-1" />
-          </div>
+          <ui-date-picker id="date-picker" value="${this._dueDate}" placeholder="Due date"></ui-date-picker>
 
           <button class="chip ${this._priority !== 'none' ? 'active' : ''}" id="priority-chip">
             ${icon('star', 12)}
@@ -325,7 +312,7 @@ class PosTaskForm extends HTMLElement {
         </div>
 
         <div class="bottom-bar">
-          <span class="list-badge">${icon('folder', 13)} Inbox</span>
+          <span class="list-badge">${icon('check-square', 13)} ${this._esc(this.dataset.listName || 'Inbox')}</span>
           <div class="actions">
             <button class="btn btn-cancel" id="cancel-btn">Cancel</button>
             <button class="btn btn-submit" id="submit-btn">Add task</button>
@@ -355,31 +342,10 @@ class PosTaskForm extends HTMLElement {
     // Run once on render to handle pre-filled content
     if (descInput && this._desc) setTimeout(autoResize, 0);
 
-    // Date chip → trigger date picker on the overlaid input
-    this.shadow.getElementById('date-chip')?.addEventListener('click', (e) => {
-      if (e.target.closest('#date-clear')) return;
-      e.preventDefault();
-      // Temporarily make input pointer-events active, trigger picker, then restore
-      if (dateInput) {
-        dateInput.style.pointerEvents = 'auto';
-        try { dateInput.showPicker(); } catch { dateInput.click(); }
-        setTimeout(() => { dateInput.style.pointerEvents = 'none'; }, 300);
-      }
-    });
-
-    this.shadow.getElementById('date-clear')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this._dueDate = '';
+    // Date picker component
+    this.shadow.getElementById('date-picker')?.addEventListener('date-change', (e) => {
+      this._dueDate = e.detail.value || '';
       this._saveInputs();
-      this._render();
-      this._bindEvents();
-    });
-
-    dateInput?.addEventListener('change', () => {
-      this._dueDate = dateInput.value;
-      this._saveInputs();
-      this._render();
-      this._bindEvents();
     });
 
     // Priority chip → toggle menu

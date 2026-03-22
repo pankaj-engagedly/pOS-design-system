@@ -61,8 +61,8 @@ class PosTaskList extends HTMLElement {
   // ─── Grouping ─────────────────────────────────────────────
 
   _getGroups(tasks) {
-    if (this._viewMode === 'inbox') return this._groupByList(tasks);
-    // List view and other smart views → flat (filter chips handle time filtering)
+    // All smart views group by list for consistency; list view is flat
+    if (this._viewMode) return this._groupByList(tasks);
     return null;
   }
 
@@ -85,7 +85,7 @@ class PosTaskList extends HTMLElement {
   // ─── Rendering ────────────────────────────────────────────
 
   render() {
-    const showFilterChips = (this._viewMode === 'inbox' || !this._viewMode);
+    const showFilterChips = (this._viewMode === 'inbox' || !this._viewMode); // chips on inbox + list views
     const filteredTasks = this._getFilteredTasks();
     const groups = this._getGroups(filteredTasks);
     const isSmartView = !!this._viewMode;
@@ -237,6 +237,25 @@ class PosTaskList extends HTMLElement {
         }
         .empty h3 { margin: 0 0 var(--pos-space-xs); font-size: var(--pos-font-size-md); }
         .empty p  { margin: 0; font-size: var(--pos-font-size-sm); }
+        .empty-add-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: var(--pos-space-xs);
+          margin-top: var(--pos-space-md);
+          padding: 6px 16px;
+          border: 1px solid var(--pos-color-border-default);
+          border-radius: var(--pos-radius-sm);
+          background: transparent;
+          color: var(--pos-color-text-secondary);
+          font-size: var(--pos-font-size-sm);
+          font-family: inherit;
+          cursor: pointer;
+          transition: border-color 0.1s, color 0.1s;
+        }
+        .empty-add-btn:hover {
+          border-color: var(--pos-color-action-primary);
+          color: var(--pos-color-action-primary);
+        }
       </style>
 
       <pos-page-header>
@@ -259,7 +278,14 @@ class PosTaskList extends HTMLElement {
 
   _renderGroups(groups, isSmartView) {
     if (groups.length === 0) {
-      return `<div class="empty"><h3>No tasks</h3><p>Add a task to get started</p></div>`;
+      if (this._addingToGroup === '_empty') {
+        return `<pos-task-form mode="create" data-group="_empty" ${this._viewMode ? `data-view="${this._viewMode}"` : ''}></pos-task-form>`;
+      }
+      return `<div class="empty">
+        <h3>No tasks</h3>
+        <p>Nothing here yet</p>
+        <button class="empty-add-btn" data-action="add-to-group" data-group-key="_empty">${icon('plus', 13)} Add Task</button>
+      </div>`;
     }
 
     return groups.map(g => {
@@ -278,7 +304,7 @@ class PosTaskList extends HTMLElement {
             <div class="group-body">
               ${g.tasks.map(t => this._renderTaskWithSubtasks(t, isSmartView)).join('')}
               ${showForm
-            ? `<pos-task-form mode="create" data-group="${g.key}" data-list-id="${g.listId || ''}"></pos-task-form>`
+            ? `<pos-task-form mode="create" data-group="${g.key}" data-list-id="${g.listId || ''}" data-list-name="${this._escAttr(g.label)}" ${this._viewMode ? `data-view="${this._viewMode}"` : ''}></pos-task-form>`
             : `<div class="group-add" data-action="add-to-group" data-group-key="${g.key}" data-list-id="${g.listId || ''}">
                      ${icon('plus', 13)} Add task
                    </div>`
@@ -292,16 +318,22 @@ class PosTaskList extends HTMLElement {
 
   _renderFlat(tasks, isSmartView) {
     const showing = this._addingToGroup === 'flat';
+    const isEmpty = tasks.length === 0 && !showing;
     return `
       <div class="flat-task-list">
-        ${tasks.length === 0 && !showing
-        ? `<div class="empty"><h3>No tasks</h3><p>Click "+ Add task" to get started</p></div>`
-        : tasks.map(t => this._renderTaskWithSubtasks(t, isSmartView)).join('')
-      }
-        ${showing
-        ? `<pos-task-form mode="create" data-group="flat"></pos-task-form>`
-        : `<div class="add-row" data-action="add-to-group" data-group-key="flat">${icon('plus', 13)} Add task</div>`
-      }
+        ${isEmpty
+        ? `<div class="empty">
+            <h3>No tasks</h3>
+            <p>Nothing here yet</p>
+            <button class="empty-add-btn" data-action="add-to-group" data-group-key="flat">${icon('plus', 13)} Add Task</button>
+          </div>`
+        : `
+          ${tasks.map(t => this._renderTaskWithSubtasks(t, isSmartView)).join('')}
+          ${showing
+            ? `<pos-task-form mode="create" data-group="flat" data-list-name="${this._escAttr(this._listName)}"></pos-task-form>`
+            : `<div class="add-row" data-action="add-to-group" data-group-key="flat">${icon('plus', 13)} Add task</div>`
+          }
+        `}
       </div>
     `;
   }

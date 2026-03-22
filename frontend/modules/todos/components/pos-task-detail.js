@@ -4,6 +4,7 @@
 
 import './pos-subtask-list.js';
 import { icon } from '../../../shared/utils/icons.js';
+import '../../../../design-system/src/components/ui-date-picker.js';
 
 const PRIORITIES = ['none', 'low', 'medium', 'high', 'urgent'];
 
@@ -38,6 +39,7 @@ class PosTaskDetail extends HTMLElement {
   refreshTask(task) {
     if (!task || !this._task || task.id !== this._task.id) return;
     this._task = task;
+    this._showDateMenu = false;
     this._render();
     this._bindEvents();
   }
@@ -278,7 +280,7 @@ class PosTaskDetail extends HTMLElement {
 
       <!-- Header -->
       <div class="header">
-        <span class="list-badge">${icon('folder', 13)} ${this._esc(t.list_name || 'Inbox')}</span>
+        <span class="list-badge">${icon('check-square', 13)} ${this._esc(t.list_name || 'Inbox')}</span>
         <button class="close-btn" id="close-btn">${icon('x', 16)}</button>
       </div>
 
@@ -304,7 +306,6 @@ class PosTaskDetail extends HTMLElement {
 
         <!-- Subtasks -->
         <div class="section">
-          <div class="section-title">Sub-tasks</div>
           <pos-subtask-list id="subtask-list"></pos-subtask-list>
         </div>
 
@@ -313,7 +314,7 @@ class PosTaskDetail extends HTMLElement {
           <div class="section-title">Details</div>
           <div class="detail-row">
             <span class="detail-label">Due date</span>
-            <input class="detail-input" id="due-date" type="date" value="${t.due_date || ''}" />
+            <ui-date-picker id="date-picker" value="${t.due_date || ''}" placeholder="Set date" variant="inline"></ui-date-picker>
           </div>
           <div class="detail-row">
             <span class="detail-label">Priority</span>
@@ -402,9 +403,11 @@ class PosTaskDetail extends HTMLElement {
       if (e.key === 'Escape') { this._editingDesc = false; this._render(); this._bindEvents(); }
     });
 
-    // Due date
-    this.shadow.getElementById('due-date')?.addEventListener('change', (e) => {
-      this._emit('task-update', { taskId: t.id, due_date: e.target.value || null });
+    // Due date — ui-date-picker component
+    this.shadow.getElementById('date-picker')?.addEventListener('date-change', (e) => {
+      const val = e.detail.value || null;
+      this._task = { ...this._task, due_date: val };
+      this._emit('task-update', { taskId: t.id, due_date: val });
     });
 
     // Priority
