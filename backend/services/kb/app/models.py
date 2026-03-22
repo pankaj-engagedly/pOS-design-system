@@ -37,7 +37,7 @@ class KBItem(UserScopedBase):
     url = Column(Text, nullable=True)
     source = Column(String(255), nullable=True)
     author = Column(String(255), nullable=True)
-    item_type = Column(String(20), nullable=False, default="article")  # article|video|podcast|excerpt|document
+    item_type = Column(String(20), nullable=False, default="url")  # url|media|document|text
     content = Column(JSONB, nullable=True)  # Tiptap JSON for notes/excerpts
     preview_text = Column(Text, nullable=True)
     thumbnail_url = Column(Text, nullable=True)

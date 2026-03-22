@@ -2,6 +2,7 @@
 // Dispatches: search-change + all card events bubble through
 
 import { icon } from '../../../shared/utils/icons.js';
+import '../../../../design-system/src/components/ui-search-input.js';
 import './pos-vault-item-card.js';
 
 const sheet = new CSSStyleSheet();
@@ -38,29 +39,13 @@ sheet.replaceSync(`
   }
 
   .toolbar {
-    display: flex;
-    align-items: center;
     padding: var(--pos-space-sm) var(--pos-space-lg);
     flex-shrink: 0;
   }
-  .search-input {
+  .toolbar ui-search-input {
     display: block;
-    width: 100%;
     max-width: 680px;
     margin: 0 auto;
-    border: 1px solid var(--pos-color-border-default);
-    border-radius: var(--pos-radius-sm);
-    padding: 6px 10px;
-    font-size: var(--pos-font-size-sm);
-    font-family: inherit;
-    outline: none;
-    background: var(--pos-color-background-secondary);
-    color: var(--pos-color-text-primary);
-    box-sizing: border-box;
-  }
-  .search-input:focus {
-    border-color: var(--pos-color-action-primary);
-    background: var(--pos-color-background-primary);
   }
 
   .content {
@@ -115,15 +100,13 @@ class PosVaultAllItemsView extends HTMLElement {
   }
 
   _bindEvents() {
-    this.shadow.addEventListener('input', (e) => {
-      if (e.target.classList.contains('search-input')) {
-        clearTimeout(this._searchTimer);
-        this._searchTimer = setTimeout(() => {
-          this.dispatchEvent(new CustomEvent('search-change', {
-            bubbles: true, composed: true, detail: { query: e.target.value },
-          }));
-        }, 300);
-      }
+    this.shadow.addEventListener('search-input', (e) => {
+      clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => {
+        this.dispatchEvent(new CustomEvent('search-change', {
+          bubbles: true, composed: true, detail: { query: e.detail.value },
+        }));
+      }, 300);
     });
   }
 
@@ -152,7 +135,7 @@ class PosVaultAllItemsView extends HTMLElement {
         </div>
       </div>
       <div class="toolbar">
-        <input class="search-input" placeholder="Search items\u2026" />
+        <ui-search-input placeholder="Search items\u2026"></ui-search-input>
       </div>
       <div class="content">
         <div class="items-stack" id="items-stack"></div>

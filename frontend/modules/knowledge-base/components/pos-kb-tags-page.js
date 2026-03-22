@@ -4,35 +4,14 @@ import { icon } from '../../../shared/utils/icons.js';
 import { getTags, renameTag, deleteTag } from '../services/kb-api.js';
 import { confirmDialog } from '../../../shared/components/pos-confirm-dialog.js';
 import { TABLE_STYLES } from '../../../../design-system/src/components/ui-table.js';
+import '../../../shared/components/pos-page-header.js';
+import '../../../../design-system/src/components/ui-search-input.js';
 
 const pageSheet = new CSSStyleSheet();
 pageSheet.replaceSync(`
   :host { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
 
-  .header {
-    display: flex; align-items: center; gap: var(--pos-space-sm);
-    padding: var(--pos-space-md) var(--pos-space-lg);
-    border-bottom: 1px solid var(--pos-color-border-default);
-    flex-shrink: 0;
-  }
-  .header h2 { margin: 0; font-size: var(--pos-font-size-lg); font-weight: 600; flex: 1; }
-  .header-count { font-size: var(--pos-font-size-xs); color: var(--pos-color-text-tertiary); }
-
-  .toolbar {
-    display: flex; align-items: center; gap: var(--pos-space-sm);
-    padding: var(--pos-space-sm) var(--pos-space-lg);
-    border-bottom: 1px solid var(--pos-color-border-default);
-    flex-shrink: 0;
-  }
-  .search-input {
-    flex: 1; padding: 6px 10px;
-    border: 1px solid var(--pos-color-border-default);
-    border-radius: var(--pos-radius-sm);
-    font-size: var(--pos-font-size-sm); font-family: inherit;
-    outline: none; background: var(--pos-color-background-secondary);
-    color: var(--pos-color-text-primary);
-  }
-  .search-input:focus { border-color: var(--pos-color-action-primary); background: var(--pos-color-background-primary); }
+  ui-search-input { width: 160px; }
 
   .list {
     flex: 1; overflow-y: auto;
@@ -88,13 +67,13 @@ class PosKBTagsPage extends HTMLElement {
 
   _render() {
     this.shadow.innerHTML = `
-      <div class="header">
-        <h2>Tags</h2>
-        <span class="header-count" id="tag-count"></span>
-      </div>
-      <div class="toolbar">
-        <input class="search-input" id="search" placeholder="Filter tags..." />
-      </div>
+      <pos-page-header>
+        Tags
+        <span slot="subtitle" id="tag-count"></span>
+        <span slot="actions">
+          <ui-search-input size="sm" placeholder="Filter tags..." id="search"></ui-search-input>
+        </span>
+      </pos-page-header>
       <div class="list" id="tag-list"></div>
     `;
   }
@@ -105,7 +84,7 @@ class PosKBTagsPage extends HTMLElement {
     if (!container) return;
 
     const filtered = this._getFiltered();
-    if (countEl) countEl.textContent = `${filtered.length} tag${filtered.length !== 1 ? 's' : ''}`;
+    if (countEl) countEl.textContent = `${this._tags.length} tag${this._tags.length !== 1 ? 's' : ''}`;
 
     if (filtered.length === 0) {
       container.innerHTML = `<div class="empty">${this._searchQuery ? 'No tags match your search' : 'No tags yet'}</div>`;
@@ -213,11 +192,9 @@ class PosKBTagsPage extends HTMLElement {
       }
     });
 
-    this.shadow.addEventListener('input', (e) => {
-      if (e.target.id === 'search') {
-        this._searchQuery = e.target.value;
-        this._renderList();
-      }
+    this.shadow.addEventListener('search-input', (e) => {
+      this._searchQuery = e.detail.value;
+      this._renderList();
     });
   }
 

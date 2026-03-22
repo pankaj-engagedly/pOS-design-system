@@ -12,9 +12,10 @@ from pydantic import BaseModel, Field
 class KBItemCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=500)
     url: str | None = None
-    item_type: str = Field("article", pattern=r"^(article|video|podcast|excerpt|document)$")
+    item_type: str = Field("url", pattern=r"^(url|media|image|document|text)$")
     content: dict | None = None
     preview_text: str | None = None
+    thumbnail_url: str | None = None
     source: str | None = None
     author: str | None = None
 
@@ -39,7 +40,7 @@ class PreviewURLResponse(BaseModel):
     image: str = ""
     author: str = ""
     site_name: str = ""
-    item_type: str = "article"
+    item_type: str = "url"
     word_count: int | None = None
     reading_time_min: int | None = None
 
@@ -47,7 +48,7 @@ class PreviewURLResponse(BaseModel):
 class KBItemUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=500)
     url: str | None = None
-    item_type: str | None = Field(None, pattern=r"^(article|video|podcast|excerpt|document)$")
+    item_type: str | None = Field(None, pattern=r"^(url|media|image|document|text)$")
     content: dict | None = None
     preview_text: str | None = None
     rating: int | None = Field(None, ge=1, le=5)

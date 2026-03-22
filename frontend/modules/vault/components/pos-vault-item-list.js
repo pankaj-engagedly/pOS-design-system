@@ -2,6 +2,7 @@
 
 import store from '../store.js';
 import '../../../shared/components/pos-page-header.js';
+import '../../../../design-system/src/components/ui-search-input.js';
 
 const TAG = 'pos-vault-item-list';
 
@@ -17,7 +18,7 @@ class PosVaultItemList extends HTMLElement {
   connectedCallback() {
     this.render();
     this.shadow.addEventListener('click', (e) => this._handleClick(e));
-    this.shadow.addEventListener('input', (e) => this._handleInput(e));
+    this.shadow.addEventListener('search-input', (e) => this._handleInput(e));
     this._unsub = store.subscribe(() => this.render());
   }
 
@@ -68,15 +69,7 @@ class PosVaultItemList extends HTMLElement {
           border-bottom: 1px solid var(--pos-color-border-default);
           flex-shrink: 0;
         }
-        .search {
-          flex: 1; padding: 5px 10px;
-          border: 1px solid var(--pos-color-border-default);
-          border-radius: var(--pos-radius-sm); font-size: var(--pos-font-size-sm); font-family: inherit;
-          background: var(--pos-color-background-secondary);
-          color: var(--pos-color-text-primary); outline: none;
-        }
-        .search:focus { border-color: var(--pos-color-action-primary); }
-        .search::placeholder { color: var(--pos-color-text-disabled); }
+        ui-search-input { flex: 1; }
         .create-btn {
           background: var(--pos-color-action-primary); color: #fff;
           border: none; border-radius: var(--pos-radius-sm);
@@ -121,7 +114,7 @@ class PosVaultItemList extends HTMLElement {
       </div>
 
       <div class="header">
-        <input class="search" type="text" placeholder="Search vault…" value="${this._esc(searchQuery)}" data-action="search" />
+        <ui-search-input placeholder="Search vault…" value="${this._esc(searchQuery)}"></ui-search-input>
         <button class="create-btn" data-action="create" title="New vault item">+</button>
       </div>
 
@@ -192,10 +185,10 @@ class PosVaultItemList extends HTMLElement {
   }
 
   _handleInput(e) {
-    if (e.target.dataset.action === 'search') {
-      store.setState({ searchQuery: e.target.value });
+    if (e.type === 'search-input') {
+      store.setState({ searchQuery: e.detail.value });
       this.dispatchEvent(new CustomEvent('search-change', {
-        detail: { query: e.target.value },
+        detail: { query: e.detail.value },
         bubbles: true, composed: true,
       }));
     }

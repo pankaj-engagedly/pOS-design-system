@@ -2,6 +2,7 @@
 
 import { icon } from '../../../shared/utils/icons.js';
 import '../../../shared/components/pos-page-header.js';
+import '../../../../design-system/src/components/ui-search-input.js';
 import './pos-kb-item-card.js';
 
 const KB_VIEW_MODE_KEY = 'pos-kb-view-mode';
@@ -43,31 +44,7 @@ sheet.replaceSync(`
     border-color: var(--pos-color-action-primary);
   }
 
-  /* Search in header */
-  .search-wrap {
-    position: relative;
-    flex-shrink: 0;
-  }
-  .search-icon {
-    position: absolute;
-    left: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--pos-color-text-secondary);
-    pointer-events: none;
-  }
-  .search-input {
-    padding: 5px 8px 5px 28px;
-    border: 1px solid var(--pos-color-border-default);
-    border-radius: var(--pos-radius-sm);
-    font-size: var(--pos-font-size-xs);
-    font-family: inherit;
-    background: var(--pos-color-background-primary);
-    color: var(--pos-color-text-primary);
-    outline: none;
-    width: 160px;
-  }
-  .search-input:focus { border-color: var(--pos-color-action-primary); }
+  ui-search-input { width: 160px; }
 
   .content {
     flex: 1;
@@ -199,10 +176,7 @@ class PosKBListPage extends HTMLElement {
       ${this._esc(this._title)}
       <span slot="subtitle">${this._items.length} item${this._items.length !== 1 ? 's' : ''}</span>
       <span slot="actions">
-        <span class="search-wrap">
-          <span class="search-icon">${icon('search', 13)}</span>
-          <input class="search-input" placeholder="Search\u2026" value="${this._escAttr(this._searchQuery)}" />
-        </span>
+        <ui-search-input size="sm" placeholder="Search\u2026" value="${this._escAttr(this._searchQuery)}"></ui-search-input>
         <button class="header-btn ${this._viewMode === 'list' ? 'active' : ''}" data-action="set-view-list" title="List view">${icon('list', 15)}</button>
         <button class="header-btn ${this._viewMode === 'grid' ? 'active' : ''}" data-action="set-view-grid" title="Grid view">${icon('grid', 15)}</button>
         <span style="width:1px;height:20px;background:var(--pos-color-border-default);margin:0 4px"></span>
@@ -332,17 +306,15 @@ class PosKBListPage extends HTMLElement {
       }
     });
 
-    this.shadow.addEventListener('input', (e) => {
-      if (e.target.closest('.search-input')) {
-        clearTimeout(this._searchTimeout);
-        this._searchQuery = e.target.value;
-        this._searchTimeout = setTimeout(() => {
-          this.dispatchEvent(new CustomEvent('search-change', {
-            bubbles: true, composed: true,
-            detail: { query: this._searchQuery },
-          }));
-        }, 300);
-      }
+    this.shadow.addEventListener('search-input', (e) => {
+      clearTimeout(this._searchTimeout);
+      this._searchQuery = e.detail.value;
+      this._searchTimeout = setTimeout(() => {
+        this.dispatchEvent(new CustomEvent('search-change', {
+          bubbles: true, composed: true,
+          detail: { query: this._searchQuery },
+        }));
+      }, 300);
     });
   }
 

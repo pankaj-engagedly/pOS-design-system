@@ -204,10 +204,25 @@ def _parse_entry(entry) -> ParsedFeedItem:
                 thumbnail_url = mc.get("url", "")
                 break
 
+    # URL — prefer link, fall back to audio/video enclosure
+    url = entry.get("link", "")
+    if not url:
+        for enc in entry.get("enclosures", []):
+            if enc.get("href"):
+                url = enc["href"]
+                break
+    # Also extract audio enclosure even if link exists (for podcasts)
+    enclosure_url = ""
+    for enc in entry.get("enclosures", []):
+        enc_type = enc.get("type", "")
+        if enc_type.startswith("audio/") or enc.get("href", "").split("?")[0].endswith((".mp3", ".m4a", ".ogg", ".aac")):
+            enclosure_url = enc.get("href", "")
+            break
+
     return ParsedFeedItem(
         guid=guid,
         title=entry.get("title", ""),
-        url=entry.get("link", ""),
+        url=enclosure_url or url,
         author=entry.get("author", ""),
         summary=summary,
         content_html=content_html,

@@ -10,6 +10,7 @@ from pos_contracts.exceptions import NotFoundError
 from pos_contracts.logging import trace
 
 from .models import KBCollection, KBCollectionItem, KBHighlight, KBItem
+from .tiptap_utils import extract_plain_text
 
 
 # ── Helpers ──────────────────────────────────────────────
@@ -108,13 +109,18 @@ async def get_items(
 
 @trace
 async def create_item(session: AsyncSession, user_id: UUID, data) -> dict:
+    preview_text = data.preview_text
+    if not preview_text and data.content and isinstance(data.content, dict):
+        preview_text = extract_plain_text(data.content)
+
     item = KBItem(
         user_id=user_id,
         title=data.title,
         url=data.url,
         item_type=data.item_type,
         content=data.content,
-        preview_text=data.preview_text,
+        preview_text=preview_text,
+        thumbnail_url=data.thumbnail_url,
         source=data.source,
         author=data.author,
     )
@@ -131,7 +137,7 @@ async def save_url(session: AsyncSession, user_id: UUID, url: str, preview=None)
         user_id=user_id,
         title=(preview.title if preview and preview.title else url),
         url=url,
-        item_type=(preview.item_type if preview and preview.item_type else "article"),
+        item_type=(preview.item_type if preview and preview.item_type else "url"),
         preview_text=(preview.description if preview and preview.description else None),
         thumbnail_url=(preview.image if preview and preview.image else None),
         site_name=(preview.site_name if preview and preview.site_name else None),
@@ -201,7 +207,15 @@ async def get_item(session: AsyncSession, user_id: UUID, item_id: UUID) -> dict:
 @trace
 async def update_item(session: AsyncSession, user_id: UUID, item_id: UUID, data) -> dict:
     item = await _get_or_404(session, KBItem, user_id, item_id, "KB Item")
-    for key, value in data.model_dump(exclude_unset=True).items():
+    updates = data.model_dump(exclude_unset=True)
+
+    # Auto-extract preview_text when content is updated but preview_text is not explicitly set
+    if "content" in updates and "preview_text" not in updates:
+        content = updates["content"]
+        if content and isinstance(content, dict):
+            updates["preview_text"] = extract_plain_text(content)
+
+    for key, value in updates.items():
         setattr(item, key, value)
     await session.commit()
     await session.refresh(item)

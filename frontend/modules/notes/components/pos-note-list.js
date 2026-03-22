@@ -3,6 +3,7 @@
 // Dispatches: note-select, note-create, search-change, view-mode-change
 
 import { icon } from '../../../shared/utils/icons.js';
+import '../../../../design-system/src/components/ui-search-input.js';
 import './pos-note-list-item.js';
 import './pos-note-card.js';
 
@@ -53,28 +54,9 @@ listSheet.replaceSync(`
   .header-btn svg { pointer-events: none; }
 
   .toolbar {
-    display: flex;
-    align-items: center;
-    gap: var(--pos-space-sm);
     padding: var(--pos-space-sm);
     border-bottom: 1px solid var(--pos-color-border-default);
     flex-shrink: 0;
-  }
-
-  .search-input {
-    flex: 1;
-    border: 1px solid var(--pos-color-border-default);
-    border-radius: var(--pos-radius-sm);
-    padding: 6px 10px;
-    font-size: var(--pos-font-size-sm);
-    font-family: inherit;
-    outline: none;
-    background: var(--pos-color-background-secondary);
-    color: var(--pos-color-text-primary);
-  }
-  .search-input:focus {
-    border-color: var(--pos-color-action-primary);
-    background: var(--pos-color-background-primary);
   }
 
   .notes-container {
@@ -223,16 +205,14 @@ class PosNoteList extends HTMLElement {
       }
     });
 
-    this.shadow.addEventListener('input', (e) => {
-      if (e.target.classList.contains('search-input')) {
-        this._searchValue = e.target.value;
-        clearTimeout(this._searchTimer);
-        this._searchTimer = setTimeout(() => {
-          this.dispatchEvent(new CustomEvent('search-change', {
-            bubbles: true, composed: true, detail: { query: this._searchValue },
-          }));
-        }, 300);
-      }
+    this.shadow.addEventListener('search-input', (e) => {
+      this._searchValue = e.detail.value;
+      clearTimeout(this._searchTimer);
+      this._searchTimer = setTimeout(() => {
+        this.dispatchEvent(new CustomEvent('search-change', {
+          bubbles: true, composed: true, detail: { query: this._searchValue },
+        }));
+      }, 300);
     });
 
     this.shadow.addEventListener('note-select', (e) => {
@@ -273,7 +253,7 @@ class PosNoteList extends HTMLElement {
       </div>
 
       <div class="toolbar">
-        <input class="search-input" placeholder="Search notes..." value="${this._searchValue}" />
+        <ui-search-input placeholder="Search notes..." value="${this._searchValue}"></ui-search-input>
       </div>
 
       <div class="notes-container">

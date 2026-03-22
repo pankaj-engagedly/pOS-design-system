@@ -4,6 +4,7 @@
 import { icon } from '../../../shared/utils/icons.js';
 import { Editor, StarterKit, Link, Placeholder } from '../../notes/editor.bundle.js';
 import { saveURL, previewURL, createItem, addTag, addToCollection, getTags, getCollections } from '../services/kb-api.js';
+import { getAccessToken } from '../../../shared/services/auth-store.js';
 
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
@@ -440,7 +441,7 @@ class PosKBAddContentDialog extends HTMLElement {
           <div class="field-label">File</div>
           <div id="file-area">${this._renderFileArea()}</div>
           ${this._error ? `<div class="error">${this._esc(this._error)}</div>` : ''}
-          <input type="file" id="file-input" style="display:none" accept="video/*,audio/*,image/*,.pdf" />
+          <input type="file" id="file-input" style="display:none" />
         </div>
         <div>
           <div class="field-label">Description</div>
@@ -859,13 +860,38 @@ class PosKBAddContentDialog extends HTMLElement {
       this._setSaving(true);
 
       try {
+        // Step 1: Upload file to attachments service
+        const formData = new FormData();
+        formData.append('file', this._file);
+
+        const attachment = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/api/attachments/upload');
+          const token = getAccessToken();
+          if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(JSON.parse(xhr.responseText));
+            } else {
+              reject(new Error(`Upload failed: ${xhr.status}`));
+            }
+          });
+          xhr.addEventListener('error', () => reject(new Error('Upload network error')));
+          xhr.send(formData);
+        });
+
+        // Step 2: Create KB item with download URL
         const desc = this.shadow.querySelector('.textarea-input')?.value?.trim() || '';
-        const itemType = this._file.type.startsWith('video/') ? 'video'
-          : this._file.type.startsWith('audio/') ? 'podcast' : 'document';
+        const isImage = this._file.type.startsWith('image/');
+        const isMediaType = this._file.type.startsWith('video/') || this._file.type.startsWith('audio/');
+        const itemType = isImage ? 'image' : isMediaType ? 'media' : 'document';
+        const downloadUrl = `/api/attachments/${attachment.id}/download`;
         const item = await createItem({
           title: this._file.name,
           item_type: itemType,
           preview_text: desc || null,
+          url: downloadUrl,
+          thumbnail_url: isImage ? downloadUrl : null,
         });
         await this._applyTagsAndCollections(item.id);
         this._emitSaved();
@@ -887,7 +913,7 @@ class PosKBAddContentDialog extends HTMLElement {
 
         const item = await createItem({
           title,
-          item_type: 'excerpt',
+          item_type: 'text',
           content: editorContent,
           preview_text: plainText.substring(0, 300) || null,
         });

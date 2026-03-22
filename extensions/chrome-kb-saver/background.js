@@ -78,7 +78,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         image: metadata.image || undefined,
         author: metadata.author || undefined,
         site_name: metadata.site_name || undefined,
-        item_type: metadata.item_type || 'article',
+        item_type: metadata.item_type || 'url',
       }),
     });
 
@@ -97,7 +97,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
             url: metadata.url, title: metadata.title || undefined,
             description: metadata.description || undefined, image: metadata.image || undefined,
             author: metadata.author || undefined, site_name: metadata.site_name || undefined,
-            item_type: metadata.item_type || 'article',
+            item_type: metadata.item_type || 'url',
           }),
         });
         if (retry.ok) {
@@ -167,14 +167,7 @@ function extractPageMetadata() {
   const videoDomains = ['youtube.com', 'youtu.be', 'vimeo.com', 'twitch.tv', 'dailymotion.com'];
   const podcastDomains = ['podcasts.apple.com', 'open.spotify.com', 'overcast.fm', 'pocketcasts.com'];
 
-  let item_type = 'article';
-  if (videoDomains.some(d => hostname.includes(d)) || ogType.includes('video')) {
-    item_type = 'video';
-  } else if (podcastDomains.some(d => hostname.includes(d)) || ogType.includes('podcast')) {
-    item_type = 'podcast';
-  }
-
-  return { url, title, description, image, site_name: siteName, author, item_type };
+  return { url, title, description, image, site_name: siteName, author, item_type: 'url' };
 }
 
 // ── Token refresh helper ──────────────────────────────────────────────────

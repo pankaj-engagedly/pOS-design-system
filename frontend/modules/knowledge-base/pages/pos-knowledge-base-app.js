@@ -5,6 +5,7 @@ import '../components/pos-kb-sidebar.js';
 import '../components/pos-kb-home.js';
 import '../components/pos-kb-list-page.js';
 import '../components/pos-kb-item-detail.js';
+import '../components/pos-kb-lightbox.js';
 import '../components/pos-kb-add-content-dialog.js';
 import '../components/pos-kb-feed-timeline.js';
 import '../components/pos-kb-subscribe-dialog.js';
@@ -174,6 +175,7 @@ class PosKnowledgeBaseApp extends HTMLElement {
         </div>
       </pos-module-layout>
 
+      <pos-kb-lightbox></pos-kb-lightbox>
       <pos-kb-add-content-dialog></pos-kb-add-content-dialog>
       <pos-kb-subscribe-dialog></pos-kb-subscribe-dialog>
     `;
@@ -290,13 +292,14 @@ class PosKnowledgeBaseApp extends HTMLElement {
       if (detail) detail.close();
     });
 
-    // Item selection → open detail flyout
+    // Item selection → open lightbox
     this.shadow.addEventListener('item-select', async (e) => {
       const { itemId } = e.detail;
       store.setState({ selectedItemId: itemId });
       try {
         const item = await getItem(itemId);
-        this.shadow.querySelector('pos-kb-item-detail')?.openForItem(item);
+        const lightbox = this.shadow.querySelector('pos-kb-lightbox');
+        lightbox?.open(item, store.getState().items);
       } catch (err) {
         console.error('Failed to load item', err);
       }
@@ -332,17 +335,20 @@ class PosKnowledgeBaseApp extends HTMLElement {
         const newRating = currentItem?.rating === parseInt(e.detail.rating) ? null : parseInt(e.detail.rating);
         const updated = await updateItem(itemId, { rating: newRating });
         this.shadow.querySelector('pos-kb-item-detail')?.refreshItem(updated);
+        this.shadow.querySelector('pos-kb-lightbox')?.refreshItem(updated);
         this._loadItems();
       } else if (action === 'favourite') {
         const item = this._findItem(itemId);
         if (item) {
           const updated = await updateItem(itemId, { is_favourite: !item.is_favourite });
           this.shadow.querySelector('pos-kb-item-detail')?.refreshItem(updated);
+          this.shadow.querySelector('pos-kb-lightbox')?.refreshItem(updated);
           this._loadItems();
         }
       } else if (action === 'add-tag-submit') {
         const updated = await addTag(itemId, e.detail.tagName);
         this.shadow.querySelector('pos-kb-item-detail')?.refreshItem(updated);
+        this.shadow.querySelector('pos-kb-lightbox')?.refreshItem(updated);
         this._loadItems();
         getTags().then(tags => store.setState({ tags }));
       } else if (action === 'remove-tag') {
@@ -350,6 +356,7 @@ class PosKnowledgeBaseApp extends HTMLElement {
         await removeTagFn(itemId, e.detail.tagId);
         const updated = await getItem(itemId);
         this.shadow.querySelector('pos-kb-item-detail')?.refreshItem(updated);
+        this.shadow.querySelector('pos-kb-lightbox')?.refreshItem(updated);
         this._loadItems();
         getTags().then(tags => store.setState({ tags }));
       } else if (action === 'collections-changed') {
@@ -359,8 +366,24 @@ class PosKnowledgeBaseApp extends HTMLElement {
         if (!await confirmDialog('Delete this item?', { confirmLabel: 'Delete', danger: true })) return;
         await deleteItem(itemId);
         this._closeDetail();
+        this.shadow.querySelector('pos-kb-lightbox')?.close();
         this._loadItems();
       }
+    });
+
+    // Lightbox: navigate to prev/next item — load full detail
+    this.shadow.addEventListener('lightbox-navigate', async (e) => {
+      try {
+        const item = await getItem(e.detail.itemId);
+        this.shadow.querySelector('pos-kb-lightbox')?.refreshItem(item);
+      } catch (err) {
+        console.error('Failed to load item for lightbox nav', err);
+      }
+    });
+
+    // Lightbox: closed — refresh list in case changes were made
+    this.shadow.addEventListener('lightbox-closed', () => {
+      this._loadItems();
     });
 
     // Tag filter (from list page)

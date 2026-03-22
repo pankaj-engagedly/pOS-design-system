@@ -320,12 +320,7 @@ async def save_feed_item_to_kb(session: AsyncSession, user_id: UUID, feed_item_i
         select(FeedSource).where(FeedSource.id == feed_item.feed_source_id)
     )
     source = source_result.scalar_one_or_none()
-    item_type = "article"
-    if source:
-        if source.feed_type == "youtube":
-            item_type = "video"
-        elif source.feed_type == "podcast":
-            item_type = "podcast"
+    item_type = "url"
 
     kb_item = KBItem(
         user_id=user_id,

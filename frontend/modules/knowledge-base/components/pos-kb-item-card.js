@@ -4,11 +4,11 @@ import { icon } from '../../../shared/utils/icons.js';
 import './pos-content-card.js';
 
 const TYPE_LABELS = {
-  article: 'Article',
-  video: 'Video',
-  podcast: 'Podcast',
-  excerpt: 'Excerpt',
+  url: 'URL',
+  media: 'Media',
+  image: 'Image',
   document: 'Document',
+  text: 'Text',
 };
 
 class PosKBItemCard extends HTMLElement {
@@ -72,14 +72,16 @@ class PosKBItemCard extends HTMLElement {
       tags: it.tags || [],
       muted: false,
       selected: this._selected,
+      itemType: it.item_type || 'url',
     };
     // Hover actions (top-right corner)
     card.actionsHtml = `
       <button class="${it.is_favourite ? 'active' : ''}" data-action="favourite" title="${it.is_favourite ? 'Unfavourite' : 'Favourite'}">${icon('star', 14)}</button>
       <button class="delete" data-action="delete" title="Delete">${icon('trash', 14)}</button>
     `;
-    // Inline action (always visible in footer)
-    card.inlineActionsHtml = it.url
+    // Inline action (always visible in footer) — only for external URLs
+    const hasExternalUrl = it.url && !it.url.startsWith('/api/');
+    card.inlineActionsHtml = hasExternalUrl
       ? `<button class="card-inline-action" data-action="open-url" title="Open link">${icon('external-link', 14)}</button>`
       : '';
   }

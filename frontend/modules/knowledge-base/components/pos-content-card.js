@@ -3,6 +3,7 @@
 // Purely presentational — parents handle events via card-action / card-click
 
 import { icon } from '../../../shared/utils/icons.js';
+import { getAccessToken } from '../../../shared/services/auth-store.js';
 
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
@@ -247,7 +248,12 @@ sheet.replaceSync(`
     -webkit-line-clamp: 2;
     margin-bottom: 0;
   }
-  :host([compact]) .summary { display: none; }
+  :host([compact]) .summary {
+    font-size: var(--pos-font-size-xs);
+    -webkit-line-clamp: 2;
+    margin-top: 2px;
+    color: var(--pos-color-text-secondary);
+  }
   :host([compact]) .source-row {
     margin-bottom: 0;
     padding: var(--pos-space-sm) var(--pos-space-md) 0;
@@ -334,15 +340,22 @@ class PosContentCard extends HTMLElement {
 
     const isCompact = this.hasAttribute('compact');
 
+    const thumbSrc = data.thumbnailUrl && data.thumbnailUrl.startsWith('/api/')
+      ? `${data.thumbnailUrl}${data.thumbnailUrl.includes('?') ? '&' : '?'}token=${getAccessToken()}`
+      : data.thumbnailUrl;
+
+    const PLACEHOLDER_ICONS = { url: 'link', media: 'play-circle', image: 'image', document: 'file-text', text: 'edit-3' };
+    const placeholderIcon = PLACEHOLDER_ICONS[data.itemType] || 'image';
+
     let thumbTopHtml = '';
     if (isCompact) {
-      thumbTopHtml = data.thumbnailUrl
-        ? `<img class="card-thumb-top" src="${this._escAttr(data.thumbnailUrl)}" alt="" loading="lazy" />`
-        : `<div class="card-thumb-placeholder">${icon('image', 32)}</div>`;
+      thumbTopHtml = thumbSrc
+        ? `<img class="card-thumb-top" src="${this._escAttr(thumbSrc)}" alt="" loading="lazy" />`
+        : `<div class="card-thumb-placeholder">${icon(placeholderIcon, 32)}</div>`;
     }
 
-    const thumbHtml = (!isCompact && data.thumbnailUrl)
-      ? `<img class="card-thumb" src="${this._escAttr(data.thumbnailUrl)}" alt="" loading="lazy" />`
+    const thumbHtml = (!isCompact && thumbSrc)
+      ? `<img class="card-thumb" src="${this._escAttr(thumbSrc)}" alt="" loading="lazy" />`
       : '';
 
     const summaryHtml = data.summary

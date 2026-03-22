@@ -15,7 +15,7 @@ class URLMetadata:
     image: str = ""
     author: str = ""
     site_name: str = ""
-    item_type: str = "article"
+    item_type: str = "url"
     word_count: int | None = None
     reading_time_min: int | None = None
     published_at: str | None = None
@@ -52,13 +52,6 @@ async def extract_metadata(url: str) -> URLMetadata:
             or ""
         )
 
-        # Detect type
-        og_type = _og(soup, "og:type") or ""
-        if "video" in og_type:
-            meta.item_type = "video"
-        elif "music" in og_type or "audio" in og_type:
-            meta.item_type = "podcast"
-
         # Published date
         meta.published_at = (
             _og(soup, "article:published_time")
@@ -82,20 +75,26 @@ async def extract_metadata(url: str) -> URLMetadata:
 
 
 async def _extract_youtube(url: str, video_id: str) -> URLMetadata:
-    """Extract YouTube metadata via oEmbed."""
-    meta = URLMetadata(item_type="video", site_name="YouTube")
+    """Extract YouTube metadata via oEmbed + page OG tags for description."""
+    meta = URLMetadata(item_type="url", site_name="YouTube")
     try:
-        oembed_url = f"https://www.youtube.com/oembed?url={url}&format=json"
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            # oEmbed for title, author, thumbnail
+            oembed_url = f"https://www.youtube.com/oembed?url={url}&format=json"
             resp = await client.get(oembed_url)
             resp.raise_for_status()
             data = resp.json()
+            meta.title = data.get("title", "")
+            meta.author = data.get("author_name", "")
+            meta.image = data.get("thumbnail_url", "")
 
-        meta.title = data.get("title", "")
-        meta.author = data.get("author_name", "")
-        meta.image = data.get("thumbnail_url", "")
+            # Fetch page for OG description (oEmbed doesn't include it)
+            page_resp = await client.get(url, headers={"User-Agent": "pOS/1.0 (Knowledge Base)"})
+            if page_resp.status_code == 200:
+                soup = BeautifulSoup(page_resp.text, "lxml")
+                meta.description = _og(soup, "og:description") or _meta(soup, "description") or ""
     except Exception as e:
-        logger.warning(f"YouTube oEmbed failed for {url}: {e}")
+        logger.warning(f"YouTube metadata extraction failed for {url}: {e}")
 
     return meta
 

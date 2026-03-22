@@ -287,17 +287,10 @@ function extractPageMetadata() {
   const videoDomains = ['youtube.com', 'youtu.be', 'vimeo.com', 'twitch.tv', 'dailymotion.com', 'wistia.com'];
   const podcastDomains = ['podcasts.apple.com', 'open.spotify.com', 'overcast.fm', 'pocketcasts.com', 'podcastaddict.com', 'castbox.fm', 'stitcher.com', 'transistor.fm', 'anchor.fm'];
 
-  let item_type = 'article';
-  if (videoDomains.some(d => hostname.includes(d)) || ogType.includes('video')) {
-    item_type = 'video';
-  } else if (podcastDomains.some(d => hostname.includes(d)) || ogType.includes('podcast')) {
-    item_type = 'podcast';
-  }
-
   const faviconEl = document.querySelector('link[rel~="icon"]') || document.querySelector('link[rel="shortcut icon"]');
   const favicon = faviconEl ? new URL(faviconEl.getAttribute('href'), window.location.origin).href : `https://www.google.com/s2/favicons?domain=${hostname}`;
 
-  return { url, title, description, image, site_name: siteName, author, item_type, favicon };
+  return { url, title, description, image, site_name: siteName, author, item_type: 'url', favicon };
 }
 
 async function fetchMetadataFromTab() {
@@ -470,7 +463,7 @@ async function saveToKB() {
         image:       image       || undefined,
         author:      author      || undefined,
         site_name:   site_name   || undefined,
-        item_type:   item_type   || 'article',
+        item_type:   item_type   || 'url',
       }),
     });
 
