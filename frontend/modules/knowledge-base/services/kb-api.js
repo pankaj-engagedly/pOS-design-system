@@ -140,6 +140,17 @@ export function getTags() {
   return apiFetch('/api/kb/tags');
 }
 
+export function renameTag(tagId, name) {
+  return apiFetch(`/api/kb/tags/${tagId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function deleteTag(tagId) {
+  return apiFetch(`/api/kb/tags/${tagId}`, { method: 'DELETE' });
+}
+
 export function getStats() {
   return apiFetch('/api/kb/stats');
 }

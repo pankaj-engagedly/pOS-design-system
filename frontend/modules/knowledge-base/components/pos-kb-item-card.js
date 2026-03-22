@@ -24,6 +24,11 @@ class PosKBItemCard extends HTMLElement {
 
   connectedCallback() {
     this.shadow.addEventListener('card-action', (e) => {
+      // Handle open-url directly to preserve user gesture for window.open
+      if (e.detail.action === 'open-url' && this._item?.url) {
+        window.open(this._item.url, '_blank', 'noopener');
+        return;
+      }
       this.dispatchEvent(new CustomEvent('item-action', {
         bubbles: true, composed: true,
         detail: { action: e.detail.action, itemId: this._item?.id },
@@ -68,10 +73,15 @@ class PosKBItemCard extends HTMLElement {
       muted: false,
       selected: this._selected,
     };
+    // Hover actions (top-right corner)
     card.actionsHtml = `
-      <button class="${it.is_favourite ? 'active' : ''}" data-action="favourite" title="${it.is_favourite ? 'Unfavourite' : 'Favourite'}">${icon('star', 16)}</button>
-      <button class="delete" data-action="delete" title="Delete">${icon('trash', 16)}</button>
+      <button class="${it.is_favourite ? 'active' : ''}" data-action="favourite" title="${it.is_favourite ? 'Unfavourite' : 'Favourite'}">${icon('star', 14)}</button>
+      <button class="delete" data-action="delete" title="Delete">${icon('trash', 14)}</button>
     `;
+    // Inline action (always visible in footer)
+    card.inlineActionsHtml = it.url
+      ? `<button class="card-inline-action" data-action="open-url" title="Open link">${icon('external-link', 14)}</button>`
+      : '';
   }
 
   _getDomain(url) {

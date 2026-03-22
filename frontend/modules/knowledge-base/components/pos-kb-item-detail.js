@@ -192,6 +192,14 @@ class PosKBItemDetail extends HTMLElement {
           line-height: 1.5;
         }
 
+        .preview-image {
+          width: 100%;
+          max-height: 180px;
+          object-fit: cover;
+          border-radius: var(--pos-radius-sm);
+          margin-bottom: var(--pos-space-md);
+        }
+
         .delete-btn {
           width: 100%;
           padding: var(--pos-space-sm);
@@ -221,11 +229,14 @@ class PosKBItemDetail extends HTMLElement {
       </div>
 
       <div class="body">
+        ${it.thumbnail_url ? `<img class="preview-image" src="${this._escAttr(it.thumbnail_url)}" onerror="this.style.display='none'" />` : ''}
         <div class="title-text">${this._esc(it.title)}</div>
 
         ${it.url ? `<a class="url-link" href="${this._escAttr(it.url)}" target="_blank" rel="noopener">
           ${icon('external-link', 12)} ${this._esc(this._shortenUrl(it.url))}
         </a>` : ''}
+
+        ${it.preview_text ? `<div class="preview-text">${this._esc(it.preview_text)}</div>` : ''}
 
         <div class="field">
           <div class="field-label">Collections</div>
@@ -247,13 +258,6 @@ class PosKBItemDetail extends HTMLElement {
           <div class="field-label">Tags</div>
           <ui-tag-input id="tag-input"></ui-tag-input>
         </div>
-
-        ${it.preview_text ? `
-          <div class="field">
-            <div class="field-label">Preview</div>
-            <div class="preview-text">${this._esc(it.preview_text)}</div>
-          </div>
-        ` : ''}
 
         <div class="field">
           <div class="field-label">Info</div>

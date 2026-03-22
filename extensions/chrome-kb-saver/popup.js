@@ -138,7 +138,7 @@ async function storeToken(token) {
 
 async function clearToken() {
   return new Promise((resolve) => {
-    chrome.storage.local.remove(['pos_token'], resolve);
+    chrome.storage.local.remove(['pos_token', 'pos_refresh_token'], resolve);
   });
 }
 
@@ -156,13 +156,17 @@ async function login(email, password) {
   }
 
   const data = await res.json();
+  // Store refresh token alongside access token
+  if (data.refresh_token) {
+    await new Promise(r => chrome.storage.local.set({ pos_refresh_token: data.refresh_token }, r));
+  }
   return data.access_token;
 }
 
 // ── API helpers ──────────────────────────────────────────────────────────────
 
 async function apiFetch(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
+  let res = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -170,15 +174,54 @@ async function apiFetch(path, options = {}) {
       ...(options.headers || {}),
     },
   });
+
+  // On 401, try refreshing the token once
   if (res.status === 401) {
-    await clearToken();
-    state.token = null;
-    showView('login');
-    els.btnLogout.classList.add('hidden');
-    showLoginError('Session expired. Please sign in again.');
-    throw new Error('Session expired');
+    const newToken = await tryRefreshToken();
+    if (newToken) {
+      state.token = newToken;
+      res = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${newToken}`,
+          ...(options.headers || {}),
+        },
+      });
+    } else {
+      await clearToken();
+      state.token = null;
+      showView('login');
+      els.btnLogout.classList.add('hidden');
+      showLoginError('Session expired. Please sign in again.');
+      throw new Error('Session expired');
+    }
   }
   return res;
+}
+
+async function tryRefreshToken() {
+  try {
+    const { pos_refresh_token: refreshToken } = await chrome.storage.local.get(['pos_refresh_token']);
+    if (!refreshToken) return null;
+
+    const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    await storeToken(data.access_token);
+    if (data.refresh_token) {
+      await new Promise(r => chrome.storage.local.set({ pos_refresh_token: data.refresh_token }, r));
+    }
+    return data.access_token;
+  } catch {
+    return null;
+  }
 }
 
 async function fetchTagsAndCollections() {

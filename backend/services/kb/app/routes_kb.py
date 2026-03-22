@@ -346,6 +346,36 @@ async def list_tags(
     return await service.get_tags(session, user_id)
 
 
+@router.patch("/tags/{tag_id}")
+async def rename_tag(
+    tag_id: UUID,
+    data: dict,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    from pos_contracts.tag_service import rename_tag as _rename
+    try:
+        tag = await _rename(session, user_id, tag_id, data["name"])
+        return {"id": str(tag.id), "name": tag.name}
+    except ValueError as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=str(e))
+
+
+@router.delete("/tags/{tag_id}", status_code=204)
+async def delete_tag(
+    tag_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    from pos_contracts.tag_service import delete_tag as _delete
+    try:
+        await _delete(session, user_id, tag_id)
+    except ValueError as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=str(e))
+
+
 # ── Stats ────────────────────────────────────────────────
 
 

@@ -16,7 +16,7 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import backref, relationship
 
 from pos_contracts.models import UserScopedBase
 
@@ -111,7 +111,7 @@ class KBCollectionItem(UserScopedBase):
     )
     position = Column(Integer, nullable=False, default=0)
 
-    collection = relationship("KBCollection", backref="items")
+    collection = relationship("KBCollection", backref=backref("items", cascade="all, delete-orphan", passive_deletes=True))
     kb_item = relationship("KBItem")
 
 

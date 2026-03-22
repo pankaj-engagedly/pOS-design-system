@@ -15,6 +15,7 @@ kbSheet.replaceSync(`
     align-items: center;
     gap: var(--pos-space-xs);
     width: 100%;
+    margin-top: var(--pos-space-sm);
     padding: 6px var(--pos-space-sm);
     border: 1px dashed var(--pos-color-border-default);
     border-radius: var(--pos-radius-sm);
@@ -132,13 +133,18 @@ class PosKBSidebar extends HTMLElement {
 
         ${unpinned.map(c => this._renderCollectionItem(c)).join('')}
 
-        <div slot="footer">
-          ${this._addingCollection
-            ? `<input class="new-collection-input" id="new-collection-input" placeholder="Collection name\u2026" />`
-            : `<button class="new-collection-btn" id="new-collection-btn">
-                 ${icon('plus', 13)} New Collection
-               </button>`
-          }
+        ${this._addingCollection
+          ? `<input class="new-collection-input" id="new-collection-input" placeholder="Collection name\u2026" />`
+          : `<button class="new-collection-btn" id="new-collection-btn">
+               ${icon('plus', 13)} New Collection
+             </button>`
+        }
+
+        <div class="divider"></div>
+
+        <div class="nav-item ${this._selectedView === 'tags' && !this._selectedCollectionId ? 'active' : ''}" data-view="tags">
+          ${icon('tag', 15)}
+          <span class="nav-label">Manage Tags</span>
         </div>
 
       </pos-sidebar>
@@ -290,7 +296,7 @@ class PosKBSidebar extends HTMLElement {
   }
 
   async _deleteCollection(id) {
-    if (!await confirmDialog('Delete this collection?', { confirmLabel: 'Delete', danger: true })) return;
+    if (!await confirmDialog('Delete this collection? Items inside will remain in your Knowledge Base.', { confirmLabel: 'Delete', danger: true })) return;
     try {
       await deleteCollection(id);
       await this.refreshData();

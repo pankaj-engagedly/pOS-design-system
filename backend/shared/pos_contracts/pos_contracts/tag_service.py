@@ -127,6 +127,80 @@ async def get_all_tags(
     ]
 
 
+async def rename_tag(
+    session: AsyncSession,
+    user_id: UUID,
+    tag_id: UUID,
+    new_name: str,
+) -> Tag:
+    """Rename a tag. Merges if new_name already exists."""
+    result = await session.execute(
+        select(Tag).where(Tag.id == tag_id, Tag.user_id == user_id)
+    )
+    tag = result.scalar_one_or_none()
+    if not tag:
+        raise ValueError("Tag not found")
+
+    # Check if target name already exists
+    existing = await session.execute(
+        select(Tag).where(Tag.user_id == user_id, Tag.name == new_name)
+    )
+    existing_tag = existing.scalar_one_or_none()
+
+    if existing_tag and existing_tag.id != tag_id:
+        # Merge: move all taggables from old tag to existing tag, then delete old
+        await session.execute(
+            select(Taggable).where(Taggable.tag_id == tag_id)
+        )
+        taggables = (await session.execute(
+            select(Taggable).where(Taggable.tag_id == tag_id)
+        )).scalars().all()
+
+        for t in taggables:
+            # Check if existing_tag already has this entity
+            dup = await session.execute(
+                select(Taggable).where(
+                    Taggable.tag_id == existing_tag.id,
+                    Taggable.entity_type == t.entity_type,
+                    Taggable.entity_id == t.entity_id,
+                )
+            )
+            if dup.scalar_one_or_none():
+                await session.delete(t)  # duplicate, remove
+            else:
+                t.tag_id = existing_tag.id  # re-point
+
+        await session.delete(tag)
+        await session.commit()
+        return existing_tag
+    else:
+        tag.name = new_name
+        await session.commit()
+        await session.refresh(tag)
+        return tag
+
+
+async def delete_tag(
+    session: AsyncSession,
+    user_id: UUID,
+    tag_id: UUID,
+) -> None:
+    """Delete a tag and all its associations."""
+    result = await session.execute(
+        select(Tag).where(Tag.id == tag_id, Tag.user_id == user_id)
+    )
+    tag = result.scalar_one_or_none()
+    if not tag:
+        raise ValueError("Tag not found")
+
+    # Delete all taggable links
+    await session.execute(
+        delete(Taggable).where(Taggable.tag_id == tag_id)
+    )
+    await session.delete(tag)
+    await session.commit()
+
+
 async def get_entities_by_tag(
     session: AsyncSession,
     user_id: UUID,

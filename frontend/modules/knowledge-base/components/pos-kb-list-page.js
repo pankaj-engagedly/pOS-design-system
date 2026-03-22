@@ -95,9 +95,30 @@ sheet.replaceSync(`
     text-align: center;
     padding: var(--pos-space-xl);
     color: var(--pos-color-text-secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--pos-space-sm);
   }
-  .empty-icon { margin-bottom: var(--pos-space-sm); opacity: 0.4; }
+  .empty-icon { opacity: 0.4; }
   .empty-text { font-size: var(--pos-font-size-sm); }
+  .empty-add-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--pos-space-xs);
+    padding: 6px 16px;
+    border: 1px solid var(--pos-color-border-default);
+    border-radius: var(--pos-radius-sm);
+    background: transparent;
+    color: var(--pos-color-text-secondary);
+    font-size: var(--pos-font-size-sm);
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .empty-add-btn:hover {
+    border-color: var(--pos-color-action-primary);
+    color: var(--pos-color-action-primary);
+  }
 
   .header-btn {
     display: inline-flex;
@@ -246,7 +267,7 @@ class PosKBListPage extends HTMLElement {
         ${filtersHtml}
         <div class="empty">
           <div class="empty-icon">${icon('layers', 40)}</div>
-          <div class="empty-text">No items found</div>
+          <button class="empty-add-btn" data-action="add-url">${icon('plus', 13)} Add Content</button>
         </div>
       `;
       if (this._viewMode === 'list') {

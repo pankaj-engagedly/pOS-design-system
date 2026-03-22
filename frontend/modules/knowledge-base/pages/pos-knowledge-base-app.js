@@ -8,6 +8,7 @@ import '../components/pos-kb-item-detail.js';
 import '../components/pos-kb-add-content-dialog.js';
 import '../components/pos-kb-feed-timeline.js';
 import '../components/pos-kb-subscribe-dialog.js';
+import '../components/pos-kb-tags-page.js';
 import store from '../store.js';
 import { getItems, getCollections, getItem, updateItem, deleteItem, addTag, getStats, getTags } from '../services/kb-api.js';
 import { getFeedItems, getFeedSources, updateFeedItem, saveFeedItemToKB, markAllRead } from '../services/feed-api.js';
@@ -150,7 +151,7 @@ class PosKnowledgeBaseApp extends HTMLElement {
           flex-direction: column;
           min-width: 0;
         }
-        pos-kb-home, pos-kb-list-page, pos-kb-feed-timeline {
+        pos-kb-home, pos-kb-list-page, pos-kb-feed-timeline, pos-kb-tags-page {
           flex: 1;
           min-height: 0;
         }
@@ -165,6 +166,7 @@ class PosKnowledgeBaseApp extends HTMLElement {
           <pos-kb-home style="display:none"></pos-kb-home>
           <pos-kb-list-page style="display:none"></pos-kb-list-page>
           <pos-kb-feed-timeline style="display:none"></pos-kb-feed-timeline>
+          <pos-kb-tags-page style="display:none"></pos-kb-tags-page>
           <pos-kb-item-detail></pos-kb-item-detail>
         </div>
       </pos-module-layout>
@@ -181,9 +183,11 @@ class PosKnowledgeBaseApp extends HTMLElement {
     const homeEl = this.shadow.querySelector('pos-kb-home');
     const listPage = this.shadow.querySelector('pos-kb-list-page');
     const feedTimeline = this.shadow.querySelector('pos-kb-feed-timeline');
+    const tagsPage = this.shadow.querySelector('pos-kb-tags-page');
     const sidebar = this.shadow.querySelector('pos-kb-sidebar');
     const isFeeds = state.selectedView === 'feeds' && !state.selectedCollectionId;
     const isHome = state.selectedView === 'home' && !state.selectedCollectionId;
+    const isTags = state.selectedView === 'tags' && !state.selectedCollectionId;
 
     if (sidebar) {
       sidebar.selectedView = state.selectedView;
@@ -195,8 +199,12 @@ class PosKnowledgeBaseApp extends HTMLElement {
       homeEl.style.display = isHome ? '' : 'none';
     }
 
+    if (tagsPage) {
+      tagsPage.style.display = isTags ? '' : 'none';
+    }
+
     if (listPage) {
-      listPage.style.display = (!isHome && !isFeeds) ? '' : 'none';
+      listPage.style.display = (!isHome && !isFeeds && !isTags) ? '' : 'none';
       if (!isHome && !isFeeds) {
         listPage.items = state.items;
         listPage.tags = state.tags;
@@ -266,9 +274,17 @@ class PosKnowledgeBaseApp extends HTMLElement {
       this._loadItems();
     });
 
+    // Tags changed (renamed/deleted from tags page)
+    this.shadow.addEventListener('tags-changed', () => {
+      this._loadItems();
+    });
+
     // Sidebar data changed (collection created/deleted)
     this.shadow.addEventListener('sidebar-changed', () => {
       this._loadItems();
+      // Close detail flyout — collection state may have changed
+      const detail = this.shadow.querySelector('pos-kb-item-detail');
+      if (detail) detail.close();
     });
 
     // Item selection → open detail flyout
@@ -286,7 +302,11 @@ class PosKnowledgeBaseApp extends HTMLElement {
     // Item card actions (favourite, delete)
     this.shadow.addEventListener('item-action', async (e) => {
       const { action, itemId } = e.detail;
-      if (action === 'favourite') {
+      if (action === 'open-url') {
+        const item = this._findItem(itemId);
+        if (item?.url) window.open(item.url, '_blank', 'noopener');
+        return;
+      } else if (action === 'favourite') {
         const item = this._findItem(itemId);
         if (item) {
           await updateItem(itemId, { is_favourite: !item.is_favourite });

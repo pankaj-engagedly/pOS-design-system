@@ -37,11 +37,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const url = info.linkUrl || info.pageUrl;
   if (!url) return;
 
-  // Get stored token
-  const { pos_token: token } = await chrome.storage.local.get(['pos_token']);
+  // Get stored token, refresh if needed
+  let { pos_token: token } = await chrome.storage.local.get(['pos_token']);
   if (!token) {
-    notify('Sign in required', 'Open the extension popup to sign in to pOS.', false);
-    return;
+    token = await bgTryRefresh();
+    if (!token) {
+      notify('Sign in required', 'Open the extension popup to sign in to pOS.', false);
+      return;
+    }
   }
 
   // Extract metadata from the page (only if saving the current page, not a link)
@@ -83,8 +86,29 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       const title = metadata.title || url;
       notify('Saved to Knowledge Base', title.slice(0, 80));
     } else if (res.status === 401) {
-      await chrome.storage.local.remove(['pos_token']);
-      notify('Sign in required', 'Open the extension popup to sign in to pOS.', false);
+      // Try refresh
+      const newToken = await bgTryRefresh();
+      if (newToken) {
+        // Retry with new token
+        const retry = await fetch(`${API_BASE}/api/kb/items/save-url`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${newToken}` },
+          body: JSON.stringify({
+            url: metadata.url, title: metadata.title || undefined,
+            description: metadata.description || undefined, image: metadata.image || undefined,
+            author: metadata.author || undefined, site_name: metadata.site_name || undefined,
+            item_type: metadata.item_type || 'article',
+          }),
+        });
+        if (retry.ok) {
+          notify('Saved to Knowledge Base', (metadata.title || url).slice(0, 80));
+        } else {
+          notify('Save failed', `Could not save — server returned ${retry.status}.`, false);
+        }
+      } else {
+        await chrome.storage.local.remove(['pos_token', 'pos_refresh_token']);
+        notify('Sign in required', 'Open the extension popup to sign in to pOS.', false);
+      }
     } else {
       notify('Save failed', `Could not save — server returned ${res.status}.`, false);
     }
@@ -151,4 +175,30 @@ function extractPageMetadata() {
   }
 
   return { url, title, description, image, site_name: siteName, author, item_type };
+}
+
+// ── Token refresh helper ──────────────────────────────────────────────────
+
+async function bgTryRefresh() {
+  try {
+    const { pos_refresh_token: refreshToken } = await chrome.storage.local.get(['pos_refresh_token']);
+    if (!refreshToken) return null;
+
+    const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    await chrome.storage.local.set({
+      pos_token: data.access_token,
+      ...(data.refresh_token ? { pos_refresh_token: data.refresh_token } : {}),
+    });
+    return data.access_token;
+  } catch {
+    return null;
+  }
 }

@@ -9,19 +9,25 @@ sheet.replaceSync(`
   :host { display: block; }
 
   .card {
+    position: relative;
     padding: var(--pos-space-lg) 0;
     border-bottom: 1px solid var(--pos-color-border-default);
     cursor: pointer;
+    transition: background 0.1s;
+  }
+  .card:hover {
+    background: var(--pos-color-background-secondary);
   }
   .card.muted .source-name,
   .card.muted .title,
   .card.muted .summary { opacity: 0.55; }
   .card.selected {
-    background: var(--pos-color-background-secondary);
+    background: color-mix(in srgb, var(--pos-color-action-primary) 6%, transparent);
     margin: 0 calc(var(--pos-space-sm) * -1);
-    padding-left: var(--pos-space-sm);
+    padding-left: calc(var(--pos-space-sm) - 3px);
     padding-right: var(--pos-space-sm);
     border-radius: var(--pos-radius-sm);
+    border-left: 3px solid var(--pos-color-action-primary);
   }
 
   /* Source row */
@@ -138,35 +144,59 @@ sheet.replaceSync(`
     align-items: center;
   }
 
-  /* Action area (injected via actionsHtml) */
+  /* Hover actions — top-right corner overlay */
   .card-actions {
-    display: flex;
+    display: none;
+    position: absolute;
+    top: 6px;
+    right: 6px;
     align-items: center;
     gap: 2px;
+    background: var(--pos-color-background-primary, #fff);
+    border-radius: var(--pos-radius-sm);
+    padding: 2px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
   }
+  .card:hover .card-actions { display: flex; }
   .card-actions button {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 26px;
+    height: 26px;
     border: none;
     border-radius: var(--pos-radius-sm);
     background: transparent;
     color: var(--pos-color-text-secondary);
     cursor: pointer;
     padding: 0;
-    transition: color 0.1s, background 0.1s;
   }
   .card-actions button:hover {
     color: var(--pos-color-text-primary);
-    background: var(--pos-color-background-secondary);
+    background: var(--pos-color-border-default);
   }
   .card-actions button svg { pointer-events: none; }
-  .card-actions .starred { color: #f59e0b; }
-  .card-actions .saved { color: var(--pos-color-action-primary); }
   .card-actions .active { color: #f59e0b; }
   .card-actions .delete:hover { color: var(--pos-color-priority-urgent); }
+
+  /* Always-visible inline action (e.g., open link) */
+  .card-inline-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: var(--pos-radius-sm);
+    background: transparent;
+    color: var(--pos-color-text-tertiary);
+    cursor: pointer;
+    padding: 0;
+  }
+  .card-inline-action:hover {
+    color: var(--pos-color-action-primary);
+  }
+  .card-inline-action svg { pointer-events: none; }
 
   /* ── Compact mode (vertical card for grid view) ── */
   :host([compact]) { height: 100%; }
@@ -179,6 +209,10 @@ sheet.replaceSync(`
     display: flex;
     flex-direction: column;
     height: 100%;
+    transition: box-shadow 0.15s, border-color 0.15s;
+  }
+  :host([compact]) .card:hover {
+    box-shadow: 0 3px 12px rgba(0,0,0,0.08);
   }
   :host([compact]) .card.selected {
     margin: 0;
@@ -241,6 +275,7 @@ class PosContentCard extends HTMLElement {
     this.shadow.adoptedStyleSheets = [sheet];
     this._data = null;
     this._actionsHtml = '';
+    this._inlineActionsHtml = '';
     this._compact = false;
   }
 
@@ -345,6 +380,7 @@ class PosContentCard extends HTMLElement {
 
     this.shadow.innerHTML = `
       <div class="card ${data.muted ? 'muted' : ''} ${data.selected ? 'selected' : ''}">
+        <div class="card-actions" id="card-actions"></div>
         ${thumbTopHtml}
         <div class="source-row">
           ${sourceIconHtml}
@@ -364,7 +400,7 @@ class PosContentCard extends HTMLElement {
             ${starredHtml}
             ${savedHtml}
           </div>
-          <div class="card-actions" id="card-actions"></div>
+          <span id="card-inline-actions"></span>
         </div>
       </div>
     `;
@@ -373,9 +409,17 @@ class PosContentCard extends HTMLElement {
     this._renderActions();
   }
 
+  set inlineActionsHtml(val) {
+    this._inlineActionsHtml = val || '';
+    const container = this.shadow.getElementById('card-inline-actions');
+    if (container) container.innerHTML = this._inlineActionsHtml;
+  }
+
   _renderActions() {
     const container = this.shadow.getElementById('card-actions');
     if (container) container.innerHTML = this._actionsHtml;
+    const inline = this.shadow.getElementById('card-inline-actions');
+    if (inline) inline.innerHTML = this._inlineActionsHtml || '';
   }
 
   _esc(str) {
