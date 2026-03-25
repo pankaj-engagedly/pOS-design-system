@@ -14,6 +14,7 @@ vaultSheet.replaceSync(`
     gap: var(--pos-space-xs);
     width: 100%;
     padding: 6px var(--pos-space-sm);
+    margin-top: var(--pos-space-sm);
     border: 1px dashed var(--pos-color-border-default);
     border-radius: var(--pos-radius-sm);
     background: transparent;
@@ -22,6 +23,7 @@ vaultSheet.replaceSync(`
     font-family: inherit;
     cursor: pointer;
     transition: border-color 0.1s, color 0.1s;
+    box-sizing: border-box;
   }
   .new-category-btn:hover {
     border-color: var(--pos-color-action-primary);
@@ -30,6 +32,7 @@ vaultSheet.replaceSync(`
   .new-category-input {
     width: 100%;
     padding: 6px var(--pos-space-sm);
+    margin-top: var(--pos-space-sm);
     border: 1px solid var(--pos-color-action-primary);
     border-radius: var(--pos-radius-sm);
     font-size: var(--pos-font-size-sm);
@@ -194,20 +197,16 @@ class PosVaultSidebar extends HTMLElement {
           </div>`;
         }).join('')}
 
-        ${this._categories.length > 0 ? `
-          <div class="divider"></div>
-          <div class="section-label">Categories</div>
-          ${this._categories.map(c => this._renderCategoryItem(c)).join('')}
-        ` : ''}
+        <div class="divider"></div>
+        <div class="section-label">Categories</div>
+        ${this._categories.map(c => this._renderCategoryItem(c)).join('')}
 
-        <div slot="footer">
-          ${this._showNewInput
-            ? `<input class="new-category-input" placeholder="Category name\u2026" />`
-            : `<button class="new-category-btn" data-action="new-category">
-                 ${icon('plus', 13)} New Category
-               </button>`
-          }
-        </div>
+        ${this._showNewInput
+          ? `<input class="new-category-input" placeholder="Category name\u2026" />`
+          : `<button class="new-category-btn" data-action="new-category">
+               ${icon('plus', 13)} New Category
+             </button>`
+        }
 
       </pos-sidebar>
     `;

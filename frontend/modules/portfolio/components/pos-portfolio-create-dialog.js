@@ -1,7 +1,7 @@
 // pos-portfolio-create-dialog — Create portfolio form (name, holder, PAN, email)
 
 import { icon } from '../../../shared/utils/icons.js';
-import { createPortfolio } from '../services/portfolio-api.js';
+import { createPortfolio, updatePortfolio } from '../services/portfolio-api.js';
 
 class PosPortfolioCreateDialog extends HTMLElement {
   constructor() {
@@ -10,9 +10,13 @@ class PosPortfolioCreateDialog extends HTMLElement {
     this._open = false;
     this._loading = false;
     this._error = null;
+    this._holderName = '';
+    this._editPortfolio = null;
   }
 
-  set open(val) { this._open = val; this._render(); }
+  set open(val) { this._open = val; if (!val) { this._editPortfolio = null; this._holderName = ''; } this._render(); }
+  set holderName(val) { this._holderName = val || ''; }
+  set editPortfolio(val) { this._editPortfolio = val || null; }
 
   connectedCallback() {
     this._bindEvents();
@@ -69,36 +73,40 @@ class PosPortfolioCreateDialog extends HTMLElement {
       <div class="overlay">
         <div class="dialog">
           <div class="dialog-header">
-            <h3>New Portfolio</h3>
+            <h3>${this._editPortfolio ? 'Edit Portfolio' : 'New Portfolio'}</h3>
             <button class="close-btn" data-action="close">${icon('x', 18)}</button>
           </div>
           <div class="dialog-body">
             ${this._error ? `<div class="error">${this._esc(this._error)}</div>` : ''}
             <div class="field">
               <label>Portfolio Name *</label>
-              <input type="text" name="name" placeholder="e.g., My Mutual Funds" required>
+              <input type="text" name="name" placeholder="e.g., My Mutual Funds" required
+                     value="${this._esc(this._editPortfolio?.name || '')}">
             </div>
             <div class="field">
               <label>Holder Name *</label>
-              <input type="text" name="holder_name" placeholder="e.g., Pankaj">
+              <input type="text" name="holder_name" placeholder="e.g., Pankaj"
+                     value="${this._esc(this._editPortfolio?.holder_name || this._holderName || '')}">
             </div>
             <div class="field">
               <label>PAN</label>
-              <input type="text" name="pan" placeholder="e.g., ABCDE1234F" maxlength="10" style="text-transform: uppercase;">
+              <input type="text" name="pan" placeholder="e.g., ABCDE1234F" maxlength="10" style="text-transform: uppercase;"
+                     value="${this._esc(this._editPortfolio?.pan || '')}">
             </div>
             <div class="field">
               <label>Email</label>
-              <input type="email" name="email" placeholder="Email associated with this account">
+              <input type="email" name="email" placeholder="Email associated with this account"
+                     value="${this._esc(this._editPortfolio?.email || '')}">
             </div>
             <div class="field">
               <label>Description</label>
-              <textarea name="description" placeholder="Optional notes"></textarea>
+              <textarea name="description" placeholder="Optional notes">${this._esc(this._editPortfolio?.description || '')}</textarea>
             </div>
           </div>
           <div class="dialog-footer">
             <button class="btn btn-cancel" data-action="close">Cancel</button>
             <button class="btn btn-primary" data-action="save" ${this._loading ? 'disabled' : ''}>
-              ${this._loading ? 'Creating...' : 'Create Portfolio'}
+              ${this._loading ? 'Saving...' : (this._editPortfolio ? 'Save Changes' : 'Create Portfolio')}
             </button>
           </div>
         </div>
@@ -135,10 +143,16 @@ class PosPortfolioCreateDialog extends HTMLElement {
     this._render();
 
     try {
-      await createPortfolio(data);
+      if (this._editPortfolio) {
+        await updatePortfolio(this._editPortfolio.id, data);
+      } else {
+        await createPortfolio(data);
+      }
       this._open = false;
       this._loading = false;
       this._error = null;
+      this._editPortfolio = null;
+      this._holderName = '';
       this._render();
       this.dispatchEvent(new CustomEvent('portfolio-created', { bubbles: true, composed: true }));
     } catch (err) {

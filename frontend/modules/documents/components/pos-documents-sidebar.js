@@ -15,6 +15,7 @@ docSidebarSheet.replaceSync(`
     gap: var(--pos-space-xs);
     width: 100%;
     padding: 6px var(--pos-space-sm);
+    margin-top: var(--pos-space-sm);
     border: 1px dashed var(--pos-color-border-default);
     border-radius: var(--pos-radius-sm);
     background: transparent;
@@ -23,6 +24,7 @@ docSidebarSheet.replaceSync(`
     font-family: inherit;
     cursor: pointer;
     transition: border-color 0.1s, color 0.1s;
+    box-sizing: border-box;
   }
   .new-folder-btn:hover {
     border-color: var(--pos-color-action-primary);
@@ -31,6 +33,7 @@ docSidebarSheet.replaceSync(`
   .new-folder-input {
     width: 100%;
     padding: 6px var(--pos-space-sm);
+    margin-top: var(--pos-space-sm);
     border: 1px solid var(--pos-color-action-primary);
     border-radius: var(--pos-radius-sm);
     font-size: var(--pos-font-size-sm);
@@ -123,14 +126,12 @@ class PosDocumentsSidebar extends HTMLElement {
 
         ${this._renderFoldersFlat(null, 0)}
 
-        <div slot="footer">
-          ${this._showNewInput
-            ? `<input class="new-folder-input" id="new-folder-input" placeholder="Folder name…" />`
-            : `<button class="new-folder-btn" id="new-folder-btn">
-                 ${icon('plus', 13)} New folder
-               </button>`
-          }
-        </div>
+        ${this._showNewInput
+          ? `<input class="new-folder-input" id="new-folder-input" placeholder="Folder name…" />`
+          : `<button class="new-folder-btn" id="new-folder-btn">
+               ${icon('plus', 13)} New folder
+             </button>`
+        }
 
       </pos-sidebar>
     `;

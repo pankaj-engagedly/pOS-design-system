@@ -358,6 +358,43 @@ class PosPortfolioApp extends HTMLElement {
     this.shadow.addEventListener('allocation-created', () => this._loadData());
     this.shadow.addEventListener('deployment-created', () => this._loadData());
 
+    // Sidebar: create portfolio (optionally pre-fill holder name)
+    this.shadow.addEventListener('create-portfolio-request', (e) => {
+      const dialog = this.shadow.querySelector('pos-portfolio-create-dialog');
+      if (dialog) {
+        dialog.holderName = e.detail?.holderName || '';
+        dialog.open = true;
+      }
+    });
+
+    // Sidebar: edit portfolio
+    this.shadow.addEventListener('edit-portfolio-request', (e) => {
+      const portfolio = store.getState().portfolios.find(p => p.id === e.detail.portfolioId);
+      if (portfolio) {
+        const dialog = this.shadow.querySelector('pos-portfolio-create-dialog');
+        if (dialog) {
+          dialog.editPortfolio = portfolio;
+          dialog.open = true;
+        }
+      }
+    });
+
+    // Sidebar: delete portfolio
+    this.shadow.addEventListener('delete-portfolio-request', async (e) => {
+      const { confirmDialog } = await import('../../../shared/components/pos-confirm-dialog.js');
+      if (!await confirmDialog('Delete this portfolio and all its data?', { confirmLabel: 'Delete', danger: true })) return;
+      const { deletePortfolio } = await import('../services/portfolio-api.js');
+      try {
+        await deletePortfolio(e.detail.portfolioId);
+        if (store.getState().selectedPortfolioId === e.detail.portfolioId) {
+          store.setState({ selectedView: 'all', selectedPortfolioId: null });
+        }
+        this._loadData();
+      } catch (err) {
+        console.error('Delete portfolio failed', err);
+      }
+    });
+
     // Plan actions
     this.shadow.addEventListener('create-plan', () => {
       const dialog = this.shadow.querySelector('pos-portfolio-plan-create-dialog');
