@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 
 from pos_contracts.exceptions import NotFoundError
 
-from .models import MarketDataCache, PipelineStage, WatchlistItem, WatchlistTheme
+from .models import MarketDataCache, PipelineStage, Security, WatchlistItem, WatchlistTheme
 
 
 # ── Default pipeline stages ────────────────────────────
@@ -62,6 +62,9 @@ async def list_stages(session: AsyncSession, user_id: UUID) -> list[PipelineStag
 
 
 async def create_stage(session: AsyncSession, user_id: UUID, **kwargs) -> PipelineStage:
+    import re
+    if not kwargs.get("slug") and kwargs.get("name"):
+        kwargs["slug"] = re.sub(r"[^a-z0-9]+", "_", kwargs["name"].lower()).strip("_")
     stage = PipelineStage(user_id=user_id, **kwargs)
     session.add(stage)
     await session.commit()
@@ -82,6 +85,19 @@ async def update_stage(session: AsyncSession, user_id: UUID, stage_id: UUID, **k
     await session.commit()
     await session.refresh(stage)
     return stage
+
+
+async def reorder_stages(session: AsyncSession, user_id: UUID, stage_ids: list[UUID]) -> list[PipelineStage]:
+    """Reorder stages by setting position based on list order."""
+    result = await session.execute(
+        select(PipelineStage).where(PipelineStage.user_id == user_id)
+    )
+    stages_by_id = {s.id: s for s in result.scalars().all()}
+    for i, sid in enumerate(stage_ids):
+        if sid in stages_by_id:
+            stages_by_id[sid].position = i
+    await session.commit()
+    return await list_stages(session, user_id)
 
 
 async def delete_stage(session: AsyncSession, user_id: UUID, stage_id: UUID) -> None:
@@ -183,7 +199,11 @@ async def list_items(
     """List watchlist items with optional filters."""
     query = (
         select(WatchlistItem)
-        .options(selectinload(WatchlistItem.stage), selectinload(WatchlistItem.cache), selectinload(WatchlistItem.theme))
+        .options(
+            selectinload(WatchlistItem.stage),
+            selectinload(WatchlistItem.theme),
+            selectinload(WatchlistItem.security).selectinload(Security.cache),
+        )
         .where(WatchlistItem.user_id == user_id)
     )
 
@@ -207,13 +227,40 @@ async def list_items(
 async def get_item(session: AsyncSession, user_id: UUID, item_id: UUID) -> WatchlistItem:
     result = await session.execute(
         select(WatchlistItem)
-        .options(selectinload(WatchlistItem.stage), selectinload(WatchlistItem.cache), selectinload(WatchlistItem.theme))
+        .options(
+            selectinload(WatchlistItem.stage),
+            selectinload(WatchlistItem.theme),
+            selectinload(WatchlistItem.security).selectinload(Security.cache),
+        )
         .where(WatchlistItem.id == item_id, WatchlistItem.user_id == user_id)
     )
     item = result.scalar_one_or_none()
     if not item:
         raise NotFoundError("Watchlist item not found")
     return item
+
+
+async def get_or_create_security(
+    session: AsyncSession, symbol: str, name: str, asset_type: str, exchange: str | None = None,
+) -> Security:
+    """Get existing security or create a new one. Shared across users."""
+    result = await session.execute(
+        select(Security).where(Security.symbol == symbol, Security.asset_type == asset_type)
+    )
+    security = result.scalar_one_or_none()
+    if security:
+        return security
+
+    security = Security(symbol=symbol, name=name, asset_type=asset_type, exchange=exchange)
+    session.add(security)
+    await session.flush()
+
+    # Create empty cache record for the security
+    cache = MarketDataCache(security_id=security.id)
+    session.add(cache)
+    await session.commit()
+    await session.refresh(security)
+    return security
 
 
 async def create_item(session: AsyncSession, user_id: UUID, **kwargs) -> WatchlistItem:
@@ -223,14 +270,18 @@ async def create_item(session: AsyncSession, user_id: UUID, **kwargs) -> Watchli
         if stages:
             kwargs["stage_id"] = stages[0].id
 
+    # Get or create the shared security
+    security = await get_or_create_security(
+        session,
+        symbol=kwargs["symbol"],
+        name=kwargs["name"],
+        asset_type=kwargs["asset_type"],
+        exchange=kwargs.get("exchange"),
+    )
+    kwargs["security_id"] = security.id
+
     item = WatchlistItem(user_id=user_id, **kwargs)
     session.add(item)
-    await session.commit()
-    await session.refresh(item)
-
-    # Create empty cache record
-    cache = MarketDataCache(user_id=user_id, watchlist_item_id=item.id)
-    session.add(cache)
     await session.commit()
 
     # Reload with relationships

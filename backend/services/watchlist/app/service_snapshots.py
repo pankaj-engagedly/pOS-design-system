@@ -11,7 +11,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_session
-from .models import FinancialStatement, MarketDataCache, MetricSnapshot, WatchlistItem
+from .models import FinancialStatement, MarketDataCache, MetricSnapshot, Security, WatchlistItem
 
 
 # ── Metric keys to snapshot per asset type ─────────────
@@ -64,7 +64,7 @@ def _clean_value(val):
 
 def _cache_to_metrics(cache: MarketDataCache) -> dict:
     """Extract all numeric/string fields from a cache record into a flat dict."""
-    skip = {"id", "user_id", "watchlist_item_id", "created_at", "updated_at",
+    skip = {"id", "security_id", "user_id", "watchlist_item_id", "created_at", "updated_at",
             "price_fetched_at", "fundamentals_fetched_at", "sparkline_data"}
     metrics = {}
     for col in cache.__table__.columns:
@@ -97,45 +97,99 @@ def _fetch_extra_info(symbol: str, asset_type: str) -> dict:
         return {}
 
 
+async def _take_snapshot_for_security(security_id: UUID, symbol: str, asset_type: str) -> None:
+    """Take a snapshot for one security right now (used by manual refresh)."""
+    today = date.today()
+    async for session in get_session():
+        # Check if already taken today
+        existing = await session.execute(
+            select(MetricSnapshot.id)
+            .where(MetricSnapshot.security_id == security_id, MetricSnapshot.recorded_date == today)
+        )
+        if existing.scalar_one_or_none():
+            # Update existing snapshot with latest cache data
+            result = await session.execute(
+                select(MarketDataCache).where(MarketDataCache.security_id == security_id)
+            )
+            cache = result.scalar_one_or_none()
+            if cache:
+                metrics = _cache_to_metrics(cache)
+                loop = asyncio.get_event_loop()
+                extra = await loop.run_in_executor(None, _fetch_extra_info, symbol, asset_type)
+                metrics.update(extra)
+                await session.execute(
+                    select(MetricSnapshot)
+                    .where(MetricSnapshot.security_id == security_id, MetricSnapshot.recorded_date == today)
+                )
+                snap = (await session.execute(
+                    select(MetricSnapshot)
+                    .where(MetricSnapshot.security_id == security_id, MetricSnapshot.recorded_date == today)
+                )).scalar_one()
+                snap.metrics = metrics
+                await session.commit()
+            return
+
+        # Create new snapshot
+        result = await session.execute(
+            select(MarketDataCache).where(MarketDataCache.security_id == security_id)
+        )
+        cache = result.scalar_one_or_none()
+        if not cache:
+            return
+
+        metrics = _cache_to_metrics(cache)
+        loop = asyncio.get_event_loop()
+        extra = await loop.run_in_executor(None, _fetch_extra_info, symbol, asset_type)
+        metrics.update(extra)
+
+        if metrics:
+            snapshot = MetricSnapshot(
+                security_id=security_id,
+                recorded_date=today,
+                metrics=metrics,
+            )
+            session.add(snapshot)
+            await session.commit()
+            logger.info(f"Snapshot taken for {symbol} on {today}")
+
+
 async def take_daily_snapshots() -> None:
-    """Take a daily metric snapshot for all items that haven't been snapshotted today."""
+    """Take a daily metric snapshot for all securities that haven't been snapshotted today."""
     today = date.today()
     logger.info(f"Starting daily metric snapshots for {today}")
 
     async for session in get_session():
-        # Get all items with their cache
+        # Get all securities with their cache
         result = await session.execute(
-            select(WatchlistItem, MarketDataCache)
-            .join(MarketDataCache, MarketDataCache.watchlist_item_id == WatchlistItem.id)
+            select(Security, MarketDataCache)
+            .join(MarketDataCache, MarketDataCache.security_id == Security.id)
         )
         rows = result.all()
 
-        # Check which items already have today's snapshot
+        # Check which securities already have today's snapshot
         existing = await session.execute(
-            select(MetricSnapshot.watchlist_item_id)
+            select(MetricSnapshot.security_id)
             .where(MetricSnapshot.recorded_date == today)
         )
         already_done = {row[0] for row in existing.all()}
 
         count = 0
-        for item, cache in rows:
-            if item.id in already_done:
+        for sec, cache in rows:
+            if sec.id in already_done:
                 continue
 
-            # Build metrics from cache
             metrics = _cache_to_metrics(cache)
 
             # Fetch extra info from yfinance (in thread)
             loop = asyncio.get_event_loop()
-            extra = await loop.run_in_executor(None, _fetch_extra_info, item.symbol, item.asset_type)
+            extra = await loop.run_in_executor(None, _fetch_extra_info, sec.symbol, sec.asset_type)
             metrics.update(extra)
 
             if not metrics:
                 continue
 
             snapshot = MetricSnapshot(
-                user_id=item.user_id,
-                watchlist_item_id=item.id,
+                security_id=sec.id,
                 recorded_date=today,
                 metrics=metrics,
             )
@@ -143,48 +197,52 @@ async def take_daily_snapshots() -> None:
             count += 1
 
         await session.commit()
-        logger.info(f"Daily snapshots: {count} items snapshotted for {today}")
+        logger.info(f"Daily snapshots: {count} securities snapshotted for {today}")
+
+
+async def _upsert_financial_statements(session: AsyncSession, security_id, data: dict) -> int:
+    """Upsert financial statement data for one security. Returns count of upserted rows."""
+    count = 0
+    now = datetime.now(timezone.utc)
+    for freq, freq_data in data.items():
+        for stmt_type, periods in freq_data.items():
+            for period_date, line_items in periods.items():
+                if not line_items:
+                    continue
+                stmt = pg_insert(FinancialStatement.__table__).values(
+                    security_id=security_id,
+                    statement_type=stmt_type,
+                    fiscal_period=period_date,
+                    frequency=freq,
+                    line_items=line_items,
+                    fetched_at=now,
+                ).on_conflict_do_update(
+                    constraint="uq_financial_stmt_security_type_period_freq",
+                    set_={"line_items": line_items, "fetched_at": now},
+                )
+                await session.execute(stmt)
+                count += 1
+    return count
 
 
 async def accumulate_financials() -> None:
-    """Fetch and upsert financial statements for all stock items."""
+    """Fetch and upsert financial statements for all stock securities."""
     logger.info("Starting financial statement accumulation")
 
     async for session in get_session():
         result = await session.execute(
-            select(WatchlistItem).where(WatchlistItem.asset_type == "stock")
+            select(Security).where(Security.asset_type == "stock")
         )
-        items = list(result.scalars().all())
+        securities = list(result.scalars().all())
 
         count = 0
-        for item in items:
+        for sec in securities:
             try:
                 loop = asyncio.get_event_loop()
-                data = await loop.run_in_executor(None, _fetch_all_financials, item.symbol)
-                now = datetime.now(timezone.utc)
-
-                for freq, freq_data in data.items():
-                    for stmt_type, periods in freq_data.items():
-                        for period_date, line_items in periods.items():
-                            if not line_items:
-                                continue
-                            stmt = pg_insert(FinancialStatement.__table__).values(
-                                user_id=item.user_id,
-                                watchlist_item_id=item.id,
-                                statement_type=stmt_type,
-                                fiscal_period=period_date,
-                                frequency=freq,
-                                line_items=line_items,
-                                fetched_at=now,
-                            ).on_conflict_do_update(
-                                constraint="uq_financial_stmt_item_type_period_freq",
-                                set_={"line_items": line_items, "fetched_at": now},
-                            )
-                            await session.execute(stmt)
-                            count += 1
-
+                data = await loop.run_in_executor(None, _fetch_all_financials, sec.symbol)
+                count += await _upsert_financial_statements(session, sec.id, data)
             except Exception as e:
-                logger.warning(f"Financial accumulation failed for {item.symbol}: {e}")
+                logger.warning(f"Financial accumulation failed for {sec.symbol}: {e}")
 
         await session.commit()
         logger.info(f"Financial accumulation: {count} statement-periods upserted")
@@ -237,6 +295,39 @@ def _fetch_all_financials(symbol: str) -> dict:
     return result
 
 
+async def _resolve_security_id(session: AsyncSession, user_id: UUID, item_id: UUID) -> UUID:
+    """Resolve a watchlist item to its security_id (with auth check)."""
+    result = await session.execute(
+        select(WatchlistItem.security_id)
+        .where(WatchlistItem.id == item_id, WatchlistItem.user_id == user_id)
+    )
+    sid = result.scalar_one_or_none()
+    if not sid:
+        from pos_contracts.exceptions import NotFoundError
+        raise NotFoundError("Item not found")
+    return sid
+
+
+# Reverse map: snake_case → camelCase keys that may exist in snapshot JSONB
+_SNAKE_TO_CAMEL = {
+    "forward_pe": "forwardPE", "forward_eps": "forwardEps",
+    "profit_margins": "profitMargins", "operating_margins": "operatingMargins",
+    "gross_margins": "grossMargins", "ebitda_margins": "ebitdaMargins",
+    "revenue_growth": "revenueGrowth", "earnings_growth": "earningsGrowth",
+    "debt_to_equity": "debtToEquity", "current_ratio": "currentRatio",
+    "total_revenue": "totalRevenue", "total_debt": "totalDebt",
+    "total_cash": "totalCash", "free_cashflow": "freeCashflow",
+    "target_mean_price": "targetMeanPrice", "target_high_price": "targetHighPrice",
+    "target_low_price": "targetLowPrice", "recommendation_mean": "recommendationMean",
+    "analyst_count": "numberOfAnalystOpinions",
+    "held_pct_institutions": "heldPercentInstitutions",
+    "held_pct_insiders": "heldPercentInsiders",
+    "enterprise_value": "enterpriseValue", "return_on_assets": "returnOnAssets",
+    "price_to_sales": "priceToSalesTrailing12Months",
+    "operating_cashflow": "operatingCashflow",
+}
+
+
 async def get_metric_history(
     session: AsyncSession,
     user_id: UUID,
@@ -245,13 +336,11 @@ async def get_metric_history(
     from_date: date | None = None,
     to_date: date | None = None,
 ) -> list[dict]:
-    """Get time-series of a specific metric for an item."""
+    """Get time-series of a specific metric for an item's security."""
+    security_id = await _resolve_security_id(session, user_id, item_id)
     query = (
         select(MetricSnapshot)
-        .where(
-            MetricSnapshot.watchlist_item_id == item_id,
-            MetricSnapshot.user_id == user_id,
-        )
+        .where(MetricSnapshot.security_id == security_id)
         .order_by(MetricSnapshot.recorded_date)
     )
     if from_date:
@@ -262,9 +351,14 @@ async def get_metric_history(
     result = await session.execute(query)
     snapshots = result.scalars().all()
 
+    # Look up both snake_case and camelCase variants in snapshot JSONB
+    camel_key = _SNAKE_TO_CAMEL.get(metric_key)
+
     points = []
     for s in snapshots:
         val = s.metrics.get(metric_key)
+        if val is None and camel_key:
+            val = s.metrics.get(camel_key)
         if val is not None:
             points.append({"date": s.recorded_date.isoformat(), "value": val})
 
@@ -276,13 +370,11 @@ async def get_available_metrics(
     user_id: UUID,
     item_id: UUID,
 ) -> list[str]:
-    """Get list of metric keys available in snapshots for an item."""
+    """Get list of metric keys available in snapshots for an item's security."""
+    security_id = await _resolve_security_id(session, user_id, item_id)
     result = await session.execute(
         select(MetricSnapshot.metrics)
-        .where(
-            MetricSnapshot.watchlist_item_id == item_id,
-            MetricSnapshot.user_id == user_id,
-        )
+        .where(MetricSnapshot.security_id == security_id)
         .order_by(MetricSnapshot.recorded_date.desc())
         .limit(1)
     )
@@ -299,12 +391,12 @@ async def get_accumulated_financials(
     statement_type: str | None = None,
     frequency: str = "annual",
 ) -> list[dict]:
-    """Get all accumulated financial statement data for an item."""
+    """Get all accumulated financial statement data for an item's security."""
+    security_id = await _resolve_security_id(session, user_id, item_id)
     query = (
         select(FinancialStatement)
         .where(
-            FinancialStatement.watchlist_item_id == item_id,
-            FinancialStatement.user_id == user_id,
+            FinancialStatement.security_id == security_id,
             FinancialStatement.frequency == frequency,
         )
         .order_by(FinancialStatement.fiscal_period)

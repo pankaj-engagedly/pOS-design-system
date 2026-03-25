@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 class StageCreate(BaseModel):
     name: str = Field(..., max_length=50)
-    slug: str = Field(..., max_length=50)
+    slug: str | None = Field(None, max_length=50)
     position: int = 0
     color: str | None = None
     is_terminal: bool = False
@@ -23,6 +23,10 @@ class StageUpdate(BaseModel):
     position: int | None = None
     color: str | None = None
     is_terminal: bool | None = None
+
+
+class StageReorder(BaseModel):
+    stage_ids: list[UUID]
 
 
 class StageResponse(BaseModel):
@@ -109,18 +113,63 @@ class MarketDataResponse(BaseModel):
     previous_close: float | None = None
     day_change: float | None = None
     day_change_pct: float | None = None
+
+    # Company info
+    company_description: str | None = None
+    website: str | None = None
+    full_time_employees: int | None = None
+    country: str | None = None
+    city: str | None = None
+    industry: str | None = None
+    sector: str | None = None
+
+    # Valuation
     pe_ratio: float | None = None
     pb_ratio: float | None = None
+    forward_pe: float | None = None
+    peg_ratio: float | None = None
+    price_to_sales: float | None = None
     market_cap: int | None = None
-    roe: float | None = None
-    roce: float | None = None
+    enterprise_value: int | None = None
     eps: float | None = None
     book_value: float | None = None
+    beta: float | None = None
+
+    # Profitability & growth
+    roe: float | None = None
+    roce: float | None = None
+    return_on_assets: float | None = None
+    profit_margins: float | None = None
+    operating_margins: float | None = None
+    gross_margins: float | None = None
+    ebitda_margins: float | None = None
+    revenue_growth: float | None = None
+    earnings_growth: float | None = None
+
+    # Financial aggregates
+    total_revenue: int | None = None
+    total_debt: int | None = None
+    total_cash: int | None = None
+    free_cashflow: int | None = None
+    ebitda: int | None = None
+    debt_to_equity: float | None = None
+    current_ratio: float | None = None
     dividend_yield: float | None = None
     fifty_two_week_low: float | None = None
     fifty_two_week_high: float | None = None
-    industry: str | None = None
-    sector: str | None = None
+
+    # Analyst
+    target_mean_price: float | None = None
+    target_high_price: float | None = None
+    target_low_price: float | None = None
+    recommendation_key: str | None = None
+    analyst_count: int | None = None
+
+    # Ownership
+    held_pct_institutions: float | None = None
+    held_pct_insiders: float | None = None
+
+    # MF fields
     nav: float | None = None
     expense_ratio: float | None = None
     aum: float | None = None
@@ -129,10 +178,14 @@ class MarketDataResponse(BaseModel):
     return_5y: float | None = None
     category: str | None = None
     risk_rating: str | None = None
+
+    # Crypto / ETF / Bond
     volume_24h: float | None = None
     circulating_supply: float | None = None
     bond_yield: float | None = None
     holdings_count: int | None = None
+
+    # Shared
     sparkline_data: list[float] | None = None
     price_fetched_at: datetime | None = None
     fundamentals_fetched_at: datetime | None = None

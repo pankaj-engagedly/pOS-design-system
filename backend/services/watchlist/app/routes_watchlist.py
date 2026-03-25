@@ -9,7 +9,7 @@ from pos_contracts.tag_service import add_tag, get_all_tags, get_tags_for_entity
 
 from .db import get_session as get_async_session
 from . import service_watchlist as svc
-from .service_market_data import fetch_market_data_for_item
+from .service_market_data import fetch_market_data_for_item, fetch_market_data_for_security
 from .asset_classes import ASSET_CLASSES
 from .schemas import (
     AssetClassResponse,
@@ -18,6 +18,7 @@ from .schemas import (
     ItemSummary,
     ItemUpdate,
     StageCreate,
+    StageReorder,
     StageResponse,
     StageUpdate,
     StatsResponse,
@@ -97,7 +98,7 @@ async def create_item(
         added_reason=body.added_reason,
     )
     # Background: fetch market data
-    background_tasks.add_task(fetch_market_data_for_item, item.id, item.symbol, item.asset_type)
+    background_tasks.add_task(fetch_market_data_for_security, item.security_id, item.symbol, item.asset_type)
     tags = await get_tags_for_entity(session, "watchlist_item", item.id)
     return _item_to_summary(item, tags)
 
@@ -187,6 +188,15 @@ async def create_stage(
     session: AsyncSession = Depends(get_async_session),
 ):
     return await svc.create_stage(session, user_id, **body.model_dump())
+
+
+@router.patch("/stages/reorder", response_model=list[StageResponse])
+async def reorder_stages(
+    body: StageReorder,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    return await svc.reorder_stages(session, user_id, body.stage_ids)
 
 
 @router.patch("/stages/{stage_id}", response_model=StageResponse)

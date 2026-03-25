@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .db import get_session
-from .models import MarketDataCache, WatchlistItem
+from .models import MarketDataCache, Security, WatchlistItem
 
 
 def _safe_float(val) -> float | None:
@@ -67,18 +67,54 @@ def fetch_stock_data(symbol: str) -> dict:
         "previous_close": previous_close,
         "day_change": day_change,
         "day_change_pct": day_change_pct,
+        # Company info
+        "company_description": (info.get("longBusinessSummary") or "")[:5000] or None,
+        "website": info.get("website"),
+        "full_time_employees": _safe_int(info.get("fullTimeEmployees")),
+        "country": info.get("country"),
+        "city": info.get("city"),
+        "industry": info.get("industry"),
+        "sector": info.get("sector"),
+        # Valuation
         "pe_ratio": _safe_float(info.get("trailingPE")),
         "pb_ratio": _safe_float(info.get("priceToBook")),
+        "forward_pe": _safe_float(info.get("forwardPE")),
+        "peg_ratio": _safe_float(info.get("pegRatio")),
+        "price_to_sales": _safe_float(info.get("priceToSalesTrailing12Months")),
         "market_cap": _safe_int(info.get("marketCap")),
-        "roe": _safe_float(info.get("returnOnEquity")),
-        "roce": None,
+        "enterprise_value": _safe_int(info.get("enterpriseValue")),
         "eps": _safe_float(info.get("trailingEps")),
         "book_value": _safe_float(info.get("bookValue")),
+        "beta": _safe_float(info.get("beta")),
+        # Profitability & growth
+        "roe": _safe_float(info.get("returnOnEquity")),
+        "return_on_assets": _safe_float(info.get("returnOnAssets")),
+        "profit_margins": _safe_float(info.get("profitMargins")),
+        "operating_margins": _safe_float(info.get("operatingMargins")),
+        "gross_margins": _safe_float(info.get("grossMargins")),
+        "ebitda_margins": _safe_float(info.get("ebitdaMargins")),
+        "revenue_growth": _safe_float(info.get("revenueGrowth")),
+        "earnings_growth": _safe_float(info.get("earningsGrowth")),
+        # Financial aggregates
+        "total_revenue": _safe_int(info.get("totalRevenue")),
+        "total_debt": _safe_int(info.get("totalDebt")),
+        "total_cash": _safe_int(info.get("totalCash")),
+        "free_cashflow": _safe_int(info.get("freeCashflow")),
+        "ebitda": _safe_int(info.get("ebitda")),
+        "debt_to_equity": _safe_float(info.get("debtToEquity")),
+        "current_ratio": _safe_float(info.get("currentRatio")),
         "dividend_yield": _safe_float(info.get("dividendYield")),
         "fifty_two_week_low": _safe_float(info.get("fiftyTwoWeekLow")),
         "fifty_two_week_high": _safe_float(info.get("fiftyTwoWeekHigh")),
-        "industry": info.get("industry"),
-        "sector": info.get("sector"),
+        # Analyst
+        "target_mean_price": _safe_float(info.get("targetMeanPrice")),
+        "target_high_price": _safe_float(info.get("targetHighPrice")),
+        "target_low_price": _safe_float(info.get("targetLowPrice")),
+        "recommendation_key": info.get("recommendationKey"),
+        "analyst_count": _safe_int(info.get("numberOfAnalystOpinions")),
+        # Ownership
+        "held_pct_institutions": _safe_float(info.get("heldPercentInstitutions")),
+        "held_pct_insiders": _safe_float(info.get("heldPercentInsiders")),
         "sparkline_data": sparkline,
     }
 
@@ -86,6 +122,7 @@ def fetch_stock_data(symbol: str) -> dict:
 def fetch_mf_data(scheme_code: str) -> dict:
     """Fetch mutual fund data from mftool (synchronous — run in thread)."""
     from mftool import Mftool
+    from datetime import datetime as dt, timedelta
     mf = Mftool()
 
     nav_data = mf.get_scheme_quote(scheme_code)
@@ -94,18 +131,32 @@ def fetch_mf_data(scheme_code: str) -> dict:
 
     nav = _safe_float(nav_data.get("scheme_nav"))
 
-    # Historical for sparkline
-    sparkline = []
+    # Get scheme details for metadata
+    details = {}
     try:
-        hist = mf.get_scheme_historical_nav(scheme_code, as_Dataframe=True)
-        if hist is not None and not hist.empty:
-            # mftool returns oldest first
-            prices = hist["nav"].astype(float).tolist()[-30:]
-            sparkline = [round(p, 2) for p in prices]
+        details = mf.get_scheme_details(scheme_code) or {}
     except Exception:
         pass
 
-    # Calculate day change from sparkline
+    # Historical NAV for sparkline + return calculations
+    sparkline = []
+    all_navs = []  # (date, nav) for return calculation
+    try:
+        hist = mf.get_scheme_historical_nav(scheme_code, as_Dataframe=True)
+        if hist is not None and not hist.empty:
+            prices = hist["nav"].astype(float).tolist()
+            sparkline = [round(p, 2) for p in prices[-30:]]
+            # Parse dates for return calculation
+            for date_str, row in hist.iterrows():
+                try:
+                    d = dt.strptime(str(date_str), "%d-%m-%Y")
+                    all_navs.append((d, float(row["nav"])))
+                except (ValueError, TypeError):
+                    continue
+    except Exception:
+        pass
+
+    # Calculate day change
     day_change = None
     day_change_pct = None
     if len(sparkline) >= 2:
@@ -115,6 +166,35 @@ def fetch_mf_data(scheme_code: str) -> dict:
             day_change = round(curr - prev, 2)
             day_change_pct = round((day_change / prev) * 100, 2)
 
+    # Calculate returns from NAV history
+    return_1y = return_3y = return_5y = None
+    if nav and all_navs:
+        now = dt.now()
+        for years, attr in [(1, 'return_1y'), (3, 'return_3y'), (5, 'return_5y')]:
+            target_date = now - timedelta(days=years * 365)
+            # Find NAV closest to target date
+            closest = min(all_navs, key=lambda x: abs((x[0] - target_date).days), default=None)
+            if closest and abs((closest[0] - target_date).days) < 30 and closest[1] > 0:
+                ret = ((nav / closest[1]) - 1) * 100
+                if attr == 'return_1y':
+                    return_1y = round(ret, 2)
+                elif attr == 'return_3y':
+                    return_3y = round(ret, 2)
+                elif attr == 'return_5y':
+                    return_5y = round(ret, 2)
+
+    # Company description from scheme details
+    desc_parts = []
+    if details.get("fund_house"):
+        desc_parts.append(f"Fund House: {details['fund_house']}")
+    if details.get("scheme_type"):
+        desc_parts.append(f"Type: {details['scheme_type']}")
+    if details.get("scheme_category"):
+        desc_parts.append(f"Category: {details['scheme_category']}")
+    start = details.get("scheme_start_date", {})
+    if isinstance(start, dict) and start.get("date"):
+        desc_parts.append(f"Inception: {start['date']} (NAV: {start.get('nav', '')})")
+
     return {
         "currency": "INR",
         "financial_currency": "INR",
@@ -122,7 +202,11 @@ def fetch_mf_data(scheme_code: str) -> dict:
         "current_price": nav,
         "day_change": day_change,
         "day_change_pct": day_change_pct,
-        "category": nav_data.get("scheme_category"),
+        "category": details.get("scheme_category") or nav_data.get("scheme_category"),
+        "company_description": ". ".join(desc_parts) if desc_parts else None,
+        "return_1y": return_1y,
+        "return_3y": return_3y,
+        "return_5y": return_5y,
         "sparkline_data": sparkline,
     }
 
@@ -156,12 +240,19 @@ def fetch_etf_data(symbol: str) -> dict:
         "previous_close": previous_close,
         "day_change": day_change,
         "day_change_pct": day_change_pct,
+        "company_description": (info.get("longBusinessSummary") or "")[:5000] or None,
+        "website": info.get("website"),
+        "sector": info.get("sectorWeightings") and "ETF" or info.get("sector"),
         "nav": _safe_float(info.get("navPrice")),
         "expense_ratio": _safe_float(info.get("annualReportExpenseRatio") or info.get("netExpenseRatio")),
         "aum": _safe_float(info.get("totalAssets")),
         "market_cap": _safe_int(info.get("marketCap")),
         "holdings_count": _safe_int(info.get("holdings")),
         "dividend_yield": _safe_float(info.get("yield") or info.get("dividendYield")),
+        "beta": _safe_float(info.get("beta3Year") or info.get("beta")),
+        "return_1y": _safe_float(info.get("trailingAnnualTotalReturn")),
+        "return_3y": _safe_float(info.get("threeYearAverageReturn")),
+        "return_5y": _safe_float(info.get("fiveYearAverageReturn")),
         "fifty_two_week_low": _safe_float(info.get("fiftyTwoWeekLow")),
         "fifty_two_week_high": _safe_float(info.get("fiftyTwoWeekHigh")),
         "category": info.get("category"),
@@ -278,6 +369,7 @@ def fetch_crypto_data(symbol: str) -> dict:
         "previous_close": previous_close,
         "day_change": day_change,
         "day_change_pct": day_change_pct,
+        "company_description": (info.get("description") or "")[:5000] or None,
         "market_cap": _safe_int(info.get("marketCap")),
         "volume_24h": _safe_float(info.get("volume24Hr") or info.get("regularMarketVolume")),
         "circulating_supply": _safe_float(info.get("circulatingSupply")),
@@ -565,8 +657,8 @@ def fetch_financials(symbol: str) -> dict:
         return {"income_statement": [], "balance_sheet": []}
 
 
-async def fetch_market_data_for_item(item_id: UUID, symbol: str, asset_type: str) -> None:
-    """Background task: fetch and cache market data for one item."""
+async def fetch_market_data_for_security(security_id: UUID, symbol: str, asset_type: str) -> None:
+    """Background task: fetch and cache market data for one security (shared)."""
     try:
         loop = asyncio.get_event_loop()
         fetch_fn = FETCH_DISPATCH.get(asset_type, fetch_stock_data)
@@ -579,11 +671,13 @@ async def fetch_market_data_for_item(item_id: UUID, symbol: str, asset_type: str
         # Update cache in DB
         async for session in get_session():
             result = await session.execute(
-                select(MarketDataCache).where(MarketDataCache.watchlist_item_id == item_id)
+                select(MarketDataCache).where(MarketDataCache.security_id == security_id)
             )
             cache = result.scalar_one_or_none()
             if not cache:
-                return
+                # Create cache if missing (e.g., security created without cache)
+                cache = MarketDataCache(security_id=security_id)
+                session.add(cache)
 
             now = datetime.now(timezone.utc)
             for key, val in data.items():
@@ -598,15 +692,32 @@ async def fetch_market_data_for_item(item_id: UUID, symbol: str, asset_type: str
         logger.error(f"Failed to fetch market data for {symbol}: {e}")
 
 
-async def refresh_all_items() -> None:
-    """Refresh market data for all watchlist items."""
+# Backward-compatible alias for routes that pass item_id
+async def fetch_market_data_for_item(item_id: UUID, symbol: str, asset_type: str) -> None:
+    """Resolve item → security, then fetch."""
     async for session in get_session():
-        result = await session.execute(select(WatchlistItem))
-        items = list(result.scalars().all())
-        logger.info(f"Refreshing market data for {len(items)} items")
+        result = await session.execute(
+            select(WatchlistItem.security_id).where(WatchlistItem.id == item_id)
+        )
+        security_id = result.scalar_one_or_none()
+        if security_id:
+            await fetch_market_data_for_security(security_id, symbol, asset_type)
 
-        for item in items:
+
+async def refresh_all_securities() -> None:
+    """Refresh market data for all unique securities (once per ticker, not per user)."""
+    async for session in get_session():
+        result = await session.execute(select(Security))
+        securities = list(result.scalars().all())
+        logger.info(f"Refreshing market data for {len(securities)} securities")
+
+        for sec in securities:
             try:
-                await fetch_market_data_for_item(item.id, item.symbol, item.asset_type)
+                await fetch_market_data_for_security(sec.id, sec.symbol, sec.asset_type)
             except Exception as e:
-                logger.warning(f"Refresh failed for {item.symbol}: {e}")
+                logger.warning(f"Refresh failed for {sec.symbol}: {e}")
+
+
+# Backward-compatible alias
+async def refresh_all_items() -> None:
+    await refresh_all_securities()

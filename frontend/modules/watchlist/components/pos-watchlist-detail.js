@@ -71,35 +71,66 @@ class PosWatchlistDetail extends HTMLElement {
   async _loadFinancials(id, freq) {
     const frequency = freq || this._financialFreq;
     try {
-      // Try accumulated (locally stored) first, fall back to live API
-      let data = await getAccumulatedFinancials(id, null, frequency).catch(() => []);
-      if (data.length > 0) {
-        this._financials = this._accumulatedToLegacy(data);
-      } else {
-        // No accumulated data yet — fetch live
-        const live = await getFinancials(id).catch(() => ({ income_statement: [], balance_sheet: [] }));
-        this._financials = live;
-      }
+      this._financials = await getFinancials(id, frequency).catch(() => null);
       this._renderFinancialsSection();
+      this._renderFinTrends();
     } catch (err) {
       console.error('Failed to load financials', err);
     }
   }
 
-  _accumulatedToLegacy(stmts) {
-    // Group by statement_type, build {income_statement, balance_sheet, cashflow} arrays
-    const grouped = { income: [], balance: [], cashflow: [] };
-    for (const s of stmts) {
-      const arr = grouped[s.statement_type];
-      if (arr) {
-        arr.push({ period: s.fiscal_period, ...s.line_items });
-      }
-    }
-    return {
-      income_statement: grouped.income,
-      balance_sheet: grouped.balance,
-      cashflow: grouped.cashflow,
+  _renderFinTrends() {
+    const el = this.shadow.getElementById('fin-trends-section');
+    if (!el || !this._financials) return;
+    const income = this._financials.income || [];
+    if (income.length < 2) { el.innerHTML = ''; return; }
+
+    // Extract key metrics across periods (reversed for chronological order)
+    const extract = (label) => {
+      return income.map(p => {
+        for (const s of (p.sections || [])) {
+          const it = s.items.find(i => i.label === label);
+          if (it?.value != null) return { period: p.period, value: it.value };
+        }
+        return { period: p.period, value: null };
+      }).reverse();
     };
+
+    const series = [
+      { label: 'Revenue', data: extract('Total Revenue'), color: '#3b82f6' },
+      { label: 'Net Profit', data: extract('Net Income'), color: '#10b981' },
+      { label: 'EBITDA', data: extract('EBITDA'), color: '#8b5cf6' },
+    ].filter(s => s.data.some(d => d.value != null));
+
+    if (!series.length) { el.innerHTML = ''; return; }
+
+    const cache = this._item?.cache || {};
+    const cur = this._currencySymbol(cache.financial_currency || cache.currency);
+    const isQ = this._financialFreq === 'quarterly';
+
+    let html = '<div class="section-title">Financial Highlights</div><div class="fin-trend-grid">';
+    for (const s of series) {
+      const values = s.data.map(d => d.value || 0);
+      const max = Math.max(...values.map(Math.abs));
+      if (max === 0) continue;
+      html += `<div class="fin-trend-card">
+        <div class="fin-trend-label">${s.label}</div>
+        <div class="fin-trend-bars">
+          ${s.data.map(d => {
+            const v = d.value || 0;
+            const pct = Math.abs(v) / max * 100;
+            const neg = v < 0;
+            return `<div class="fin-bar-col">
+              <div class="fin-bar-val" style="color:${neg ? '#ef4444' : 'var(--pos-color-text-primary)'}">${cur}${this._fmtFin(v)}</div>
+              <div class="fin-bar-track"><div class="fin-bar-fill" style="height:${pct}%;background:${neg ? '#ef4444' : s.color}"></div></div>
+              <div class="fin-bar-year">${this._fmtPeriod(d.period, isQ)}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
+    html += '</div>';
+    el.innerHTML = html;
   }
 
   _renderFinancialsSection() {
@@ -184,11 +215,19 @@ class PosWatchlistDetail extends HTMLElement {
       yLabels += `<line x1="${padX}" y1="${y}" x2="${w - 10}" y2="${y}" stroke="var(--pos-color-border-subtle)" stroke-dasharray="3,3"/>`;
     }
 
-    // X-axis: first and last date
-    const xLabels = `
-      <text x="${padX}" y="${h - 2}" fill="var(--pos-color-text-tertiary)" font-size="9">${this._fmtPeriod(dates[0], true)}</text>
-      <text x="${w - 10}" y="${h - 2}" text-anchor="end" fill="var(--pos-color-text-tertiary)" font-size="9">${this._fmtPeriod(dates[dates.length - 1], true)}</text>
-    `;
+    // X-axis: show all dates if few data points, else first/last
+    let xLabels = '';
+    if (dates.length <= 10) {
+      for (let i = 0; i < dates.length; i++) {
+        const x = padX + (i / (dates.length - 1)) * plotW;
+        xLabels += `<text x="${x}" y="${h - 2}" text-anchor="middle" fill="var(--pos-color-text-tertiary)" font-size="9">${this._fmtPeriod(dates[i], true)}</text>`;
+      }
+    } else {
+      xLabels = `
+        <text x="${padX}" y="${h - 2}" fill="var(--pos-color-text-tertiary)" font-size="9">${this._fmtPeriod(dates[0], true)}</text>
+        <text x="${w - 10}" y="${h - 2}" text-anchor="end" fill="var(--pos-color-text-tertiary)" font-size="9">${this._fmtPeriod(dates[dates.length - 1], true)}</text>
+      `;
+    }
 
     const isUp = values[values.length - 1] >= values[0];
     const color = isUp ? '#10b981' : '#ef4444';
@@ -203,6 +242,14 @@ class PosWatchlistDetail extends HTMLElement {
   }
 
   _fmtTrendVal(v) {
+    if (this._isINR()) {
+      const abs = Math.abs(v);
+      const sign = v < 0 ? '-' : '';
+      if (abs >= 1e7) return sign + (abs / 1e7).toFixed(0) + 'Cr';
+      if (abs >= 1e5) return sign + (abs / 1e5).toFixed(0) + 'L';
+      if (abs >= 1e3) return sign + (abs / 1e3).toFixed(0) + 'K';
+      return v.toFixed(abs < 10 ? 2 : 0);
+    }
     const abs = Math.abs(v);
     if (abs >= 1e12) return (v / 1e12).toFixed(1) + 'T';
     if (abs >= 1e9) return (v / 1e9).toFixed(1) + 'B';
@@ -213,26 +260,44 @@ class PosWatchlistDetail extends HTMLElement {
 
   _metricLabel(key) {
     const labels = {
+      // Price & valuation (daily)
       current_price: 'Price', nav: 'NAV', pe_ratio: 'PE Ratio', pb_ratio: 'PB Ratio',
-      market_cap: 'Market Cap', roe: 'ROE', roce: 'ROCE', eps: 'EPS',
-      book_value: 'Book Value', dividend_yield: 'Dividend Yield',
+      forward_pe: 'Forward PE', peg_ratio: 'PEG Ratio', price_to_sales: 'Price/Sales',
+      market_cap: 'Market Cap', enterprise_value: 'Enterprise Value',
+      eps: 'EPS', book_value: 'Book Value', beta: 'Beta',
+      dividend_yield: 'Dividend Yield',
       fifty_two_week_low: '52W Low', fifty_two_week_high: '52W High',
-      day_change_pct: 'Day Change %', industry: 'Industry', sector: 'Sector',
+      day_change_pct: 'Day Change %',
+      // Profitability (daily)
+      roe: 'ROE', roce: 'ROCE', return_on_assets: 'ROA',
+      profit_margins: 'Profit Margin', operating_margins: 'Operating Margin',
+      gross_margins: 'Gross Margin', ebitda_margins: 'EBITDA Margin',
+      revenue_growth: 'Revenue Growth', earnings_growth: 'Earnings Growth',
+      // Balance sheet ratios (daily)
+      debt_to_equity: 'Debt/Equity', current_ratio: 'Current Ratio',
+      total_revenue: 'Revenue', total_debt: 'Total Debt',
+      total_cash: 'Total Cash', free_cashflow: 'Free Cash Flow', ebitda: 'EBITDA',
+      // Analyst (daily)
+      target_mean_price: 'Analyst Target (Mean)',
+      target_high_price: 'Analyst Target (High)', target_low_price: 'Analyst Target (Low)',
+      recommendation_mean: 'Analyst Rating', analyst_count: 'Analyst Count',
+      // Ownership (daily)
+      held_pct_institutions: 'Institutional %', held_pct_insiders: 'Insider %',
+      short_ratio: 'Short Ratio', short_pct_float: 'Short % of Float',
+      // MF/ETF
       expense_ratio: 'Expense Ratio', aum: 'AUM',
       return_1y: '1Y Return', return_3y: '3Y Return', return_5y: '5Y Return',
+      // Crypto
       volume_24h: 'Volume 24h', circulating_supply: 'Circulating Supply',
+      // Bond
       bond_yield: 'Bond Yield', holdings_count: 'Holdings',
-      beta: 'Beta', debtToEquity: 'Debt/Equity', currentRatio: 'Current Ratio',
-      revenueGrowth: 'Revenue Growth', earningsGrowth: 'Earnings Growth',
-      profitMargins: 'Profit Margins', operatingMargins: 'Operating Margins',
-      grossMargins: 'Gross Margins', totalRevenue: 'Total Revenue',
-      totalDebt: 'Total Debt', totalCash: 'Total Cash',
-      freeCashflow: 'Free Cash Flow', targetMeanPrice: 'Analyst Target (Mean)',
-      recommendationMean: 'Analyst Rating', shortRatio: 'Short Ratio',
-      enterpriseValue: 'Enterprise Value', forwardPE: 'Forward PE',
-      forwardEps: 'Forward EPS', ytdReturn: 'YTD Return',
-      threeYearAverageReturn: '3Y Avg Return', fiveYearAverageReturn: '5Y Avg Return',
-      maxSupply: 'Max Supply', fullyDilutedValue: 'Fully Diluted Value',
+      // Financial statement-derived (annual, multi-year)
+      net_income: 'Net Income (Annual)', ebitda_fin: 'EBITDA (Annual)',
+      operating_income: 'Operating Income (Annual)', gross_profit: 'Gross Profit (Annual)',
+      total_assets: 'Total Assets (Annual)', total_debt_fin: 'Total Debt (Annual)',
+      total_equity: 'Total Equity (Annual)',
+      operating_cashflow: 'Operating Cash Flow (Annual)',
+      free_cashflow_fin: 'Free Cash Flow (Annual)', capex: 'CapEx (Annual)',
     };
     return labels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
@@ -293,6 +358,7 @@ class PosWatchlistDetail extends HTMLElement {
         .action-btn:hover { border-color: var(--pos-color-action-primary); color: var(--pos-color-action-primary); }
         .action-btn svg { pointer-events: none; }
         .fav-btn.active { color: #f59e0b; border-color: #f59e0b; }
+        .delete-btn:hover { border-color: var(--pos-color-priority-urgent); color: var(--pos-color-priority-urgent); }
 
         /* Header */
         .header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -402,10 +468,63 @@ class PosWatchlistDetail extends HTMLElement {
         }
 
         /* Financials */
-        .fin-table { width: 100%; border-collapse: collapse; font-size: var(--pos-font-size-xs); margin-top: 8px; }
-        .fin-table th, .fin-table td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--pos-color-border-subtle); }
-        .fin-table th:first-child, .fin-table td:first-child { text-align: left; }
-        .fin-table th { background: var(--pos-color-background-secondary); font-weight: var(--pos-font-weight-semibold); color: var(--pos-color-text-secondary); }
+        .fin-stmt-label {
+          font-size: var(--pos-font-size-xs);
+          font-weight: var(--pos-font-weight-semibold);
+          color: var(--pos-color-text-secondary);
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin: 16px 0 4px;
+        }
+        .fin-table { width: 100%; border-collapse: collapse; font-size: var(--pos-font-size-xs); margin-bottom: 8px; }
+        .fin-table th, .fin-table td { padding: 5px 8px; text-align: right; border-bottom: 1px solid var(--pos-color-border-subtle); white-space: nowrap; }
+        .fin-table th:first-child, .fin-table td:first-child { text-align: left; white-space: normal; }
+        .fin-table th { background: var(--pos-color-background-secondary); font-weight: var(--pos-font-weight-semibold); color: var(--pos-color-text-secondary); position: sticky; top: 0; }
+        .fin-section-row td {
+          font-weight: var(--pos-font-weight-semibold);
+          color: var(--pos-color-text-primary);
+          background: var(--pos-color-background-secondary);
+          padding-top: 8px;
+          font-size: 11px;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+        .company-profile {
+          padding: 12px 0;
+          font-size: var(--pos-font-size-xs);
+          color: var(--pos-color-text-secondary);
+          line-height: 1.6;
+          border-bottom: 1px solid var(--pos-color-border-subtle);
+          margin-bottom: 12px;
+        }
+        .company-profile p { margin: 0 0 8px; }
+        .company-profile a { color: var(--pos-color-action-primary); text-decoration: none; }
+        .company-profile a:hover { text-decoration: underline; }
+        .company-meta { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
+        .company-meta-item { display: flex; align-items: center; gap: 4px; }
+        .company-meta-label { color: var(--pos-color-text-tertiary); }
+        .analyst-bar {
+          display: flex; align-items: center; gap: 8px;
+          padding: 8px 0;
+          font-size: var(--pos-font-size-xs);
+        }
+        .analyst-badge {
+          display: inline-block; padding: 2px 8px;
+          border-radius: 10px; font-weight: var(--pos-font-weight-semibold);
+          font-size: 10px; text-transform: uppercase;
+        }
+        .analyst-badge.strong_buy, .analyst-badge.buy { background: #dcfce7; color: #16a34a; }
+        .analyst-badge.hold { background: #fef9c3; color: #ca8a04; }
+        .analyst-badge.sell, .analyst-badge.strong_sell { background: #fee2e2; color: #dc2626; }
+        .fin-trend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        .fin-trend-card { background: var(--pos-color-background-secondary); border-radius: var(--pos-radius-sm); padding: 12px; }
+        .fin-trend-label { font-size: var(--pos-font-size-xs); font-weight: var(--pos-font-weight-semibold); color: var(--pos-color-text-secondary); margin-bottom: 8px; }
+        .fin-trend-bars { display: flex; gap: 4px; align-items: flex-end; height: 100px; }
+        .fin-bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .fin-bar-val { font-size: 9px; color: var(--pos-color-text-secondary); white-space: nowrap; }
+        .fin-bar-track { width: 100%; height: 60px; display: flex; align-items: flex-end; }
+        .fin-bar-fill { width: 100%; border-radius: 2px 2px 0 0; min-height: 2px; transition: height 0.3s; }
+        .fin-bar-year { font-size: 9px; color: var(--pos-color-text-tertiary); }
       </style>
 
       <div class="detail">
@@ -414,6 +533,7 @@ class PosWatchlistDetail extends HTMLElement {
           <div class="action-btns">
             <button class="action-btn fav-btn ${item.is_favourite ? 'active' : ''}" id="fav-btn">${icon('star', 14)}</button>
             <button class="action-btn" id="refresh-btn">${icon('refresh-cw', 14)} Refresh</button>
+            <button class="action-btn delete-btn" id="delete-btn">${icon('trash', 14)} Delete</button>
           </div>
         </div>
 
@@ -453,6 +573,7 @@ class PosWatchlistDetail extends HTMLElement {
             </div>
 
             ${item.asset_type === 'stock' ? `
+              <div class="section" id="fin-trends-section"></div>
               <div class="section" id="financials-section">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                   <div class="section-title" style="margin-bottom:0;border-bottom:none;padding-bottom:0;">Financials</div>
@@ -480,6 +601,26 @@ class PosWatchlistDetail extends HTMLElement {
 
           <!-- RIGHT: Editable fields -->
           <div class="right-col">
+
+            ${cache.company_description ? `
+              <div class="company-profile">
+                <p>${this._esc(cache.company_description).substring(0, 400)}${(cache.company_description || '').length > 400 ? '...' : ''}</p>
+                <div class="company-meta">
+                  ${cache.website ? `<div class="company-meta-item"><a href="${this._esc(cache.website)}" target="_blank" rel="noopener">${icon('external-link', 11)} Website</a></div>` : ''}
+                  ${cache.full_time_employees ? `<div class="company-meta-item"><span class="company-meta-label">Employees:</span> ${cache.full_time_employees.toLocaleString()}</div>` : ''}
+                  ${cache.country ? `<div class="company-meta-item"><span class="company-meta-label">${this._esc(cache.city ? cache.city + ', ' + cache.country : cache.country)}</span></div>` : ''}
+                </div>
+              </div>
+            ` : ''}
+
+            ${cache.recommendation_key ? `
+              <div class="analyst-bar">
+                <span class="analyst-badge ${cache.recommendation_key}">${cache.recommendation_key.replace(/_/g, ' ')}</span>
+                ${cache.analyst_count ? `<span>${cache.analyst_count} analysts</span>` : ''}
+                ${cache.target_mean_price ? `<span>Target: ${this._currencySymbol(cache.currency)}${cache.target_mean_price.toFixed(0)}</span>` : ''}
+                ${cache.target_low_price && cache.target_high_price ? `<span style="color:var(--pos-color-text-tertiary)">(${this._currencySymbol(cache.currency)}${cache.target_low_price.toFixed(0)} – ${this._currencySymbol(cache.currency)}${cache.target_high_price.toFixed(0)})</span>` : ''}
+              </div>
+            ` : ''}
 
             <div class="section">
               <div class="section-title">Details</div>
@@ -550,34 +691,50 @@ class PosWatchlistDetail extends HTMLElement {
     if (!this._financials) {
       return '<div style="padding:16px;text-align:center;color:var(--pos-color-text-tertiary);font-size:var(--pos-font-size-xs);">Loading financials...</div>';
     }
-    const { income_statement, balance_sheet, cashflow } = this._financials;
+    const { income, balance, cashflow, periods } = this._financials;
+    if (!periods?.length) {
+      return '<div style="padding:16px;text-align:center;color:var(--pos-color-text-tertiary);font-size:var(--pos-font-size-xs);">No financial data available</div>';
+    }
     const isQ = this._financialFreq === 'quarterly';
     const cache = this._item?.cache || {};
     const cur = this._currencySymbol(cache.financial_currency || cache.currency);
+
+    const STMT_LABELS = { income: 'Income Statement', balance: 'Balance Sheet', cashflow: 'Cash Flow' };
     let html = '';
 
-    const renderTable = (title, data) => {
-      if (!data?.length) return '';
-      const keys = Object.keys(data[0]).filter(k => k !== 'period' && k !== 'frequency').slice(0, 12);
-      let out = `<div style="font-size:var(--pos-font-size-xs);font-weight:var(--pos-font-weight-semibold);color:var(--pos-color-text-secondary);margin:12px 0 4px;">${title}</div>`;
-      out += '<table class="fin-table"><thead><tr><th>Item</th>';
-      out += data.map(y => `<th>${this._fmtPeriod(y.period, isQ)}</th>`).join('');
-      out += '</tr></thead><tbody>';
-      for (const key of keys) {
-        out += `<tr><td>${this._esc(key)}</td>`;
-        out += data.map(y => `<td>${y[key] != null ? cur + this._fmtFin(y[key]) : '--'}</td>`).join('');
-        out += '</tr>';
+    for (const stype of ['income', 'balance', 'cashflow']) {
+      const periodData = this._financials[stype] || [];
+      if (!periodData.length) continue;
+
+      const label = STMT_LABELS[stype];
+      html += `<div class="fin-stmt-label">${label}</div>`;
+      html += '<table class="fin-table"><thead><tr><th></th>';
+      html += periodData.map(p => `<th>${this._fmtPeriod(p.period, isQ)}</th>`).join('');
+      html += '</tr></thead><tbody>';
+
+      // Build a unified section list from the first period (all periods have same structure)
+      const sections = periodData[0]?.sections || [];
+      for (const section of sections) {
+        // Section header row
+        html += `<tr class="fin-section-row"><td colspan="${periodData.length + 1}">${this._esc(section.section)}</td></tr>`;
+        for (const item of section.items) {
+          if (item.value === null && periodData.every(p => {
+            const s = (p.sections || []).find(s2 => s2.section === section.section);
+            const it = s?.items.find(i => i.label === item.label);
+            return !it || it.value === null;
+          })) continue; // Skip if null across all periods
+
+          html += `<tr><td>${this._esc(item.label)}</td>`;
+          for (const p of periodData) {
+            const s = (p.sections || []).find(s2 => s2.section === section.section);
+            const it = s?.items.find(i => i.label === item.label);
+            const v = it?.value;
+            html += `<td>${v != null ? cur + this._fmtFin(v) : '--'}</td>`;
+          }
+          html += '</tr>';
+        }
       }
-      out += '</tbody></table>';
-      return out;
-    };
-
-    html += renderTable('Income Statement', income_statement);
-    html += renderTable('Balance Sheet', balance_sheet);
-    html += renderTable('Cash Flow', cashflow);
-
-    if (!html) {
-      html = '<div style="padding:16px;text-align:center;color:var(--pos-color-text-tertiary);font-size:var(--pos-font-size-xs);">No financial data available</div>';
+      html += '</tbody></table>';
     }
 
     return html;
@@ -593,13 +750,23 @@ class PosWatchlistDetail extends HTMLElement {
     switch (assetType) {
       case 'stock':
         return [
-          m('PE Ratio', fmt(cache.pe_ratio)), m('PB Ratio', fmt(cache.pb_ratio)),
+          m('PE Ratio', fmt(cache.pe_ratio)), m('Forward PE', fmt(cache.forward_pe)),
+          m('PB Ratio', fmt(cache.pb_ratio)), m('P/S Ratio', fmt(cache.price_to_sales)),
           m('EPS', fmt(cache.eps)), m('Book Value', fmt(cache.book_value)),
-          m('Market Cap', fmtCap(cache.market_cap)), m('ROE', fmtPctMult(cache.roe)),
+          m('Market Cap', fmtCap(cache.market_cap)), m('Enterprise Value', fmtCap(cache.enterprise_value)),
+          m('ROE', fmtPctMult(cache.roe)), m('ROA', fmtPctMult(cache.return_on_assets)),
+          m('Profit Margin', fmtPctMult(cache.profit_margins)), m('Operating Margin', fmtPctMult(cache.operating_margins)),
+          m('Gross Margin', fmtPctMult(cache.gross_margins)), m('EBITDA Margin', fmtPctMult(cache.ebitda_margins)),
+          m('Revenue', fmtCap(cache.total_revenue)), m('EBITDA', fmtCap(cache.ebitda)),
+          m('Revenue Growth', fmtPctMult(cache.revenue_growth)), m('Earnings Growth', fmtPctMult(cache.earnings_growth)),
+          m('Debt/Equity', fmt(cache.debt_to_equity)), m('Current Ratio', fmt(cache.current_ratio)),
+          m('Total Debt', fmtCap(cache.total_debt)), m('Total Cash', fmtCap(cache.total_cash)),
+          m('Free Cash Flow', fmtCap(cache.free_cashflow)), m('Beta', fmt(cache.beta)),
           m('Dividend Yield', fmtPctMult(cache.dividend_yield)),
           m('52W Low', fmt(cache.fifty_two_week_low)), m('52W High', fmt(cache.fifty_two_week_high)),
-          m('Industry', cache.industry || '--'), m('Sector', cache.sector || '--'),
-          m('Previous Close', fmt(cache.previous_close)),
+          m('Sector', cache.sector || '--'), m('Industry', cache.industry || '--'),
+          m('Institutional Holding', fmtPctMult(cache.held_pct_institutions)),
+          m('Insider Holding', fmtPctMult(cache.held_pct_insiders)),
         ];
       case 'mutual_fund':
         return [
@@ -656,6 +823,13 @@ class PosWatchlistDetail extends HTMLElement {
       }
       if (e.target.closest('#refresh-btn')) {
         this._refresh();
+        return;
+      }
+      if (e.target.closest('#delete-btn')) {
+        this.dispatchEvent(new CustomEvent('item-delete', {
+          bubbles: true, composed: true,
+          detail: { itemId: this._item?.id },
+        }));
         return;
       }
       const freqBtn = e.target.closest('.freq-btn');
@@ -756,9 +930,24 @@ class PosWatchlistDetail extends HTMLElement {
 
   async _refresh() {
     if (!this._item) return;
+    // Preserve selected metric before re-render
+    const prevMetric = this.shadow.getElementById('trend-metric-select')?.value;
+
     await refreshItem(this._item.id);
     this._item = await getItem(this._item.id);
     this._render();
+
+    // Reload dependent sections that _render() empties
+    if (this._item.asset_type === 'stock') this._loadFinancials(this._item.id);
+    this._loadAvailableMetrics(this._item.id);
+
+    // Restore metric selection after dropdown is repopulated
+    if (prevMetric) {
+      setTimeout(() => {
+        const sel = this.shadow.getElementById('trend-metric-select');
+        if (sel) { sel.value = prevMetric; this._loadTrendData(prevMetric); }
+      }, 500);
+    }
   }
 
   async _updateItem(data) {
@@ -834,16 +1023,36 @@ class PosWatchlistDetail extends HTMLElement {
     return `FY ${parts[0]}`;
   }
 
+  _isINR() {
+    const c = this._item?.cache;
+    return (c?.financial_currency || c?.currency) === 'INR';
+  }
+
+  _fmtIndian(n) {
+    // Indian notation: 1,00,00,000 = 1 Cr, 1,00,000 = 1 L
+    if (n == null) return '--';
+    const abs = Math.abs(n);
+    const sign = n < 0 ? '-' : '';
+    if (abs >= 1e7) {
+      const cr = abs / 1e7;
+      return sign + cr.toLocaleString('en-IN', { maximumFractionDigits: cr >= 100 ? 0 : 2 }) + ' Cr';
+    }
+    if (abs >= 1e5) return sign + (abs / 1e5).toFixed(2) + ' L';
+    return sign + abs.toLocaleString('en-IN');
+  }
+
   _fmtCap(n) {
-    if (n >= 1e12) return (n / 1e12).toFixed(1) + 'T';
-    if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
-    if (n >= 1e7) return (n / 1e7).toFixed(1) + 'Cr';
-    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n == null) return '--';
+    if (this._isINR()) return this._fmtIndian(n);
+    if (Math.abs(n) >= 1e12) return (n / 1e12).toFixed(1) + 'T';
+    if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+    if (Math.abs(n) >= 1e6) return (n / 1e6).toFixed(1) + 'M';
     return n.toLocaleString();
   }
 
   _fmtFin(n) {
     if (n == null) return '--';
+    if (this._isINR()) return this._fmtIndian(n);
     const abs = Math.abs(n);
     const sign = n < 0 ? '-' : '';
     if (abs >= 1e9) return sign + (abs / 1e9).toFixed(1) + 'B';

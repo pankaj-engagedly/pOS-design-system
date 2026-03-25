@@ -55,8 +55,8 @@ export function getHistory(id, period = '1y') {
   return apiFetch(`/api/watchlist/items/${id}/history?period=${period}`);
 }
 
-export function getFinancials(id) {
-  return apiFetch(`/api/watchlist/items/${id}/financials`);
+export function getFinancials(id, frequency = 'annual') {
+  return apiFetch(`/api/watchlist/items/${id}/financials?frequency=${frequency}`);
 }
 
 // ── Search ─────────────────────────────────────────────
@@ -82,6 +82,13 @@ export function updateStage(id, data) {
   return apiFetch(`/api/watchlist/stages/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
+  });
+}
+
+export function reorderStages(stageIds) {
+  return apiFetch('/api/watchlist/stages/reorder', {
+    method: 'PATCH',
+    body: JSON.stringify({ stage_ids: stageIds }),
   });
 }
 
