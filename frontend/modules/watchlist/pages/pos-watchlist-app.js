@@ -13,8 +13,8 @@ import '../components/pos-watchlist-search-dialog.js';
 import { icon } from '../../../shared/utils/icons.js';
 import store from '../store.js';
 import {
-  getItems, getAssetClasses, updateItem, refreshAll, getStats,
-  createItem, createTheme, getStages, getThemes,
+  getItems, getAssetClasses, updateItem, deleteItem, refreshAll, getStats,
+  createItem, createTheme, getStages, createStage, reorderStages, getThemes,
   getColumnPrefs, setColumnPrefs,
 } from '../services/watchlist-api.js';
 
@@ -481,23 +481,12 @@ class PosWatchlistApp extends HTMLElement {
 
     // Table: open detail
     this.shadow.addEventListener('item-open', (e) => {
-      const state = store.getState();
-      if (state.viewMode === 'board') {
-        // Board click → open flyout
-        const flyout = this.shadow.querySelector('pos-watchlist-flyout');
-        if (flyout) {
-          flyout.assetClass = state.selectedAssetClass;
-          flyout.openForItem(e.detail.itemId);
-          store.setState({ flyoutItemId: e.detail.itemId });
-        }
-      } else {
-        // Table click → navigate to detail
-        store.setState({
-          selectedItemId: e.detail.itemId,
-          detailView: true,
-        });
-        this._saveViewState();
-      }
+      // Both table and board → navigate to detail page
+      store.setState({
+        selectedItemId: e.detail.itemId,
+        detailView: true,
+      });
+      this._saveViewState();
     });
 
     // Table: favourite toggle
@@ -506,6 +495,22 @@ class PosWatchlistApp extends HTMLElement {
       if (item) {
         await updateItem(item.id, { is_favourite: !item.is_favourite });
         this._loadItems();
+      }
+    });
+
+    // Delete item (from any view)
+    this.shadow.addEventListener('item-delete', async (e) => {
+      const { confirmDialog } = await import('../../../shared/components/pos-confirm-dialog.js');
+      if (!await confirmDialog('Remove this item from your watchlist?', { confirmLabel: 'Remove', danger: true })) return;
+      try {
+        await deleteItem(e.detail.itemId);
+        // If viewing the deleted item, go back to list
+        if (store.getState().selectedItemId === e.detail.itemId) {
+          store.setState({ selectedItemId: null, detailView: false });
+        }
+        this._loadItems();
+      } catch (err) {
+        console.error('Delete item failed', err);
       }
     });
 
@@ -531,6 +536,40 @@ class PosWatchlistApp extends HTMLElement {
         flyoutItemId: null,
       });
       this._saveViewState();
+    });
+
+    // Board: drag-and-drop stage change
+    this.shadow.addEventListener('item-stage-change', async (e) => {
+      const { itemId, stageId } = e.detail;
+      try {
+        await updateItem(itemId, { stage_id: stageId });
+        this._loadItems();
+      } catch (err) {
+        console.error('Stage change failed', err);
+      }
+    });
+
+    // Board: create new stage
+    this.shadow.addEventListener('stage-create', async (e) => {
+      try {
+        const stages = store.getState().stages;
+        const maxPos = stages.reduce((max, s) => Math.max(max, s.position || 0), 0);
+        await createStage({ name: e.detail.name, position: maxPos + 1 });
+        const updatedStages = await getStages();
+        store.setState({ stages: updatedStages });
+      } catch (err) {
+        console.error('Create stage failed', err);
+      }
+    });
+
+    // Board: reorder columns
+    this.shadow.addEventListener('stages-reorder', async (e) => {
+      try {
+        const updatedStages = await reorderStages(e.detail.stageIds);
+        store.setState({ stages: updatedStages });
+      } catch (err) {
+        console.error('Reorder stages failed', err);
+      }
     });
 
     // Flyout: item updated (stage/fav change)

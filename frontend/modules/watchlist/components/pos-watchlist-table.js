@@ -78,6 +78,15 @@ class PosWatchlistTable extends HTMLElement {
         }
         .fav-star.active { color: #f59e0b; }
         .fav-star:hover { color: #f59e0b; }
+        .row-delete {
+          visibility: hidden;
+          color: var(--pos-color-text-tertiary);
+          cursor: pointer;
+          padding: 2px;
+          border-radius: 3px;
+        }
+        tr:hover .row-delete { visibility: visible; }
+        .row-delete:hover { color: var(--pos-color-priority-urgent); background: rgba(239,68,68,0.08); }
         .positive { color: #10b981; }
         .negative { color: #ef4444; }
         .stage-badge {
@@ -126,7 +135,7 @@ class PosWatchlistTable extends HTMLElement {
   _renderRow(item, cols) {
     const cache = item.cache || {};
     const cells = cols.map(c => this._renderCell(item, cache, c));
-    return `<tr data-item-id="${item.id}">${cells.join('')}</tr>`;
+    return `<tr data-item-id="${item.id}">${cells.join('')}<td><span class="row-delete" data-delete="${item.id}" title="Remove">${icon('trash', 13)}</span></td></tr>`;
   }
 
   _renderCell(item, cache, col) {
@@ -181,7 +190,7 @@ class PosWatchlistTable extends HTMLElement {
       case 'decimal':
         return `<td class="${align}">${Number(val).toFixed(2)}</td>`;
       case 'compact':
-        return `<td class="${align}">${cur}${this._fmtCap(val)}</td>`;
+        return `<td class="${align}">${cur}${this._fmtCap(val, cache.currency)}</td>`;
       case 'pct_mult': {
         const pct = val * 100;
         return `<td class="${align}">${pct.toFixed(1)}%</td>`;
@@ -241,6 +250,17 @@ class PosWatchlistTable extends HTMLElement {
         return;
       }
 
+      // Delete button
+      const del = e.target.closest('.row-delete');
+      if (del) {
+        e.stopPropagation();
+        this.dispatchEvent(new CustomEvent('item-delete', {
+          bubbles: true, composed: true,
+          detail: { itemId: del.dataset.delete },
+        }));
+        return;
+      }
+
       // Favourite star
       const star = e.target.closest('.fav-star');
       if (star) {
@@ -268,13 +288,22 @@ class PosWatchlistTable extends HTMLElement {
     return map[code] || (code ? code + ' ' : '');
   }
 
-  _fmtCap(n) {
-    if (n >= 1e12) return (n / 1e12).toFixed(1) + 'T';
-    if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
-    if (n >= 1e7) return (n / 1e7).toFixed(1) + 'Cr';
-    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
-    if (n >= 1e5) return (n / 1e5).toFixed(1) + 'L';
-    return n.toLocaleString();
+  _fmtCap(n, currency) {
+    if (n == null) return '--';
+    const abs = Math.abs(n);
+    const sign = n < 0 ? '-' : '';
+    if (currency === 'INR') {
+      if (abs >= 1e7) {
+        const cr = abs / 1e7;
+        return sign + cr.toLocaleString('en-IN', { maximumFractionDigits: cr >= 100 ? 0 : 2 }) + ' Cr';
+      }
+      if (abs >= 1e5) return sign + (abs / 1e5).toFixed(2) + ' L';
+      return sign + abs.toLocaleString('en-IN');
+    }
+    if (abs >= 1e12) return sign + (abs / 1e12).toFixed(1) + 'T';
+    if (abs >= 1e9) return sign + (abs / 1e9).toFixed(1) + 'B';
+    if (abs >= 1e6) return sign + (abs / 1e6).toFixed(1) + 'M';
+    return sign + abs.toLocaleString();
   }
 
   _esc(str) {
