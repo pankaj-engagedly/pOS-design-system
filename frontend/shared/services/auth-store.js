@@ -137,7 +137,7 @@ export async function tryRestoreSession() {
     });
     if (res.ok) {
       user = await res.json();
-      _scheduleProactiveRefresh(120);
+      _scheduleProactiveRefresh(15);
       emit('auth:changed', { authenticated: true, user });
       return true;
     }
@@ -152,7 +152,7 @@ function _setTokens(newAccessToken, refreshToken, userData) {
   accessToken = newAccessToken;
   user = userData;
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-  _scheduleProactiveRefresh(120); // match server config
+  _scheduleProactiveRefresh(15); // match server config
   emit('auth:changed', { authenticated: true, user });
 }
 

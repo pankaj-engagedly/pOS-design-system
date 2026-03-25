@@ -32,10 +32,13 @@ export function getFeedSources() {
   return apiFetch('/api/feeds/sources');
 }
 
-export function subscribeFeed(url, folderId = null) {
+export function subscribeFeed(url, { folderId = null, iconUrl = null } = {}) {
+  const payload = { url };
+  if (folderId) payload.folder_id = folderId;
+  if (iconUrl) payload.icon_url = iconUrl;
   return apiFetch('/api/feeds/sources', {
     method: 'POST',
-    body: JSON.stringify({ url, folder_id: folderId }),
+    body: JSON.stringify(payload),
   });
 }
 

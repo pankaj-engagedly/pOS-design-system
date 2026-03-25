@@ -243,6 +243,7 @@ class FeedFolderResponse(BaseModel):
 class FeedSourceCreate(BaseModel):
     url: str = Field(..., min_length=1)
     folder_id: UUID | None = None
+    icon_url: str | None = None  # Override artwork (e.g. from iTunes search)
 
 
 class FeedSourceUpdate(BaseModel):

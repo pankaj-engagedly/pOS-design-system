@@ -122,6 +122,26 @@ sheet.replaceSync(`
   }
   .empty svg { opacity: 0.3; }
   .empty p { margin: 0; font-size: var(--pos-font-size-sm); }
+
+  .load-more {
+    display: flex;
+    justify-content: center;
+    padding: var(--pos-space-lg) 0;
+  }
+  .load-more-btn {
+    padding: var(--pos-space-sm) var(--pos-space-lg);
+    border: 1px solid var(--pos-color-border-default);
+    border-radius: var(--pos-radius-sm);
+    background: transparent;
+    color: var(--pos-color-text-secondary);
+    font-size: var(--pos-font-size-sm);
+    font-family: inherit;
+    cursor: pointer;
+  }
+  .load-more-btn:hover {
+    background: var(--pos-color-background-secondary);
+    color: var(--pos-color-text-primary);
+  }
 `);
 
 class PosKBFeedTimeline extends HTMLElement {
@@ -133,12 +153,14 @@ class PosKBFeedTimeline extends HTMLElement {
     this._sources = [];
     this._selectedSourceId = null;
     this._unreadOnly = false;
+    this._hasMore = false;
   }
 
   set items(val) { this._items = val || []; this._renderItems(); }
   set sources(val) { this._sources = val || []; this._render(); }
   set selectedSourceId(val) { this._selectedSourceId = val; this._render(); }
   set unreadOnly(val) { this._unreadOnly = val; this._render(); }
+  set hasMore(val) { this._hasMore = !!val; this._renderItems(); }
 
   connectedCallback() {
     this._render();
@@ -212,6 +234,14 @@ class PosKBFeedTimeline extends HTMLElement {
         container.appendChild(card);
       }
     }
+
+    // Load more button
+    if (this._hasMore) {
+      const loadMore = document.createElement('div');
+      loadMore.className = 'load-more';
+      loadMore.innerHTML = '<button class="load-more-btn" id="load-more-btn">Load older episodes</button>';
+      container.appendChild(loadMore);
+    }
   }
 
   _groupByDate(items) {
@@ -261,6 +291,12 @@ class PosKBFeedTimeline extends HTMLElement {
       // Unread toggle
       if (e.target.closest('#unread-toggle')) {
         this.dispatchEvent(new CustomEvent('toggle-unread-filter', { bubbles: true, composed: true }));
+        return;
+      }
+
+      // Load more
+      if (e.target.closest('#load-more-btn')) {
+        this.dispatchEvent(new CustomEvent('load-more-feeds', { bubbles: true, composed: true }));
         return;
       }
 

@@ -107,6 +107,9 @@ async def subscribe(
 ):
     try:
         parsed = await discover_feed(data.url)
+        # Client-provided icon (e.g. iTunes artwork) overrides parsed icon
+        if data.icon_url:
+            parsed.icon_url = data.icon_url
         source = await service.subscribe(session, user_id, parsed, data.folder_id)
         await publish_event("kb.feed.subscribed", source)
         return {**service._model_to_dict(source), "unread_count": len(parsed.items[:50])}

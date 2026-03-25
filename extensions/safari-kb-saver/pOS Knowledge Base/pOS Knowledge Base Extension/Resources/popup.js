@@ -200,28 +200,39 @@ async function apiFetch(path, options = {}) {
   return res;
 }
 
+// Mutex: prevent parallel refresh attempts (race causes token revocation)
+let _refreshPromise = null;
+
 async function tryRefreshToken() {
-  try {
-    const { pos_refresh_token: refreshToken } = await chrome.storage.local.get(['pos_refresh_token']);
-    if (!refreshToken) return null;
+  if (_refreshPromise) return _refreshPromise;
 
-    const res = await fetch(`${API_BASE}/api/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
+  _refreshPromise = (async () => {
+    try {
+      const { pos_refresh_token: refreshToken } = await chrome.storage.local.get(['pos_refresh_token']);
+      if (!refreshToken) return null;
 
-    if (!res.ok) return null;
+      const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
 
-    const data = await res.json();
-    await storeToken(data.access_token);
-    if (data.refresh_token) {
-      await new Promise(r => chrome.storage.local.set({ pos_refresh_token: data.refresh_token }, r));
+      if (!res.ok) return null;
+
+      const data = await res.json();
+      await storeToken(data.access_token);
+      if (data.refresh_token) {
+        await new Promise(r => chrome.storage.local.set({ pos_refresh_token: data.refresh_token }, r));
+      }
+      return data.access_token;
+    } catch {
+      return null;
+    } finally {
+      _refreshPromise = null;
     }
-    return data.access_token;
-  } catch {
-    return null;
-  }
+  })();
+
+  return _refreshPromise;
 }
 
 async function fetchTagsAndCollections() {
@@ -547,7 +558,11 @@ async function init() {
     return;
   }
 
-  state.token = token;
+  // Proactively refresh token — access tokens are short-lived (15 min)
+  const freshToken = await tryRefreshToken();
+  state.token = freshToken || token;
+  if (freshToken) await storeToken(freshToken);
+
   els.btnLogout.classList.remove('hidden');
   showView('save');
 

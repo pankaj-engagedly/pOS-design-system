@@ -67,12 +67,21 @@ async def parse_feed(url: str) -> ParsedFeed:
     if "youtube.com" in url:
         feed_type = "youtube"
 
+    # Extract icon/artwork — prefer itunes:image (high-res podcast art),
+    # fall back to standard RSS <image> element
+    icon_url = ""
+    itunes_img = d.feed.get("itunes_image")
+    if itunes_img:
+        icon_url = itunes_img.get("href", "") if isinstance(itunes_img, dict) else str(itunes_img)
+    if not icon_url and hasattr(d.feed, "image"):
+        icon_url = d.feed.get("image", {}).get("href", "")
+
     parsed = ParsedFeed(
         title=d.feed.get("title", ""),
         url=url,
         site_url=d.feed.get("link", ""),
         feed_type=feed_type,
-        icon_url=d.feed.get("image", {}).get("href", "") if hasattr(d.feed, "image") else "",
+        icon_url=icon_url,
     )
 
     for entry in d.entries:

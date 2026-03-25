@@ -93,19 +93,27 @@ class PosKnowledgeBaseApp extends HTMLElement {
     }
   }
 
-  async _loadFeedsPage() {
-    const { feedFilter, feedUnreadOnly } = store.getState();
+  async _loadFeedsPage(append = false) {
+    const { feedFilter, feedUnreadOnly, feedItems: existing } = store.getState();
+    const offset = append ? (existing || []).length : 0;
     store.setState({ loading: true });
     try {
-      const [feedItems, feedSources] = await Promise.all([
-        getFeedItems({
-          source_id: feedFilter,
-          is_read: feedUnreadOnly ? false : undefined,
-          limit: 100,
-        }),
-        getFeedSources(),
-      ]);
-      store.setState({ feedItems, feedSources, loading: false });
+      const params = {
+        source_id: feedFilter,
+        is_read: feedUnreadOnly ? false : undefined,
+        limit: 50,
+        offset,
+      };
+      const loaders = [getFeedItems(params)];
+      if (!append) loaders.push(getFeedSources());
+
+      const results = await Promise.all(loaders);
+      const newItems = results[0];
+      const feedSources = append ? store.getState().feedSources : results[1];
+      const feedItems = append ? [...(existing || []), ...newItems] : newItems;
+      const feedHasMore = newItems.length >= 50;
+
+      store.setState({ feedItems, feedSources, feedHasMore, loading: false });
     } catch (err) {
       store.setState({ loading: false, error: err.message });
     }
@@ -233,6 +241,7 @@ class PosKnowledgeBaseApp extends HTMLElement {
         feedTimeline.sources = state.feedSources;
         feedTimeline.selectedSourceId = state.feedFilter;
         feedTimeline.unreadOnly = state.feedUnreadOnly;
+        feedTimeline.hasMore = !!state.feedHasMore;
       }
     }
   }
@@ -316,13 +325,13 @@ class PosKnowledgeBaseApp extends HTMLElement {
         const item = this._findItem(itemId);
         if (item) {
           await updateItem(itemId, { is_favourite: !item.is_favourite });
-          this._loadItems();
+          this._refreshCurrentView();
         }
       } else if (action === 'delete') {
         if (!await confirmDialog('Delete this item?', { confirmLabel: 'Delete', danger: true })) return;
         await deleteItem(itemId);
         this._closeDetail();
-        this._loadItems();
+        this._refreshCurrentView();
       }
     });
 
@@ -336,20 +345,20 @@ class PosKnowledgeBaseApp extends HTMLElement {
         const updated = await updateItem(itemId, { rating: newRating });
         this.shadow.querySelector('pos-kb-item-detail')?.refreshItem(updated);
         this.shadow.querySelector('pos-kb-lightbox')?.refreshItem(updated);
-        this._loadItems();
+        this._refreshCurrentView();
       } else if (action === 'favourite') {
         const item = this._findItem(itemId);
         if (item) {
           const updated = await updateItem(itemId, { is_favourite: !item.is_favourite });
           this.shadow.querySelector('pos-kb-item-detail')?.refreshItem(updated);
           this.shadow.querySelector('pos-kb-lightbox')?.refreshItem(updated);
-          this._loadItems();
+          this._refreshCurrentView();
         }
       } else if (action === 'add-tag-submit') {
         const updated = await addTag(itemId, e.detail.tagName);
         this.shadow.querySelector('pos-kb-item-detail')?.refreshItem(updated);
         this.shadow.querySelector('pos-kb-lightbox')?.refreshItem(updated);
-        this._loadItems();
+        this._refreshCurrentView();
         getTags().then(tags => store.setState({ tags }));
       } else if (action === 'remove-tag') {
         const { removeTag: removeTagFn } = await import('../services/kb-api.js');
@@ -357,17 +366,17 @@ class PosKnowledgeBaseApp extends HTMLElement {
         const updated = await getItem(itemId);
         this.shadow.querySelector('pos-kb-item-detail')?.refreshItem(updated);
         this.shadow.querySelector('pos-kb-lightbox')?.refreshItem(updated);
-        this._loadItems();
+        this._refreshCurrentView();
         getTags().then(tags => store.setState({ tags }));
       } else if (action === 'collections-changed') {
-        this._loadItems();
+        this._refreshCurrentView();
         this.shadow.querySelector('pos-kb-sidebar')?.refreshData();
       } else if (action === 'delete') {
         if (!await confirmDialog('Delete this item?', { confirmLabel: 'Delete', danger: true })) return;
         await deleteItem(itemId);
         this._closeDetail();
         this.shadow.querySelector('pos-kb-lightbox')?.close();
-        this._loadItems();
+        this._refreshCurrentView();
       }
     });
 
@@ -404,10 +413,15 @@ class PosKnowledgeBaseApp extends HTMLElement {
       this._loadItems();
     });
 
-    // Add content dialog
+    // Add content dialog — pass view context so new items inherit attributes
     this.shadow.addEventListener('open-add-content', (e) => {
       const mode = e.detail?.mode || 'url';
-      this.shadow.querySelector('pos-kb-add-content-dialog')?.open(mode);
+      const { selectedView, selectedCollectionId, activeTag } = store.getState();
+      const context = {};
+      if (selectedView === 'favourites') context.isFavourite = true;
+      if (selectedCollectionId) context.collectionId = selectedCollectionId;
+      if (activeTag) context.tag = activeTag;
+      this.shadow.querySelector('pos-kb-add-content-dialog')?.open(mode, context);
     });
 
     this.shadow.addEventListener('item-saved', () => {
@@ -447,11 +461,46 @@ class PosKnowledgeBaseApp extends HTMLElement {
         await updateFeedItem(itemId, { is_starred: !item.is_starred });
         this._loadFeedsPage();
       } else if (action === 'save-to-kb') {
-        if (!item.kb_item_id) {
-          await saveFeedItemToKB(itemId);
+        if (item.kb_item_id) {
+          // Already saved — open in lightbox so user can tag/organize
+          try {
+            const kbItem = await getItem(item.kb_item_id);
+            this.shadow.querySelector('pos-kb-lightbox')?.open(kbItem, []);
+          } catch { /* non-critical */ }
+        } else {
+          const saved = await saveFeedItemToKB(itemId);
           this._loadFeedsPage();
+          // Open lightbox on the new KB item so user can tag/organize
+          if (saved?.id) {
+            try {
+              const kbItem = await getItem(saved.id);
+              this.shadow.querySelector('pos-kb-lightbox')?.open(kbItem, []);
+            } catch { /* non-critical */ }
+          }
         }
       }
+    });
+
+    // Load more feed items (infinite scroll)
+    this.shadow.addEventListener('load-more-feeds', () => {
+      this._loadFeedsPage(true);
+    });
+
+    // Feed item audio playback → open in lightbox
+    this.shadow.addEventListener('feed-item-play', (e) => {
+      const feedItem = e.detail.item;
+      // Map feed item to KB-item-like shape for the lightbox
+      const lbItem = {
+        id: feedItem.id,
+        title: feedItem.title,
+        url: feedItem.url,
+        author: feedItem.author || feedItem.source_title || '',
+        thumbnail_url: feedItem.thumbnail_url || feedItem.source_icon_url || null,
+        item_type: 'media',
+        preview_text: feedItem.summary || '',
+      };
+      const lightbox = this.shadow.querySelector('pos-kb-lightbox');
+      lightbox?.open(lbItem, []);
     });
 
     this.shadow.addEventListener('open-subscribe', () => {
@@ -472,7 +521,31 @@ class PosKnowledgeBaseApp extends HTMLElement {
   }
 
   _findItem(itemId) {
-    return store.getState().items.find(i => i.id === itemId);
+    // Check list-page items in store first
+    const storeItem = store.getState().items.find(i => i.id === itemId);
+    if (storeItem) return storeItem;
+    // Also check home-page items (not stored in store)
+    const homeEl = this.shadow.querySelector('pos-kb-home');
+    if (homeEl) {
+      const found = (homeEl._recentItems || []).find(i => i.id === itemId);
+      if (found) return found;
+      for (const col of (homeEl._pinnedCollections || [])) {
+        const colItem = (col.items || []).find(i => i.id === itemId);
+        if (colItem) return colItem;
+      }
+    }
+    return undefined;
+  }
+
+  _refreshCurrentView() {
+    const { selectedView, selectedCollectionId } = store.getState();
+    if (selectedView === 'home' && !selectedCollectionId) {
+      this._loadHomePage();
+    } else if (selectedView === 'feeds' && !selectedCollectionId) {
+      this._loadFeedsPage();
+    } else {
+      this._loadItems();
+    }
   }
 
   _restoreViewState() {

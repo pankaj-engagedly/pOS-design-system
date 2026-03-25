@@ -20,6 +20,7 @@ const kbStore = createStore({
   feedSources: [],
   feedFilter: null,
   feedUnreadOnly: false,
+  feedHasMore: false,
 
   // Filters
   activeTag: null,

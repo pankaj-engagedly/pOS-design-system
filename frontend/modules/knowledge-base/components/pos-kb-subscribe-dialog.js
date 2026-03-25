@@ -180,7 +180,19 @@ class PosKBSubscribeDialog extends HTMLElement {
           border: 1px solid var(--pos-color-border-default);
           border-radius: var(--pos-radius-sm);
           background: var(--pos-color-background-secondary);
+          display: flex;
+          gap: var(--pos-space-sm);
+          align-items: center;
         }
+        .preview-artwork {
+          width: 48px;
+          height: 48px;
+          border-radius: var(--pos-radius-sm);
+          object-fit: cover;
+          flex-shrink: 0;
+          background: var(--pos-color-border-default);
+        }
+        .preview-info { flex: 1; min-width: 0; }
         .preview-title {
           font-weight: var(--pos-font-weight-semibold);
           color: var(--pos-color-text-primary);
@@ -331,10 +343,13 @@ class PosKBSubscribeDialog extends HTMLElement {
               ${this._error ? `<div class="error">${this._esc(this._error)}</div>` : ''}
               ${this._preview ? `
                 <div class="preview">
-                  <div class="preview-title">${this._esc(this._preview.title)}</div>
-                  <div class="preview-meta">
-                    <span>${this._esc(this._preview.feed_type.toUpperCase())}</span>
-                    <span>${this._preview.item_count} items</span>
+                  ${this._preview.icon_url ? `<img class="preview-artwork" src="${this._escAttr(this._preview.icon_url)}" alt="" loading="lazy" />` : ''}
+                  <div class="preview-info">
+                    <div class="preview-title">${this._esc(this._preview.title)}</div>
+                    <div class="preview-meta">
+                      <span>${this._esc(this._preview.feed_type.toUpperCase())}</span>
+                      <span>${this._preview.item_count} items</span>
+                    </div>
                   </div>
                 </div>
               ` : ''}
@@ -437,7 +452,10 @@ class PosKBSubscribeDialog extends HTMLElement {
       this.shadow.addEventListener('click', (e) => {
         const btn = e.target.closest('.podcast-subscribe-btn');
         if (btn && btn.dataset.feedUrl && !btn.disabled) {
-          this._subscribePodcast(btn.dataset.feedUrl);
+          const idx = parseInt(btn.dataset.podcastIndex);
+          const podcast = this._podcastResults[idx];
+          const artworkUrl = podcast?.artworkUrl600 || podcast?.artworkUrl100 || null;
+          this._subscribePodcast(btn.dataset.feedUrl, artworkUrl);
         }
       }, { once: false });
     }
@@ -535,12 +553,12 @@ class PosKBSubscribeDialog extends HTMLElement {
     }
   }
 
-  async _subscribePodcast(feedUrl) {
+  async _subscribePodcast(feedUrl, artworkUrl = null) {
     this._subscribing = true;
     this._error = null;
     this._render();
     try {
-      await subscribeFeed(feedUrl);
+      await subscribeFeed(feedUrl, { iconUrl: artworkUrl });
       this.close();
       this.dispatchEvent(new CustomEvent('feed-subscribed', { bubbles: true, composed: true }));
     } catch (err) {

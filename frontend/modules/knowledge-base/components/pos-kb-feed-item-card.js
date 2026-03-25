@@ -20,13 +20,21 @@ class PosKBFeedItemCard extends HTMLElement {
       }));
     });
     this.shadow.addEventListener('card-click', () => {
-      if (this._item?.url) {
-        if (!this._item.is_read) {
-          this.dispatchEvent(new CustomEvent('feed-item-action', {
-            bubbles: true, composed: true,
-            detail: { action: 'toggle-read', itemId: this._item.id, item: this._item },
-          }));
-        }
+      if (!this._item?.url) return;
+      // Mark as read
+      if (!this._item.is_read) {
+        this.dispatchEvent(new CustomEvent('feed-item-action', {
+          bubbles: true, composed: true,
+          detail: { action: 'toggle-read', itemId: this._item.id, item: this._item },
+        }));
+      }
+      // Audio URLs → play in lightbox; everything else → open in browser
+      if (/\.(mp3|wav|ogg|aac|m4a|flac)(\?|\/|#|$)/i.test(this._item.url)) {
+        this.dispatchEvent(new CustomEvent('feed-item-play', {
+          bubbles: true, composed: true,
+          detail: { item: this._item },
+        }));
+      } else {
         window.open(this._item.url, '_blank', 'noopener');
       }
     });

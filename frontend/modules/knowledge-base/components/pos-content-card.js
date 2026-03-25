@@ -151,6 +151,7 @@ sheet.replaceSync(`
     position: absolute;
     top: 6px;
     right: 6px;
+    z-index: 2;
     align-items: center;
     gap: 2px;
     background: var(--pos-color-background-primary, #fff);
@@ -178,6 +179,10 @@ sheet.replaceSync(`
   }
   .card-actions button svg { pointer-events: none; }
   .card-actions .active { color: #f59e0b; }
+  .card-actions .starred { color: #f59e0b; }
+  .card-actions .starred svg { fill: currentColor; }
+  .card-actions .saved { color: var(--pos-color-action-primary); }
+  .card-actions .saved svg { fill: currentColor; }
   .card-actions .delete:hover { color: var(--pos-color-priority-urgent); }
 
   /* Always-visible inline action (e.g., open link) */

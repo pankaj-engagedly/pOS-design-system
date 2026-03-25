@@ -3,7 +3,7 @@
 
 import { icon } from '../../../shared/utils/icons.js';
 import { Editor, StarterKit, Link, Placeholder } from '../../notes/editor.bundle.js';
-import { saveURL, previewURL, createItem, addTag, addToCollection, getTags, getCollections } from '../services/kb-api.js';
+import { saveURL, previewURL, createItem, updateItem, addTag, addToCollection, getTags, getCollections } from '../services/kb-api.js';
 import { getAccessToken } from '../../../shared/services/auth-store.js';
 
 const sheet = new CSSStyleSheet();
@@ -354,17 +354,18 @@ class PosKBAddContentDialog extends HTMLElement {
     this._showSuggestions = false;
   }
 
-  open(mode = 'url') {
+  open(mode = 'url', context = {}) {
     this._open = true;
     this._mode = mode;
+    this._context = context; // { isFavourite, collectionId, tag }
     this._saving = false;
     this._error = null;
     this._urlPreview = null;
     this._loadingPreview = false;
     this._file = null;
-    this._tags = [];
+    this._tags = context.tag ? [context.tag] : [];
     this._tagQuery = '';
-    this._selectedCollectionIds = new Set();
+    this._selectedCollectionIds = context.collectionId ? new Set([context.collectionId]) : new Set();
     this._showSuggestions = false;
     this._editor?.destroy();
     this._editor = null;
@@ -953,6 +954,10 @@ class PosKBAddContentDialog extends HTMLElement {
   }
 
   async _applyTagsAndCollections(itemId) {
+    // Auto-favourite if added from favourites view
+    if (this._context?.isFavourite) {
+      try { await updateItem(itemId, { is_favourite: true }); } catch (e) { console.warn('Favourite failed:', e); }
+    }
     for (const tagName of this._tags) {
       try { await addTag(itemId, tagName); } catch (e) { console.warn('Tag failed:', tagName, e); }
     }
