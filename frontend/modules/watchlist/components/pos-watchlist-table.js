@@ -32,8 +32,13 @@ sheet.replaceSync(`
   }
   .fav-star.active { color: #f59e0b; }
   .fav-star:hover { color: #f59e0b; }
+  tr { position: relative; }
   .row-delete {
     visibility: hidden;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
     color: var(--pos-color-text-tertiary);
     cursor: pointer;
     padding: 2px;
@@ -122,7 +127,7 @@ class PosWatchlistTable extends HTMLElement {
   _renderRow(item, cols) {
     const cache = item.cache || {};
     const cells = cols.map(c => this._renderCell(item, cache, c));
-    return `<tr data-item-id="${item.id}">${cells.join('')}<td><span class="row-delete" data-delete="${item.id}" title="Remove">${icon('trash', 13)}</span></td></tr>`;
+    return `<tr data-item-id="${item.id}">${cells.join('')}<span class="row-delete" data-delete="${item.id}" title="Remove">${icon('trash', 13)}</span></tr>`;
   }
 
   _renderCell(item, cache, col) {
