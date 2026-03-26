@@ -2,13 +2,68 @@
 
 import './pos-watchlist-sparkline.js';
 import { icon } from '../../../shared/utils/icons.js';
+import { TABLE_STYLES } from '../../../../design-system/src/components/ui-table.js';
 
 const TAG = 'pos-watchlist-table';
+
+const sheet = new CSSStyleSheet();
+sheet.replaceSync(`
+  :host { display: block; overflow: auto; height: 100%; }
+  thead { position: sticky; top: 0; z-index: 1; }
+  /* Compact override */
+  .pos-table { font-size: var(--pos-font-size-xs); }
+  .pos-table td { padding: 8px 10px; }
+  .pos-table th {
+    padding: 8px 10px;
+    background: var(--pos-color-background-secondary);
+    cursor: pointer;
+  }
+  .pos-table th:hover { color: var(--pos-color-text-primary); }
+  .pos-table th.right, .pos-table td.right { text-align: right; }
+  tr { cursor: pointer; transition: background 0.1s; }
+  .name-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .fav-star {
+    color: var(--pos-color-text-tertiary);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .fav-star.active { color: #f59e0b; }
+  .fav-star:hover { color: #f59e0b; }
+  .row-delete {
+    visibility: hidden;
+    color: var(--pos-color-text-tertiary);
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 3px;
+  }
+  tr:hover .row-delete { visibility: visible; }
+  .row-delete:hover { color: var(--pos-color-priority-urgent); background: rgba(239,68,68,0.08); }
+  .stage-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: var(--pos-font-weight-semibold);
+    color: white;
+  }
+  .sort-arrow { font-size: 10px; margin-left: 2px; }
+  .empty {
+    text-align: center;
+    padding: 48px 16px;
+    color: var(--pos-color-text-tertiary);
+    font-size: var(--pos-font-size-sm);
+  }
+`);
 
 class PosWatchlistTable extends HTMLElement {
   constructor() {
     super();
     this.shadow = this.attachShadow({ mode: 'open' });
+    this.shadow.adoptedStyleSheets = [TABLE_STYLES, sheet];
     this._items = [];
     this._columns = [];           // full column defs from asset class
     this._visibleColumnKeys = []; // keys to show
@@ -38,76 +93,9 @@ class PosWatchlistTable extends HTMLElement {
     const items = this._getSortedItems(cols);
 
     this.shadow.innerHTML = `
-      <style>
-        :host { display: block; overflow: auto; height: 100%; }
-        table { width: 100%; border-collapse: collapse; font-size: var(--pos-font-size-xs); }
-        thead { position: sticky; top: 0; z-index: 1; }
-        th {
-          padding: 8px 10px;
-          text-align: left;
-          font-weight: var(--pos-font-weight-semibold);
-          color: var(--pos-color-text-secondary);
-          background: var(--pos-color-background-secondary);
-          border-bottom: 1px solid var(--pos-color-border-default);
-          cursor: pointer;
-          user-select: none;
-          white-space: nowrap;
-        }
-        th:hover { color: var(--pos-color-text-primary); }
-        th.right, td.right { text-align: right; }
-        td {
-          padding: 8px 10px;
-          color: var(--pos-color-text-primary);
-          border-bottom: 1px solid var(--pos-color-border-subtle);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 200px;
-        }
-        tr { cursor: pointer; transition: background 0.1s; }
-        tr:hover { background: var(--pos-color-background-secondary); }
-        .name-cell {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .fav-star {
-          color: var(--pos-color-text-tertiary);
-          cursor: pointer;
-          flex-shrink: 0;
-        }
-        .fav-star.active { color: #f59e0b; }
-        .fav-star:hover { color: #f59e0b; }
-        .row-delete {
-          visibility: hidden;
-          color: var(--pos-color-text-tertiary);
-          cursor: pointer;
-          padding: 2px;
-          border-radius: 3px;
-        }
-        tr:hover .row-delete { visibility: visible; }
-        .row-delete:hover { color: var(--pos-color-priority-urgent); background: rgba(239,68,68,0.08); }
-        .positive { color: #10b981; }
-        .negative { color: #ef4444; }
-        .stage-badge {
-          display: inline-block;
-          padding: 2px 8px;
-          border-radius: 10px;
-          font-size: 10px;
-          font-weight: var(--pos-font-weight-semibold);
-          color: white;
-        }
-        .sort-arrow { font-size: 10px; margin-left: 2px; }
-        .empty {
-          text-align: center;
-          padding: 48px 16px;
-          color: var(--pos-color-text-tertiary);
-          font-size: var(--pos-font-size-sm);
-        }
-      </style>
       ${items.length === 0
         ? '<div class="empty">No items in this view. Click "Add" to search and add.</div>'
-        : `<table>
+        : `<table class="pos-table">
           <thead><tr>
             ${cols.map(c => `
               <th class="${c.align === 'right' ? 'right' : ''}" data-sort="${c.key}" style="width:${c.width}">
