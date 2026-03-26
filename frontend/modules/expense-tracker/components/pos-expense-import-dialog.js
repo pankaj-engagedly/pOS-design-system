@@ -74,6 +74,32 @@ class PosExpenseImportDialog extends HTMLElement {
   _render() {
     const accounts = store.getState().accounts || [];
 
+    // After successful import — show results only, no form
+    if (this._result) {
+      const r = this._result;
+      this.shadow.innerHTML = `
+        <div class="backdrop"></div>
+        <div class="dialog">
+          <button class="close-btn" data-action="close">&times;</button>
+          <h3>Import Complete</h3>
+          <div class="result">
+            <div class="result-line"><span>Total parsed</span><span class="result-value">${r.total_parsed}</span></div>
+            <div class="result-line"><span>New transactions</span><span class="result-value">${r.new_transactions}</span></div>
+            <div class="result-line"><span>Duplicates skipped</span><span class="result-value">${r.duplicates_skipped}</span></div>
+            <div class="result-line"><span>Auto-categorized</span><span class="result-value">${r.auto_categorized}</span></div>
+            <div class="result-line"><span>Uncategorized</span><span class="result-value">${r.uncategorized}</span></div>
+            <div class="result-line"><span>Transfers detected</span><span class="result-value">${r.transfers_detected}</span></div>
+          </div>
+          <div class="actions">
+            <button type="button" data-action="another" class="primary">Import Another</button>
+            <button type="button" data-action="close">Done</button>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // Upload form
     this.shadow.innerHTML = `
       <div class="backdrop"></div>
       <div class="dialog">
@@ -94,6 +120,7 @@ class PosExpenseImportDialog extends HTMLElement {
             <label>Statement File (CSV, XLS, XLSX)</label>
             <input type="file" name="file" accept=".csv,.xls,.xlsx" required>
           </div>
+          ${this._error ? `<div class="error">${this._error}</div>` : ''}
           <div class="actions">
             <button type="button" data-action="close">Cancel</button>
             <button type="submit" class="primary" ${this._importing ? 'disabled' : ''}>
@@ -101,22 +128,6 @@ class PosExpenseImportDialog extends HTMLElement {
             </button>
           </div>
         </form>
-        ${this._error ? `<div class="error">${this._error}</div>` : ''}
-        ${this._result ? this._renderResult() : ''}
-      </div>
-    `;
-  }
-
-  _renderResult() {
-    const r = this._result;
-    return `
-      <div class="result">
-        <div class="result-line"><span>Total parsed</span><span class="result-value">${r.total_parsed}</span></div>
-        <div class="result-line"><span>New transactions</span><span class="result-value">${r.new_transactions}</span></div>
-        <div class="result-line"><span>Duplicates skipped</span><span class="result-value">${r.duplicates_skipped}</span></div>
-        <div class="result-line"><span>Auto-categorized</span><span class="result-value">${r.auto_categorized}</span></div>
-        <div class="result-line"><span>Uncategorized</span><span class="result-value">${r.uncategorized}</span></div>
-        <div class="result-line"><span>Transfers detected</span><span class="result-value">${r.transfers_detected}</span></div>
       </div>
     `;
   }
@@ -124,6 +135,13 @@ class PosExpenseImportDialog extends HTMLElement {
   _bindEvents() {
     this.shadow.addEventListener('click', (e) => {
       if (e.target.closest('[data-action="close"]')) this.close();
+      if (e.target.closest('[data-action="another"]')) {
+        // Emit import-complete for the current import, then reset form
+        this.dispatchEvent(new CustomEvent('import-complete', { bubbles: true, composed: true }));
+        this._result = null;
+        this._error = null;
+        this._render();
+      }
     });
 
     this.shadow.addEventListener('keydown', (e) => {
@@ -137,18 +155,26 @@ class PosExpenseImportDialog extends HTMLElement {
       const file = form.file.files[0];
       if (!file || !accountId) return;
 
-      this._importing = true;
-      this._error = null;
-      this._render();
+      // Disable button without re-rendering (preserves file input)
+      const btn = this.shadow.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.textContent = 'Importing...'; }
 
       try {
         this._result = await importStatement(accountId, file);
-        this._importing = false;
-        this._render();
+        this._error = null;
+        this._render(); // Now switches to results view
       } catch (err) {
-        this._importing = false;
         this._error = err.message;
-        this._render();
+        if (btn) { btn.disabled = false; btn.textContent = 'Import'; }
+        // Show error without destroying file input
+        const existing = this.shadow.querySelector('.error');
+        if (existing) { existing.textContent = err.message; }
+        else {
+          const errDiv = document.createElement('div');
+          errDiv.className = 'error';
+          errDiv.textContent = err.message;
+          form.querySelector('.actions')?.before(errDiv);
+        }
       }
     });
   }
