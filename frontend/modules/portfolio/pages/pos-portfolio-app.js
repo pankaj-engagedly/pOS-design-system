@@ -49,6 +49,22 @@ class PosPortfolioApp extends HTMLElement {
         getPlans(),
       ]);
       store.setState({ portfolios, plans, loading: false });
+
+      // Restore last view from localStorage
+      const savedView = localStorage.getItem('pos-portfolio-view');
+      const savedPortfolioId = localStorage.getItem('pos-portfolio-id');
+      if (savedView) {
+        store.setState({
+          selectedView: savedView,
+          selectedPortfolioId: savedPortfolioId || null,
+          contentView: 'holdings',
+        });
+        if (savedView === 'portfolio' && savedPortfolioId) {
+          this._loadHoldings(savedPortfolioId);
+        } else if (savedView === 'family') {
+          this._loadFamily();
+        }
+      }
     } catch (err) {
       store.setState({ loading: false, error: err.message });
     }
@@ -343,6 +359,11 @@ class PosPortfolioApp extends HTMLElement {
         holdings: null,
         transactions: [],
       });
+
+      // Persist view state
+      localStorage.setItem('pos-portfolio-view', view);
+      if (portfolioId) localStorage.setItem('pos-portfolio-id', portfolioId);
+      else localStorage.removeItem('pos-portfolio-id');
 
       if (portfolioId) {
         this._loadHoldings(portfolioId);

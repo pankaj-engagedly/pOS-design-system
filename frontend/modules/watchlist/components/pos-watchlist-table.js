@@ -97,7 +97,7 @@ class PosWatchlistTable extends HTMLElement {
         : `<table class="pos-table">
           <thead><tr>
             ${cols.map(c => `
-              <th class="${c.align === 'right' ? 'right' : ''}" data-sort="${c.key}" style="width:${c.width}">
+              <th class="${c.align === 'right' ? 'right' : ''}" data-sort="${c.key}" style="${c.key === 'name' ? '' : `width:${c.width}`}">
                 ${c.label}
                 ${this._sortKey === c.key ? `<span class="sort-arrow">${this._sortDir === 'asc' ? '\u25B2' : '\u25BC'}</span>` : ''}
               </th>
