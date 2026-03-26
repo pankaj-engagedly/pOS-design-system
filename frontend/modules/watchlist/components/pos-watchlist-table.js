@@ -8,7 +8,7 @@ const TAG = 'pos-watchlist-table';
 
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
-  :host { display: block; overflow: auto; height: 100%; }
+  :host { display: block; overflow: auto; height: 100%; padding: 0 var(--pos-space-lg) var(--pos-space-lg); }
   thead { position: sticky; top: 0; z-index: 1; }
   /* Compact override */
   .pos-table { font-size: var(--pos-font-size-xs); width: 100%; table-layout: auto; }
