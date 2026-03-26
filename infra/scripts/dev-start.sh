@@ -166,9 +166,10 @@ KB_LOG="${kb:-INFO}"
 PHOTOS_LOG="${photos:-INFO}"
 WATCHLIST_LOG="${watchlist:-INFO}"
 PORTFOLIO_LOG="${portfolio:-INFO}"
+EXPENSE_TRACKER_LOG="${expense_tracker:-INFO}"
 GATEWAY_LOG="${gateway:-INFO}"
 
-info "Starting services (auth=${AUTH_LOG} todos=${TODOS_LOG} notes=${NOTES_LOG} documents=${DOCUMENTS_LOG} vault=${VAULT_LOG} kb=${KB_LOG} photos=${PHOTOS_LOG} watchlist=${WATCHLIST_LOG} portfolio=${PORTFOLIO_LOG} gateway=${GATEWAY_LOG})..."
+info "Starting services (auth=${AUTH_LOG} todos=${TODOS_LOG} notes=${NOTES_LOG} documents=${DOCUMENTS_LOG} vault=${VAULT_LOG} kb=${KB_LOG} photos=${PHOTOS_LOG} watchlist=${WATCHLIST_LOG} portfolio=${PORTFOLIO_LOG} expense_tracker=${EXPENSE_TRACKER_LOG} gateway=${GATEWAY_LOG})..."
 
 cd "$ROOT_DIR/backend/services/auth"
 LOG_LEVEL="$AUTH_LOG" "$VENV/uvicorn" app.main:app --reload --port 8001 > "$LOG_DIR/auth.log" 2>&1 &
@@ -200,6 +201,9 @@ LOG_LEVEL="$WATCHLIST_LOG" "$VENV/uvicorn" app.main:app --reload --port 8009 > "
 cd "$ROOT_DIR/backend/services/portfolio"
 LOG_LEVEL="$PORTFOLIO_LOG" "$VENV/uvicorn" app.main:app --reload --port 8010 > "$LOG_DIR/portfolio.log" 2>&1 &
 
+cd "$ROOT_DIR/backend/services/expense_tracker"
+LOG_LEVEL="$EXPENSE_TRACKER_LOG" "$VENV/uvicorn" app.main:app --reload --port 8011 > "$LOG_DIR/expense_tracker.log" 2>&1 &
+
 cd "$ROOT_DIR/backend/gateway"
 LOG_LEVEL="$GATEWAY_LOG" "$VENV/uvicorn" app.main:app --reload --port 8000 > "$LOG_DIR/gateway.log" 2>&1 &
 
@@ -223,8 +227,9 @@ wait_for_port 8006 "vault"       || all_ok=false
 wait_for_port 8007 "kb"          || all_ok=false
 wait_for_port 8008 "photos"      || all_ok=false
 wait_for_port 8009 "watchlist"   || all_ok=false
-wait_for_port 8010 "portfolio"   || all_ok=false
-wait_for_port 8000 "gateway"     || all_ok=false
+wait_for_port 8010 "portfolio"      || all_ok=false
+wait_for_port 8011 "expense_tracker" || all_ok=false
+wait_for_port 8000 "gateway"        || all_ok=false
 
 # Frontend and design system don't have /health, just check the port
 sleep 1
@@ -262,6 +267,7 @@ echo -e "  ${DIM}KB API         http://localhost:8007${NC}"
 echo -e "  ${DIM}Photos API     http://localhost:8008${NC}"
 echo -e "  ${DIM}Watchlist API  http://localhost:8009${NC}"
 echo -e "  ${DIM}Portfolio API  http://localhost:8010${NC}"
+echo -e "  ${DIM}Expenses API   http://localhost:8011${NC}"
 echo -e "  ${DIM}RabbitMQ       http://localhost:15672${NC}"
 echo ""
 echo -e "  ${DIM}Logs       $LOG_DIR/*.log${NC}"

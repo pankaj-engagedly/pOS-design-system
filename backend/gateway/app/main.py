@@ -23,6 +23,7 @@ class GatewayConfig(BaseServiceConfig):
     KB_SERVICE_URL: str = "http://localhost:8007"
     PHOTOS_SERVICE_URL: str = "http://localhost:8008"
     WATCHLIST_SERVICE_URL: str = "http://localhost:8009"
+    EXPENSE_TRACKER_SERVICE_URL: str = "http://localhost:8011"
 
 
 config = GatewayConfig()
@@ -41,6 +42,7 @@ async def lifespan(app: FastAPI):
     routes_module.KB_SERVICE_URL = config.KB_SERVICE_URL
     routes_module.PHOTOS_SERVICE_URL = config.PHOTOS_SERVICE_URL
     routes_module.WATCHLIST_SERVICE_URL = config.WATCHLIST_SERVICE_URL
+    routes_module.EXPENSE_TRACKER_SERVICE_URL = config.EXPENSE_TRACKER_SERVICE_URL
     logger.info("Gateway ready")
     yield
     logger.info("Gateway stopped")

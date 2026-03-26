@@ -18,6 +18,7 @@ KB_SERVICE_URL = "http://localhost:8007"
 PHOTOS_SERVICE_URL = "http://localhost:8008"
 WATCHLIST_SERVICE_URL = "http://localhost:8009"
 PORTFOLIO_SERVICE_URL = "http://localhost:8010"
+EXPENSE_TRACKER_SERVICE_URL = "http://localhost:8011"
 
 
 @router.get("/api/")
@@ -36,6 +37,7 @@ async def api_root():
             "/api/photos": "Photos service (Phase 5)",
             "/api/watchlist": "Watchlist service",
             "/api/portfolio": "Portfolio service",
+            "/api/expenses": "Expense Tracker service",
         },
     }
 
@@ -120,3 +122,10 @@ async def proxy_watchlist(request: Request, path: str):
 @router.api_route("/api/portfolio/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
 async def proxy_portfolio(request: Request, path: str):
     return await proxy_request(request, PORTFOLIO_SERVICE_URL, f"/api/portfolio/{path}")
+
+
+# --- Expense Tracker service proxy ---
+
+@router.api_route("/api/expenses/{path:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
+async def proxy_expenses(request: Request, path: str):
+    return await proxy_request(request, EXPENSE_TRACKER_SERVICE_URL, f"/api/expenses/{path}")
