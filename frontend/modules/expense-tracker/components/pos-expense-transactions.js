@@ -34,6 +34,11 @@ sheet.replaceSync(`
   }
 
   .empty { text-align: center; padding: var(--pos-space-xl); color: var(--pos-color-text-secondary); }
+
+  .pos-table th[data-sort] { cursor: pointer; user-select: none; }
+  .pos-table th[data-sort]:hover { color: var(--pos-color-text-primary); }
+  .pos-table th[data-sort].sorted { color: var(--pos-color-action-primary); }
+  .sort-arrow { font-size: 10px; margin-left: 2px; opacity: 0.6; }
 `);
 
 class PosExpenseTransactions extends HTMLElement {
@@ -44,6 +49,8 @@ class PosExpenseTransactions extends HTMLElement {
     this._transactions = [];
     this._categories = [];
     this._accounts = [];
+    this._sortKey = 'date';
+    this._sortDir = 'desc';
     this._eventsBound = false;
   }
 
@@ -91,8 +98,39 @@ class PosExpenseTransactions extends HTMLElement {
     return cat.id;
   }
 
+  _getSorted(txns) {
+    if (!this._sortKey || txns.length === 0) return txns;
+    const key = this._sortKey;
+    const dir = this._sortDir === 'asc' ? 1 : -1;
+    return [...txns].sort((a, b) => {
+      let va = a[key] ?? '';
+      let vb = b[key] ?? '';
+      // For amount sorting, use numeric + txn_type
+      if (key === 'debit') {
+        va = a.txn_type === 'debit' ? Number(a.amount) : 0;
+        vb = b.txn_type === 'debit' ? Number(b.amount) : 0;
+      } else if (key === 'credit') {
+        va = a.txn_type === 'credit' ? Number(a.amount) : 0;
+        vb = b.txn_type === 'credit' ? Number(b.amount) : 0;
+      } else if (key === 'amount') {
+        va = Number(a.amount || 0);
+        vb = Number(b.amount || 0);
+      } else if (key === 'category_name') {
+        va = (a.category_name || 'zzz').toLowerCase();
+        vb = (b.category_name || 'zzz').toLowerCase();
+      }
+      if (typeof va === 'string' && typeof vb === 'string') return va.localeCompare(vb) * dir;
+      return (Number(va) - Number(vb)) * dir;
+    });
+  }
+
+  _sortArrow(key) {
+    if (this._sortKey !== key) return '';
+    return `<span class="sort-arrow">${this._sortDir === 'asc' ? '▲' : '▼'}</span>`;
+  }
+
   _render() {
-    const txns = this._transactions;
+    const txns = this._getSorted(this._transactions);
     const state = store.getState();
     const account = state.selectedAccountId
       ? state.accounts.find(a => a.id === state.selectedAccountId)
@@ -114,13 +152,13 @@ class PosExpenseTransactions extends HTMLElement {
         <table class="pos-table">
           <thead>
             <tr>
-              <th style="width:100px">Account</th>
-              <th style="width:100px">Date</th>
-              <th>Description</th>
+              <th data-sort="account_name" class="${this._sortKey === 'account_name' ? 'sorted' : ''}" style="width:100px">Account${this._sortArrow('account_name')}</th>
+              <th data-sort="date" class="${this._sortKey === 'date' ? 'sorted' : ''}" style="width:100px">Date${this._sortArrow('date')}</th>
+              <th data-sort="description" class="${this._sortKey === 'description' ? 'sorted' : ''}">Description${this._sortArrow('description')}</th>
               <th style="width:130px">Category</th>
               <th style="width:130px">Subcategory</th>
-              <th class="num" style="width:100px">Debit</th>
-              <th class="num" style="width:100px">Credit</th>
+              <th data-sort="debit" class="num ${this._sortKey === 'debit' ? 'sorted' : ''}" style="width:100px">Debit${this._sortArrow('debit')}</th>
+              <th data-sort="credit" class="num ${this._sortKey === 'credit' ? 'sorted' : ''}" style="width:100px">Credit${this._sortArrow('credit')}</th>
             </tr>
           </thead>
           <tbody>
@@ -164,6 +202,21 @@ class PosExpenseTransactions extends HTMLElement {
   }
 
   _bindEvents() {
+    // Sort on header click
+    this.shadow.addEventListener('click', (e) => {
+      const th = e.target.closest('th[data-sort]');
+      if (!th) return;
+      const key = th.dataset.sort;
+      if (this._sortKey === key) {
+        this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        this._sortKey = key;
+        this._sortDir = key === 'description' || key === 'account_name' ? 'asc' : 'desc';
+      }
+      this._render();
+    });
+
+    // Category dropdowns
     this.shadow.addEventListener('change', async (e) => {
       const el = e.target;
       const txnId = el.dataset?.txnId;
