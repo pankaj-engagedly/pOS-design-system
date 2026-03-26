@@ -4,6 +4,7 @@
 
 import { icon } from '../../../shared/utils/icons.js';
 import { formatINR } from './pos-portfolio-holdings.js';
+import { TABLE_STYLES } from '../../../../design-system/src/components/ui-table.js';
 import {
   getAllocations, createAllocation, updateAllocation, deleteAllocation,
   getPlans, getHoldings, getPortfolios,
@@ -14,6 +15,7 @@ class PosPortfolioPlanDetail extends HTMLElement {
   constructor() {
     super();
     this.shadow = this.attachShadow({ mode: 'open' });
+    this.shadow.adoptedStyleSheets = [TABLE_STYLES];
     this._plans = [];
     this._assets = [];
     this._allAllocations = [];
@@ -233,19 +235,12 @@ class PosPortfolioPlanDetail extends HTMLElement {
           background: var(--pos-color-surface-secondary, #f8f8fc);
           border-radius: 6px 6px 0 0; border-bottom: 1px solid var(--pos-color-border-default);
         }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 8px; }
-        th {
-          text-align: right; padding: 6px 10px; font-weight: 500; font-size: 11px;
-          color: var(--pos-color-text-tertiary); border-bottom: 1px solid var(--pos-color-border-default);
-        }
-        th:first-child { text-align: left; }
-        td {
-          padding: 8px 10px; text-align: right;
-          border-bottom: 1px solid var(--pos-color-border-subtle, #f0f0f5);
-          font-variant-numeric: tabular-nums; vertical-align: top;
-        }
-        td:first-child { text-align: left; }
-        tr:hover td { background: var(--pos-color-surface-secondary, #f8f8fc); }
+        .pos-table { font-size: var(--pos-font-size-xs, 12px); margin-bottom: 8px; }
+        .pos-table td { padding: 8px 12px; }
+        .pos-table th { text-align: right; }
+        .pos-table th:first-child { text-align: left; }
+        .pos-table td:not(.num) { text-align: right; }
+        .pos-table td:first-child { text-align: left; }
 
         .asset-name { font-weight: 500; color: var(--pos-color-text-primary); }
         .asset-sub { font-size: 11px; color: var(--pos-color-text-tertiary); margin-top: 1px; }
@@ -346,7 +341,7 @@ class PosPortfolioPlanDetail extends HTMLElement {
 
         ${groups.map(([groupKey, assets]) => `
           <div class="group-header">${groupLabels[groupKey] || groupKey} (${assets.length})</div>
-          <table>
+          <table class="pos-table">
             <thead>
               <tr>
                 <th style="width:25%">Asset</th>
