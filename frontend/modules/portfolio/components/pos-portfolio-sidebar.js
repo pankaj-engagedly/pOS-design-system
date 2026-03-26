@@ -34,11 +34,7 @@ portfolioSheet.replaceSync(`
     color: var(--pos-color-action-primary);
   }
 
-  /* Section header with inline + button */
-  .section-label {
-    display: flex;
-    align-items: center;
-  }
+  /* Section header hover action (base styles from SIDEBAR_NAV_SHEET) */
   .section-label .hover-action {
     margin-left: auto;
     display: flex;

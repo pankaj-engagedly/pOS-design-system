@@ -33,10 +33,6 @@ sidebarSheet.replaceSync(`
     color: var(--pos-color-action-primary);
   }
 
-  .section-label {
-    display: flex;
-    align-items: center;
-  }
   .section-label .hover-action {
     margin-left: auto;
     display: flex;

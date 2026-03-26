@@ -51,6 +51,8 @@ shellSheet.replaceSync(`
 export const SIDEBAR_NAV_SHEET = new CSSStyleSheet();
 SIDEBAR_NAV_SHEET.replaceSync(`
   .section-label {
+    display: flex;
+    align-items: center;
     font-size: var(--pos-font-size-xs);
     font-weight: var(--pos-font-weight-semibold);
     text-transform: uppercase;
