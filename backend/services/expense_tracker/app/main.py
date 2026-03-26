@@ -12,6 +12,12 @@ from pos_events import event_bus
 
 from .config import ExpenseTrackerConfig
 from .db import close_db, init_db
+from .routes_accounts import router as accounts_router
+from .routes_transactions import router as transactions_router
+from .routes_import import router as import_router
+from .routes_categories import router as categories_router
+from .routes_rules import router as rules_router
+from .routes_dashboard import router as dashboard_router
 
 
 class UserIdMiddleware(BaseHTTPMiddleware):
@@ -45,6 +51,13 @@ app = FastAPI(
 )
 
 app.add_middleware(UserIdMiddleware)
+
+app.include_router(accounts_router, prefix="/api/expenses")
+app.include_router(transactions_router, prefix="/api/expenses")
+app.include_router(import_router, prefix="/api/expenses")
+app.include_router(categories_router, prefix="/api/expenses")
+app.include_router(rules_router, prefix="/api/expenses")
+app.include_router(dashboard_router, prefix="/api/expenses")
 
 
 @app.get("/health", response_model=HealthResponse)
