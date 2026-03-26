@@ -7,14 +7,18 @@
         "mono":      { "$value": "{font.family.mono}" }
       },
       "size": {
+        "xs": { "$value": "{font.size.xs}" },
         "sm": { "$value": "{font.size.sm}" },
         "md": { "$value": "{font.size.md}" },
-        "lg": { "$value": "{font.size.lg}" }
+        "lg": { "$value": "{font.size.lg}" },
+        "xl": { "$value": "{font.size.xl}" },
+        "2xl": { "$value": "{font.size.2xl}" }
       },
       "weight": {
-        "regular": { "$value": "{font.weight.regular}" },
-        "medium":  { "$value": "{font.weight.medium}" },
-        "bold":    { "$value": "{font.weight.bold}" }
+        "regular":  { "$value": "{font.weight.regular}" },
+        "medium":   { "$value": "{font.weight.medium}" },
+        "semibold": { "$value": "{font.weight.semibold}" },
+        "bold":     { "$value": "{font.weight.bold}" }
       }
     },
     "line-height": {
