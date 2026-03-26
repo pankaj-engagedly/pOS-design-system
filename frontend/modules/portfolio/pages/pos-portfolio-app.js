@@ -156,39 +156,48 @@ class PosPortfolioApp extends HTMLElement {
       return;
     }
 
-    // Portfolio selected — show holdings or transactions
+    // Portfolio selected — breadcrumb header + filter chips + content
     const portfolio = (state.portfolios || []).find(p => p.id === state.selectedPortfolioId);
-    const headerTitle = portfolio ? portfolio.name : 'Portfolio';
+    const holderName = portfolio?.holder_name || '';
+    const portfolioName = portfolio?.name || 'Portfolio';
 
-    if (state.contentView === 'transactions') {
-      content.innerHTML = `
-        <div class="content-header">
-          <h2>${this._esc(headerTitle)}</h2>
-          <div class="content-tabs">
-            <button class="tab-btn" data-tab="holdings">Holdings</button>
-            <button class="tab-btn active" data-tab="transactions">Transactions</button>
-          </div>
+    // Count holdings by type
+    const holdings = state.holdings?.holdings || [];
+    const stockCount = holdings.filter(h => h.asset_class === 'stock').length;
+    const mfCount = holdings.filter(h => (h.asset_class || 'mutual_fund') === 'mutual_fund').length;
+    const subtitleParts = [];
+    if (stockCount > 0) subtitleParts.push(`${stockCount} Stock${stockCount !== 1 ? 's' : ''}`);
+    if (mfCount > 0) subtitleParts.push(`${mfCount} Mutual Fund${mfCount !== 1 ? 's' : ''}`);
+
+    const breadcrumb = holderName
+      ? `<button class="breadcrumb-link" data-action="breadcrumb-holder">${this._esc(holderName)}</button><span class="breadcrumb-sep">${icon('chevron-right', 12)}</span>${this._esc(portfolioName)}`
+      : this._esc(portfolioName);
+
+    const isHoldings = state.contentView === 'holdings';
+
+    content.innerHTML = `
+      <div class="content-header">
+        <h2>${breadcrumb}</h2>
+        ${subtitleParts.length > 0 ? `<span class="header-subtitle">${subtitleParts.join(' · ')}</span>` : ''}
+        <div class="header-actions">
           <button class="header-btn" data-action="import">${icon('upload', 14)} Import</button>
+          ${isHoldings ? `<button class="header-btn" data-action="refresh-prices">${icon('refresh-cw', 14)} Refresh</button>` : ''}
         </div>
-        <pos-portfolio-transactions></pos-portfolio-transactions>`;
-      const txnEl = content.querySelector('pos-portfolio-transactions');
-      if (txnEl) txnEl.transactions = state.transactions;
-    } else {
-      content.innerHTML = `
-        <div class="content-header">
-          <h2>${this._esc(headerTitle)}</h2>
-          <div class="content-tabs">
-            <button class="tab-btn active" data-tab="holdings">Holdings</button>
-            <button class="tab-btn" data-tab="transactions">Transactions</button>
-          </div>
-          <div class="header-actions">
-            <button class="header-btn" data-action="import">${icon('upload', 14)} Import</button>
-            <button class="header-btn" data-action="refresh-prices">${icon('refresh-cw', 14)} Refresh Prices</button>
-          </div>
-        </div>
-        <pos-portfolio-holdings></pos-portfolio-holdings>`;
+      </div>
+      <div class="filter-chips">
+        <button class="chip ${isHoldings ? 'active' : ''}" data-tab="holdings">Holdings</button>
+        <button class="chip ${!isHoldings ? 'active' : ''}" data-tab="transactions">Transactions</button>
+      </div>
+      ${isHoldings
+        ? '<pos-portfolio-holdings></pos-portfolio-holdings>'
+        : '<pos-portfolio-transactions></pos-portfolio-transactions>'}`;
+
+    if (isHoldings) {
       const holdEl = content.querySelector('pos-portfolio-holdings');
       if (holdEl) holdEl.data = state.holdings;
+    } else {
+      const txnEl = content.querySelector('pos-portfolio-transactions');
+      if (txnEl) txnEl.transactions = state.transactions;
     }
   }
 
@@ -212,9 +221,10 @@ class PosPortfolioApp extends HTMLElement {
         }
         .content-header {
           display: flex;
-          align-items: center;
-          gap: 16px;
-          margin-bottom: 16px;
+          align-items: baseline;
+          gap: 8px;
+          margin-bottom: var(--pos-space-sm);
+          flex-wrap: wrap;
         }
         .content-header h2 {
           margin: 0;
@@ -222,25 +232,41 @@ class PosPortfolioApp extends HTMLElement {
           font-weight: 600;
           color: var(--pos-color-text-primary, #1a1a2e);
         }
-        .content-tabs {
-          display: flex;
-          gap: 4px;
-          margin-left: 16px;
+        .breadcrumb-link {
+          background: none; border: none; padding: 0; cursor: pointer;
+          font-size: inherit; font-family: inherit;
+          color: var(--pos-color-text-secondary);
         }
-        .tab-btn {
-          padding: 4px 12px;
-          border: 1px solid var(--pos-color-border-default, #e2e2e8);
-          border-radius: var(--pos-radius-sm, 6px);
+        .breadcrumb-link:hover { text-decoration: underline; }
+        .breadcrumb-sep {
+          color: var(--pos-color-text-secondary); opacity: 0.5;
+          display: inline-flex; align-items: center; padding: 0 2px; vertical-align: middle;
+        }
+        .header-subtitle {
+          font-size: var(--pos-font-size-sm);
+          color: var(--pos-color-text-secondary);
+          margin-left: 8px;
+        }
+        .filter-chips {
+          display: flex; gap: 6px;
+          padding: 0 0 var(--pos-space-sm);
+        }
+        .chip {
+          padding: 3px 10px;
+          border-radius: 99px;
+          border: 1px solid var(--pos-color-border-default);
           background: transparent;
-          color: var(--pos-color-text-secondary, #6b6b80);
-          font-size: var(--pos-font-size-xs, 12px);
+          color: var(--pos-color-text-secondary);
+          font-size: var(--pos-font-size-xs);
           font-family: inherit;
           cursor: pointer;
+          white-space: nowrap;
         }
-        .tab-btn.active {
-          background: var(--pos-color-action-primary, #4361ee);
+        .chip:hover { border-color: var(--pos-color-action-primary); color: var(--pos-color-action-primary); }
+        .chip.active {
+          background: var(--pos-color-action-primary);
           color: white;
-          border-color: var(--pos-color-action-primary, #4361ee);
+          border-color: var(--pos-color-action-primary);
         }
         .header-actions {
           display: flex;
