@@ -11,6 +11,10 @@ const pageSheet = new CSSStyleSheet();
 pageSheet.replaceSync(`
   :host { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
 
+  /* Compact table override */
+  .pos-table { font-size: var(--pos-font-size-xs); }
+  .pos-table td { padding: 8px 12px; }
+
   ui-search-input { width: 160px; }
 
   .list {
