@@ -10,7 +10,7 @@ import '../components/pos-expense-import-dialog.js';
 import { icon } from '../../../shared/utils/icons.js';
 import store from '../store.js';
 import {
-  getAccounts, getTransactions, deleteAccount,
+  getAccounts, getTransactions, getCategories, deleteAccount,
   getDashboardSummary, getCategoryBreakdown, getMonthlyTrend, getOwnerSplit,
 } from '../services/expense-api.js';
 
@@ -37,8 +37,11 @@ class PosExpenseTrackerApp extends HTMLElement {
   async _loadData() {
     store.setState({ loading: true });
     try {
-      const accounts = await getAccounts();
-      store.setState({ accounts, loading: false });
+      const [accounts, categories] = await Promise.all([
+        getAccounts(),
+        getCategories(),
+      ]);
+      store.setState({ accounts, categories, loading: false });
       // Load dashboard by default
       this._loadDashboard();
     } catch (err) {
