@@ -186,8 +186,9 @@ async def owner_split(
 async def _sum_for_month(
     session: AsyncSession, user_id: UUID, year: int, month: int, txn_type: str,
 ) -> Decimal:
-    """Sum transaction amounts for a given month, excluding transfers."""
-    # Also exclude investment categories from expense totals
+    """Sum transaction amounts for a given month, excluding transfers and investment categories."""
+    from sqlalchemy import or_
+
     result = await session.execute(
         select(func.coalesce(func.sum(Transaction.amount), 0))
         .outerjoin(Category, Transaction.category_id == Category.id)
@@ -197,8 +198,10 @@ async def _sum_for_month(
             Transaction.is_transfer == False,
             extract("year", Transaction.date) == year,
             extract("month", Transaction.date) == month,
-            # Exclude investment and transfer category groups from spend/income
-            ~Category.group_type.in_(["transfer", "investment"]) | (Transaction.category_id.is_(None)),
+            or_(
+                Transaction.category_id.is_(None),
+                ~Category.group_type.in_(["transfer", "investment"]),
+            ),
         )
     )
     return result.scalar() or Decimal("0")
