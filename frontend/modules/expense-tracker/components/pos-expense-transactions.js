@@ -12,6 +12,10 @@ sheet.replaceSync(`
 
   .scroll { flex: 1; overflow-y: auto; padding: 0 var(--pos-space-lg) var(--pos-space-lg); }
 
+  /* Match dropdown text size — compact table */
+  .pos-table { font-size: var(--pos-font-size-xs); }
+  .pos-table td { padding: 8px 12px; }
+
   .cat-select {
     width: 100%; padding: 2px 4px; border: 1px solid transparent; border-radius: var(--pos-radius-sm);
     font-size: var(--pos-font-size-xs); background: transparent; color: var(--pos-color-text-primary);
