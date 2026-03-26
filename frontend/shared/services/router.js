@@ -75,6 +75,7 @@ registerRoute('/vault', { module: 'vault', label: 'Vault', icon: 'lock', group: 
 // Finance
 registerRoute('/watchlist', { module: 'watchlist', label: 'Watchlist', icon: 'trending-up', group: 'finance' });
 registerRoute('/portfolio', { module: 'portfolio', label: 'Portfolio', icon: 'briefcase', group: 'finance' });
+registerRoute('/expenses', { module: 'expense-tracker', label: 'Expenses', icon: 'wallet', group: 'finance' });
 
 // Feeds (hidden — accessed from KB sidebar)
 registerRoute('/feeds', { module: 'feed-watcher', label: 'Feeds', icon: 'rss', hidden: true });
