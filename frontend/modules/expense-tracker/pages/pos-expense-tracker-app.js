@@ -42,8 +42,24 @@ class PosExpenseTrackerApp extends HTMLElement {
         getCategories(),
       ]);
       store.setState({ accounts, categories, loading: false });
-      // Load dashboard by default
-      this._loadDashboard();
+
+      // Restore last view from localStorage
+      const savedView = localStorage.getItem('pos-expense-view');
+      const savedAccountId = localStorage.getItem('pos-expense-account');
+      if (savedView) {
+        store.setState({ selectedView: savedView, selectedAccountId: savedAccountId || null });
+        if (savedView === 'account' && savedAccountId) {
+          this._loadTransactions({ account_id: savedAccountId });
+        } else if (savedView === 'uncategorized') {
+          this._loadTransactions({ uncategorized_only: true });
+        } else if (savedView === 'all') {
+          this._loadTransactions();
+        } else {
+          this._loadDashboard();
+        }
+      } else {
+        this._loadDashboard();
+      }
     } catch (err) {
       store.setState({ loading: false, error: err.message });
     }
@@ -111,6 +127,78 @@ class PosExpenseTrackerApp extends HTMLElement {
       txnList.accounts = state.accounts;
       txnList.hidden = state.selectedView === 'dashboard' || state.selectedView === 'categories' || state.selectedView === 'rules';
     }
+
+    const catView = this.shadow.getElementById('categories-view');
+    if (catView) {
+      catView.hidden = state.selectedView !== 'categories';
+      if (state.selectedView === 'categories' && state.categories?.length) {
+        this._renderCategories(catView, state.categories);
+      }
+    }
+
+    const rulesView = this.shadow.getElementById('rules-view');
+    if (rulesView) {
+      rulesView.hidden = state.selectedView !== 'rules';
+      if (state.selectedView === 'rules') {
+        this._renderRules(rulesView);
+      }
+    }
+  }
+
+  _renderCategories(container, categories) {
+    const parents = categories.filter(c => !c.parent_id).sort((a, b) => a.sort_order - b.sort_order);
+    const childMap = {};
+    for (const c of categories) {
+      if (c.parent_id) {
+        if (!childMap[c.parent_id]) childMap[c.parent_id] = [];
+        childMap[c.parent_id].push(c);
+      }
+    }
+
+    container.innerHTML = `
+      <div style="padding: 0 var(--pos-space-lg); overflow-y: auto; flex: 1;">
+        ${parents.map(p => `
+          <div style="margin-bottom: var(--pos-space-md);">
+            <div style="font-size: var(--pos-font-size-xs); font-weight: var(--pos-font-weight-semibold); color: var(--pos-color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; padding: var(--pos-space-xs) 0;">
+              ${this._esc(p.name)}
+              <span style="font-weight: 400; text-transform: none; letter-spacing: 0; margin-left: 4px; color: var(--pos-color-text-tertiary);">${this._esc(p.group_type)}</span>
+            </div>
+            ${(childMap[p.id] || []).map(c => `
+              <div style="font-size: var(--pos-font-size-xs); color: var(--pos-color-text-primary); padding: 4px 0 4px var(--pos-space-md);">
+                ${this._esc(c.name)}
+              </div>
+            `).join('') || '<div style="font-size: var(--pos-font-size-xs); color: var(--pos-color-text-tertiary); padding: 4px 0 4px var(--pos-space-md);">No subcategories</div>'}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  async _renderRules(container) {
+    try {
+      const { getRules } = await import('../services/expense-api.js');
+      const rules = await getRules();
+      container.innerHTML = `
+        <div style="padding: 0 var(--pos-space-lg); overflow-y: auto; flex: 1;">
+          ${rules.length === 0 ? '<div style="text-align: center; padding: var(--pos-space-xl); color: var(--pos-color-text-secondary);">No rules yet. Rules are learned when you categorize transactions.</div>' : ''}
+          ${rules.map(r => `
+            <div style="display: flex; align-items: center; padding: 6px 0; font-size: var(--pos-font-size-xs); border-bottom: 1px solid var(--pos-color-border-subtle, var(--pos-color-border-default));">
+              <span style="flex: 1; color: var(--pos-color-text-primary); font-weight: var(--pos-font-weight-medium);">${this._esc(r.keyword)}</span>
+              <span style="color: var(--pos-color-text-secondary); margin-right: var(--pos-space-md);">${this._esc(r.category_name || '')}</span>
+              <span style="font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--pos-color-background-secondary); color: var(--pos-color-text-tertiary);">${this._esc(r.source)}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } catch (err) {
+      container.innerHTML = '<div style="padding: var(--pos-space-lg); color: var(--pos-color-text-secondary);">Failed to load rules</div>';
+    }
+  }
+
+  _esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
   }
 
   _updateHeader(state) {
@@ -136,6 +224,11 @@ class PosExpenseTrackerApp extends HTMLElement {
       title = 'Dashboard';
       const s = state.dashboardSummary;
       if (s) meta = `${(state.accounts || []).length} accounts`;
+    } else if (state.selectedView === 'categories') {
+      title = 'Manage Categories';
+      meta = `${(state.categories || []).length} categories`;
+    } else if (state.selectedView === 'rules') {
+      title = 'Manage Rules';
     }
 
     titleEl.textContent = title;
@@ -160,6 +253,11 @@ class PosExpenseTrackerApp extends HTMLElement {
         selectedView: view,
         selectedAccountId: accountId || null,
       });
+
+      // Persist view state
+      localStorage.setItem('pos-expense-view', view);
+      if (accountId) localStorage.setItem('pos-expense-account', accountId);
+      else localStorage.removeItem('pos-expense-account');
 
       if (view === 'dashboard') {
         this._loadDashboard();
@@ -256,6 +354,8 @@ class PosExpenseTrackerApp extends HTMLElement {
           <div class="content">
             <pos-expense-dashboard></pos-expense-dashboard>
             <pos-expense-transactions hidden></pos-expense-transactions>
+            <div id="categories-view" hidden style="display:flex;flex-direction:column;flex:1;overflow:hidden;"></div>
+            <div id="rules-view" hidden style="display:flex;flex-direction:column;flex:1;overflow:hidden;"></div>
           </div>
         </div>
       </pos-module-layout>

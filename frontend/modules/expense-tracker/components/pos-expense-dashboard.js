@@ -65,8 +65,8 @@ class PosExpenseDashboard extends HTMLElement {
 
   _render() {
     const s = this._summary;
-    if (!s) {
-      this.shadow.innerHTML = '<div class="empty">Import a statement to see your dashboard</div>';
+    if (s === null) {
+      this.shadow.innerHTML = '';  // Empty while loading, not "import" message
       return;
     }
 
