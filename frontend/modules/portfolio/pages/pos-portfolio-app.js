@@ -18,7 +18,7 @@ import { formatINR } from '../components/pos-portfolio-holdings.js';
 import store from '../store.js';
 import {
   getPortfolios, getHoldings, getTransactions, getPlans,
-  getFamilyAggregation, deletePortfolio, refreshNAV,
+  getFamilyAggregation, deletePortfolio, refreshNAV, refreshStockPrices,
 } from '../services/portfolio-api.js';
 
 const TAG = 'pos-portfolio-app';
@@ -59,10 +59,10 @@ class PosPortfolioApp extends HTMLElement {
     try {
       let holdings = await getHoldings(portfolioId);
 
-      // If all current values are zero/null, auto-fetch NAV first
+      // If all current values are zero/null, auto-fetch prices first
       const hasNav = (holdings.holdings || []).some(h => h.current_nav && Number(h.current_nav) > 0);
       if (!hasNav && (holdings.holdings || []).length > 0) {
-        await refreshNAV();
+        await Promise.all([refreshNAV(), refreshStockPrices()]);
         holdings = await getHoldings(portfolioId);
       }
 
@@ -118,7 +118,11 @@ class PosPortfolioApp extends HTMLElement {
     }
 
     if (state.selectedView === 'plan') {
-      content.innerHTML = '<pos-portfolio-plan-detail></pos-portfolio-plan-detail>';
+      content.innerHTML = `
+        <div class="content-header">
+          <h2>Investment Plans</h2>
+        </div>
+        <pos-portfolio-plan-detail></pos-portfolio-plan-detail>`;
       const detail = content.querySelector('pos-portfolio-plan-detail');
       if (detail) detail.plan = { _trigger: true }; // triggers load of all plans
       return;
@@ -148,7 +152,7 @@ class PosPortfolioApp extends HTMLElement {
             <button class="tab-btn" data-tab="holdings">Holdings</button>
             <button class="tab-btn active" data-tab="transactions">Transactions</button>
           </div>
-          <button class="header-btn" data-action="import">${icon('upload', 14)} Import CAS</button>
+          <button class="header-btn" data-action="import">${icon('upload', 14)} Import</button>
         </div>
         <pos-portfolio-transactions></pos-portfolio-transactions>`;
       const txnEl = content.querySelector('pos-portfolio-transactions');
@@ -162,8 +166,8 @@ class PosPortfolioApp extends HTMLElement {
             <button class="tab-btn" data-tab="transactions">Transactions</button>
           </div>
           <div class="header-actions">
-            <button class="header-btn" data-action="import">${icon('upload', 14)} Import CAS</button>
-            <button class="header-btn" data-action="refresh-nav">${icon('refresh-cw', 14)} Refresh NAV</button>
+            <button class="header-btn" data-action="import">${icon('upload', 14)} Import</button>
+            <button class="header-btn" data-action="refresh-prices">${icon('refresh-cw', 14)} Refresh Prices</button>
           </div>
         </div>
         <pos-portfolio-holdings></pos-portfolio-holdings>`;
@@ -320,8 +324,8 @@ class PosPortfolioApp extends HTMLElement {
           dialog.open = true;
         }
       }
-      if (action === 'refresh-nav') {
-        refreshNAV().then(() => {
+      if (action === 'refresh-prices') {
+        Promise.all([refreshNAV(), refreshStockPrices()]).then(() => {
           const state = store.getState();
           if (state.selectedPortfolioId) this._loadHoldings(state.selectedPortfolioId);
         });
