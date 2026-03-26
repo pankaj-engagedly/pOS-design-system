@@ -15,7 +15,6 @@ sheet.replaceSync(`
   .pos-table td { padding: 8px 10px; }
   .pos-table th {
     padding: 8px 10px;
-    background: var(--pos-color-background-secondary);
     cursor: pointer;
   }
   .pos-table th:hover { color: var(--pos-color-text-primary); }

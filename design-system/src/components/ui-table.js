@@ -27,6 +27,7 @@ TABLE_STYLES.replaceSync(`
     font-weight: 500;
     font-size: var(--pos-font-size-xs, 11px);
     color: var(--pos-color-text-tertiary, #9b9bb0);
+    background: var(--pos-color-background-secondary, #f8f8fc);
     border-bottom: 2px solid var(--pos-color-border-default, #e2e2e8);
     white-space: nowrap;
     user-select: none;
