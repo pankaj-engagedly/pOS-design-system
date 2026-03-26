@@ -155,7 +155,7 @@ class PosExpenseTransactions extends HTMLElement {
               <th data-sort="account_name" class="${this._sortKey === 'account_name' ? 'sorted' : ''}" style="width:100px">Account${this._sortArrow('account_name')}</th>
               <th data-sort="date" class="${this._sortKey === 'date' ? 'sorted' : ''}" style="width:100px">Date${this._sortArrow('date')}</th>
               <th data-sort="description" class="${this._sortKey === 'description' ? 'sorted' : ''}">Description${this._sortArrow('description')}</th>
-              <th style="width:130px">Category</th>
+              <th data-sort="category_name" class="${this._sortKey === 'category_name' ? 'sorted' : ''}" style="width:130px">Category${this._sortArrow('category_name')}</th>
               <th style="width:130px">Subcategory</th>
               <th data-sort="debit" class="num ${this._sortKey === 'debit' ? 'sorted' : ''}" style="width:100px">Debit${this._sortArrow('debit')}</th>
               <th data-sort="credit" class="num ${this._sortKey === 'credit' ? 'sorted' : ''}" style="width:100px">Credit${this._sortArrow('credit')}</th>
