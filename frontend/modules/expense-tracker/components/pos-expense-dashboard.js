@@ -2,7 +2,7 @@
 
 const sheet = new CSSStyleSheet();
 sheet.replaceSync(`
-  :host { display: block; padding: var(--pos-space-lg); overflow-y: auto; }
+  :host { display: block; padding: var(--pos-space-sm) var(--pos-space-lg) var(--pos-space-lg); overflow-y: auto; flex: 1; }
   :host([hidden]) { display: none; }
 
   .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--pos-space-md); margin-bottom: var(--pos-space-lg); }

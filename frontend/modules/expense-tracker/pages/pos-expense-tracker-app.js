@@ -91,6 +91,9 @@ class PosExpenseTrackerApp extends HTMLElement {
       sidebar.uncategorizedCount = uncatCount;
     }
 
+    // Update page header
+    this._updateHeader(state);
+
     // Update content components
     const dashboard = this.shadow.querySelector('pos-expense-dashboard');
     if (dashboard) {
@@ -107,6 +110,46 @@ class PosExpenseTrackerApp extends HTMLElement {
       txnList.categories = state.categories;
       txnList.accounts = state.accounts;
       txnList.hidden = state.selectedView === 'dashboard' || state.selectedView === 'categories' || state.selectedView === 'rules';
+    }
+  }
+
+  _updateHeader(state) {
+    const titleEl = this.shadow.getElementById('header-title');
+    const metaEl = this.shadow.getElementById('header-meta');
+    const actionsEl = this.shadow.getElementById('header-actions');
+    if (!titleEl) return;
+
+    let title = 'Dashboard';
+    let meta = '';
+
+    if (state.selectedView === 'all') {
+      title = 'All Transactions';
+      meta = `${(state.transactions || []).length} transactions`;
+    } else if (state.selectedView === 'uncategorized') {
+      title = 'Uncategorized';
+      meta = `${(state.transactions || []).length} transactions`;
+    } else if (state.selectedView === 'account' && state.selectedAccountId) {
+      const account = (state.accounts || []).find(a => a.id === state.selectedAccountId);
+      title = account?.name || 'Account';
+      meta = `${(state.transactions || []).length} transactions`;
+    } else if (state.selectedView === 'dashboard') {
+      title = 'Dashboard';
+      const s = state.dashboardSummary;
+      if (s) meta = `${(state.accounts || []).length} accounts`;
+    }
+
+    titleEl.textContent = title;
+    metaEl.textContent = meta;
+
+    // Show import button when viewing an account
+    if (state.selectedView === 'account' && state.selectedAccountId) {
+      actionsEl.innerHTML = `
+        <button class="header-btn" id="header-import-btn">
+          ${icon('upload', 14)} Import
+        </button>
+      `;
+    } else {
+      actionsEl.innerHTML = '';
     }
   }
 
@@ -167,6 +210,14 @@ class PosExpenseTrackerApp extends HTMLElement {
       this._loadDashboard();
     });
 
+    // Header import button
+    this.shadow.addEventListener('click', (e) => {
+      if (e.target.closest('#header-import-btn')) {
+        const dialog = this.shadow.querySelector('pos-expense-import-dialog');
+        if (dialog) dialog.open(store.getState().selectedAccountId);
+      }
+    });
+
     this.shadow.addEventListener('open-import', (e) => {
       const dialog = this.shadow.querySelector('pos-expense-import-dialog');
       if (dialog) dialog.open(e.detail?.accountId);
@@ -182,13 +233,30 @@ class PosExpenseTrackerApp extends HTMLElement {
       <style>
         :host { display: block; height: 100%; }
         [hidden] { display: none !important; }
+        .main { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+        .content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+        .header-btn {
+          display: inline-flex; align-items: center; gap: var(--pos-space-xs);
+          padding: 5px 10px; border-radius: var(--pos-radius-sm);
+          font-size: var(--pos-font-size-xs); cursor: pointer; border: 1px solid var(--pos-color-border-default);
+          background: var(--pos-color-background-primary); color: var(--pos-color-text-primary);
+        }
+        .header-btn:hover { background: var(--pos-color-background-secondary); }
       </style>
 
       <pos-module-layout>
         <pos-expense-sidebar slot="panel"></pos-expense-sidebar>
         <div class="main">
-          <pos-expense-dashboard></pos-expense-dashboard>
-          <pos-expense-transactions hidden></pos-expense-transactions>
+          <pos-page-header id="page-header">
+            <span id="header-title">Dashboard</span>
+            <span slot="subtitle" id="header-meta"></span>
+            <span slot="actions" id="header-actions"></span>
+          </pos-page-header>
+
+          <div class="content">
+            <pos-expense-dashboard></pos-expense-dashboard>
+            <pos-expense-transactions hidden></pos-expense-transactions>
+          </div>
         </div>
       </pos-module-layout>
 
