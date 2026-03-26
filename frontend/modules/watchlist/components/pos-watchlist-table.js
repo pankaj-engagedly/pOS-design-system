@@ -11,7 +11,7 @@ sheet.replaceSync(`
   :host { display: block; overflow: auto; height: 100%; }
   thead { position: sticky; top: 0; z-index: 1; }
   /* Compact override */
-  .pos-table { font-size: var(--pos-font-size-xs); }
+  .pos-table { font-size: var(--pos-font-size-xs); width: 100%; table-layout: auto; }
   .pos-table td { padding: 8px 10px; }
   .pos-table th {
     padding: 8px 10px;

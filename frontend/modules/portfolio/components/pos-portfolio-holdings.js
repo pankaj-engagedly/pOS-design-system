@@ -90,23 +90,19 @@ class PosPortfolioHoldings extends HTMLElement {
         .pos-table td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
         .fund-name {
           font-weight: 500; color: var(--pos-color-text-primary, #1a1a2e);
-          display: flex; align-items: center; gap: 6px;
-        }
-        .fund-dot {
-          width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
         }
         .folio-num {
           font-size: 11px; color: var(--pos-color-text-tertiary, #9b9bb0);
-          margin-top: 2px; padding-left: 14px;
+          margin-top: 2px;
         }
       </style>
 
-      ${stockHoldings.length > 0 ? this._renderSection('Stocks', stockHoldings, totalCurrent, '#4361ee') : ''}
-      ${mfHoldings.length > 0 ? this._renderSection('Mutual Funds', mfHoldings, totalCurrent, '#f59e0b') : ''}
+      ${stockHoldings.length > 0 ? this._renderSection('Stocks', stockHoldings, totalCurrent) : ''}
+      ${mfHoldings.length > 0 ? this._renderSection('Mutual Funds', mfHoldings, totalCurrent) : ''}
     `;
   }
 
-  _renderSection(title, items, grandTotalCurrent, dotColor) {
+  _renderSection(title, items, grandTotalCurrent) {
     const sectionInvested = items.reduce((s, h) => s + Number(h.invested_amount || 0), 0);
     const sectionCurrent = items.reduce((s, h) => s + Number(h.current_value || 0), 0);
     const sectionReturn = sectionCurrent - sectionInvested;
@@ -124,28 +120,15 @@ class PosPortfolioHoldings extends HTMLElement {
         <table class="pos-table">
           <thead>
             <tr>
-              <th data-sort="scheme_name" class="${this._sortKey === 'scheme_name' ? 'sorted' : ''}">
-                ${nameLabel}
-                <span class="sub-header">${subLabel}</span>
-              </th>
-              <th data-sort="current_nav" class="${this._sortKey === 'current_nav' ? 'sorted' : ''}">
-                Last Price
-              </th>
-              <th data-sort="invested_amount" class="${this._sortKey === 'invested_amount' ? 'sorted' : ''}">
-                Total Cost
-                <span class="sub-header">COST PER UNIT</span>
-              </th>
-              <th data-sort="current_value" class="${this._sortKey === 'current_value' ? 'sorted' : ''}">
-                Current Value
-                <span class="sub-header">${unitLabel}</span>
-              </th>
-              <th data-sort="portfolio_pct">
-                % of Portfolio
-              </th>
-              <th data-sort="absolute_return" class="${this._sortKey === 'absolute_return' ? 'sorted' : ''}">
-                Total Return
-                <span class="sub-header">RETURN %</span>
-              </th>
+              <th data-sort="scheme_name" class="${this._sortKey === 'scheme_name' ? 'sorted' : ''}">${nameLabel}<span class="sub-header">${subLabel}</span></th>
+              <th data-sort="current_nav" class="${this._sortKey === 'current_nav' ? 'sorted' : ''}">Last Price</th>
+              <th data-sort="invested_amount" class="${this._sortKey === 'invested_amount' ? 'sorted' : ''}">Total Cost</th>
+              <th data-sort="cost_per_unit" class="${this._sortKey === 'cost_per_unit' ? 'sorted' : ''}">Cost/Unit</th>
+              <th data-sort="current_value" class="${this._sortKey === 'current_value' ? 'sorted' : ''}">Current Value</th>
+              <th data-sort="total_units" class="${this._sortKey === 'total_units' ? 'sorted' : ''}">${unitLabel}</th>
+              <th data-sort="portfolio_pct" class="${this._sortKey === 'portfolio_pct' ? 'sorted' : ''}">% Portfolio</th>
+              <th data-sort="absolute_return" class="${this._sortKey === 'absolute_return' ? 'sorted' : ''}">Return</th>
+              <th data-sort="return_pct" class="${this._sortKey === 'return_pct' ? 'sorted' : ''}">Return %</th>
             </tr>
           </thead>
           <tbody>
@@ -164,26 +147,17 @@ class PosPortfolioHoldings extends HTMLElement {
               return `
                 <tr>
                   <td>
-                    <div class="fund-name">
-                      <span class="fund-dot" style="background: ${dotColor}"></span>
-                      ${this._esc(h.scheme_name)}
-                    </div>
+                    <div class="fund-name">${this._esc(h.scheme_name)}</div>
                     <div class="folio-num">${this._esc(h.folio_number)}</div>
                   </td>
                   <td>${nav > 0 ? formatINR(nav, 2) : '-'}</td>
-                  <td>
-                    ${formatINR(invested)}
-                    <span class="sub-value">${costPerUnit > 0 ? formatINR(costPerUnit, 2) : '-'}</span>
-                  </td>
-                  <td>
-                    ${current > 0 ? formatINR(current) : '-'}
-                    <span class="sub-value">${formatINR(units, unitDecimals)} ${isStock ? 'SHARES' : 'UNITS'}</span>
-                  </td>
+                  <td>${formatINR(invested)}</td>
+                  <td>${costPerUnit > 0 ? formatINR(costPerUnit, 2) : '-'}</td>
+                  <td>${current > 0 ? formatINR(current) : '-'}</td>
+                  <td>${formatINR(units, unitDecimals)}</td>
                   <td>${portfolioPct > 0 ? pct(portfolioPct) : '-'}</td>
-                  <td>
-                    <span class="${retClass}">${ret !== 0 ? formatINR(ret) : '-'}</span>
-                    <span class="sub-value ${retClass}">${retPct !== 0 ? pct(retPct) + '%' : '-'}</span>
-                  </td>
+                  <td><span class="${retClass}">${ret !== 0 ? formatINR(ret) : '-'}</span></td>
+                  <td><span class="${retClass}">${retPct !== 0 ? pct(retPct) + '%' : '-'}</span></td>
                 </tr>`;
             }).join('')}
           </tbody>
@@ -192,12 +166,12 @@ class PosPortfolioHoldings extends HTMLElement {
               <td>Subtotal</td>
               <td></td>
               <td>${formatINR(sectionInvested)}</td>
+              <td></td>
               <td>${formatINR(sectionCurrent)}</td>
+              <td></td>
               <td>${grandTotalCurrent > 0 ? pct(sectionCurrent / grandTotalCurrent * 100) : '-'}</td>
-              <td>
-                <span class="${sectionReturn >= 0 ? 'positive' : 'negative'}">${formatINR(sectionReturn)}</span>
-                <span class="sub-value ${sectionReturn >= 0 ? 'positive' : 'negative'}">${pct(sectionReturnPct)}%</span>
-              </td>
+              <td><span class="${sectionReturn >= 0 ? 'positive' : 'negative'}">${formatINR(sectionReturn)}</span></td>
+              <td><span class="${sectionReturn >= 0 ? 'positive' : 'negative'}">${pct(sectionReturnPct)}%</span></td>
             </tr>
           </tfoot>
         </table>
@@ -217,6 +191,17 @@ class PosPortfolioHoldings extends HTMLElement {
         const totalCurrent = h.reduce((s, x) => s + Number(x.current_value || 0), 0);
         va = totalCurrent > 0 ? Number(a.current_value || 0) / totalCurrent : 0;
         vb = totalCurrent > 0 ? Number(b.current_value || 0) / totalCurrent : 0;
+      } else if (key === 'cost_per_unit') {
+        const au = Number(a.total_units || 0), bu = Number(b.total_units || 0);
+        va = au > 0 ? Number(a.invested_amount || 0) / au : 0;
+        vb = bu > 0 ? Number(b.invested_amount || 0) / bu : 0;
+      } else if (key === 'return_pct') {
+        const ai = Number(a.invested_amount || 0), bi = Number(b.invested_amount || 0);
+        va = ai > 0 ? (Number(a.current_value || 0) - ai) / ai * 100 : 0;
+        vb = bi > 0 ? (Number(b.current_value || 0) - bi) / bi * 100 : 0;
+      } else if (key === 'total_units') {
+        va = Number(a.total_units || 0);
+        vb = Number(b.total_units || 0);
       } else {
         va = a[key] ?? '';
         vb = b[key] ?? '';
