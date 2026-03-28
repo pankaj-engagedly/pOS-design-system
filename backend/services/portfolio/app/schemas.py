@@ -59,6 +59,7 @@ class CASImportResponse(BaseModel):
     id: UUID
     portfolio_id: UUID
     filename: str
+    import_type: str
     source_type: str
     transaction_count: int
     duplicates_skipped: int
@@ -72,6 +73,7 @@ class CASImportResponse(BaseModel):
 class ImportSummaryResponse(BaseModel):
     import_id: UUID
     filename: str
+    import_type: str = "cas_pdf"
     source_type: str
     schemes_found: int = 0
     transactions_imported: int = 0
@@ -85,11 +87,13 @@ class ImportSummaryResponse(BaseModel):
 class TransactionResponse(BaseModel):
     id: UUID
     portfolio_id: UUID
+    asset_class: str
     folio_number: str
     amc_name: str
     scheme_name: str
     scheme_isin: str | None
     amfi_code: str | None
+    exchange: str | None
     transaction_date: date
     transaction_type: str
     amount: Decimal
@@ -105,9 +109,11 @@ class TransactionResponse(BaseModel):
 
 
 class HoldingResponse(BaseModel):
+    asset_class: str = "mutual_fund"
     scheme_name: str
     scheme_isin: str | None
     amfi_code: str | None
+    exchange: str | None = None
     folio_number: str
     total_units: Decimal
     invested_amount: Decimal

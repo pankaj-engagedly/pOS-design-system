@@ -166,7 +166,7 @@ class PosWatchlistApp extends HTMLElement {
         .view-toggle .header-btn:last-child { border-radius: 0 var(--pos-radius-sm) var(--pos-radius-sm) 0; border-left: none; }
 
         .filter-area {
-          padding: 4px 16px 8px;
+          padding: var(--pos-space-sm) 16px 8px;
           display: flex;
           flex-direction: column;
           gap: 6px;

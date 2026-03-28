@@ -43,7 +43,7 @@ class Portfolio(UserScopedBase):
 
 
 class CASImport(UserScopedBase):
-    """Record of a CAS PDF import."""
+    """Record of an import (CAS PDF, broker CSV/Excel/PDF, etc.)."""
 
     __tablename__ = "cas_imports"
     __table_args__ = (
@@ -52,7 +52,8 @@ class CASImport(UserScopedBase):
 
     portfolio_id = Column(UUID(as_uuid=True), ForeignKey("portfolios.id", ondelete="CASCADE"), nullable=False)
     filename = Column(String(500), nullable=False)
-    source_type = Column(String(20), nullable=False)  # "CAMS" | "KFintech" | "NSDL" | "unknown"
+    import_type = Column(String(30), nullable=False, default="cas_pdf")  # cas_pdf, stock_csv, stock_excel
+    source_type = Column(String(50), nullable=False)  # CAS: CAMS/KFintech/NSDL | Stock: Zerodha/Sharekhan
     transaction_count = Column(Integer, nullable=False, default=0)
     duplicates_skipped = Column(Integer, nullable=False, default=0)
     status = Column(String(20), nullable=False, default="completed")  # "completed" | "failed" | "partial"
@@ -67,7 +68,7 @@ class CASImport(UserScopedBase):
 
 
 class Transaction(UserScopedBase):
-    """A single MF transaction from a CAS import."""
+    """A single investment transaction (MF or stock) from an import."""
 
     __tablename__ = "transactions"
     __table_args__ = (
@@ -79,20 +80,23 @@ class Transaction(UserScopedBase):
         Index("ix_transactions_portfolio", "portfolio_id"),
         Index("ix_transactions_scheme", "portfolio_id", "scheme_isin"),
         Index("ix_transactions_date", "portfolio_id", "transaction_date"),
+        Index("ix_transactions_asset_class", "portfolio_id", "asset_class"),
     )
 
     portfolio_id = Column(UUID(as_uuid=True), ForeignKey("portfolios.id", ondelete="CASCADE"), nullable=False)
     import_id = Column(UUID(as_uuid=True), ForeignKey("cas_imports.id", ondelete="SET NULL"), nullable=True)
-    folio_number = Column(String(50), nullable=False)
-    amc_name = Column(String(300), nullable=False)
-    scheme_name = Column(String(500), nullable=False)
-    scheme_isin = Column(String(20), nullable=True)  # may be missing for older schemes
-    amfi_code = Column(String(20), nullable=True)
+    asset_class = Column(String(20), nullable=False, default="mutual_fund")  # mutual_fund, stock, etf
+    folio_number = Column(String(50), nullable=False)  # MF: folio number, stock: broker client ID
+    amc_name = Column(String(300), nullable=False)  # MF: AMC name, stock: broker name
+    scheme_name = Column(String(500), nullable=False)  # MF: scheme name, stock: company/symbol name
+    scheme_isin = Column(String(20), nullable=True)  # ISIN for both MF and stocks
+    amfi_code = Column(String(20), nullable=True)  # MF: AMFI code, stock: NSE/BSE symbol
+    exchange = Column(String(10), nullable=True)  # stock: NSE/BSE
     transaction_date = Column(Date, nullable=False)
     transaction_type = Column(String(30), nullable=False)  # buy, sell, sip, switch_in, switch_out, dividend_payout, dividend_reinvest, redemption
     amount = Column(Numeric(18, 4), nullable=False)
     units = Column(Numeric(18, 4), nullable=False)
-    nav = Column(Numeric(18, 4), nullable=True)
+    nav = Column(Numeric(18, 4), nullable=True)  # MF: NAV per unit, stock: price per share
     balance_units = Column(Numeric(18, 4), nullable=True)
 
     portfolio = relationship("Portfolio", back_populates="transactions")
@@ -115,6 +119,27 @@ class NAVCache(UserScopedBase):
     scheme_name = Column(String(500), nullable=True)
     nav = Column(Numeric(18, 4), nullable=False)
     nav_date = Column(Date, nullable=False)
+
+
+# ── Stock Price Cache ────────────────────────────────────
+
+
+class StockPriceCache(UserScopedBase):
+    """Cached daily stock/ETF price from NSE/BSE."""
+
+    __tablename__ = "stock_price_cache"
+    __table_args__ = (
+        UniqueConstraint("symbol", "exchange", "price_date", name="uq_stock_price_symbol_date"),
+        Index("ix_stock_price_symbol", "symbol"),
+        Index("ix_stock_price_isin", "isin"),
+    )
+
+    symbol = Column(String(30), nullable=False)  # NSE/BSE trading symbol
+    isin = Column(String(20), nullable=True)
+    company_name = Column(String(500), nullable=True)
+    exchange = Column(String(10), nullable=False, default="NSE")  # NSE, BSE
+    price = Column(Numeric(18, 4), nullable=False)  # closing price
+    price_date = Column(Date, nullable=False)
 
 
 # ── Investment Plan ──────────────────────────────────────

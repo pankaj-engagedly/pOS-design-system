@@ -100,6 +100,7 @@ class RuleResponse(BaseModel):
     keyword: str
     category_id: UUID
     category_name: str | None = None
+    parent_category_name: str | None = None
     priority: int
     source: str
     created_at: datetime

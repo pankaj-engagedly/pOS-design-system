@@ -175,7 +175,7 @@ class PosPortfolioPlanDetail extends HTMLElement {
       <style>
         :host { display: block; }
 
-        .plans-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: stretch; }
+        .plans-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: stretch; padding-top: var(--pos-space-sm); }
         .plan-card {
           border: 2px solid var(--pos-color-border-default, #e2e2e8);
           border-radius: 8px; padding: 10px 14px; min-width: 140px;
@@ -336,7 +336,6 @@ class PosPortfolioPlanDetail extends HTMLElement {
             <button class="group-btn ${this._groupBy === 'source' ? 'active' : ''}" data-group="source">By Source</button>
           </div>
           <div style="flex:1"></div>
-          <button class="btn-sm" data-action="add-manual">${icon('plus', 12)} Add Asset</button>
         </div>
 
         ${groups.map(([groupKey, assets]) => `

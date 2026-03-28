@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import Account, CategoryRule, StatementImport, Transaction
-from .parsers import get_parser_for_bank
+from .parsers import get_parser
 from .parsers.base import ParsedTransaction
 from .schemas import ImportSummary
 from .service_categories import seed_categories
@@ -35,7 +35,7 @@ async def import_statement(
     await seed_categories(session, user_id)
 
     # Get parser
-    parser = get_parser_for_bank(account.bank)
+    parser = get_parser(account.bank, filename)
     if not parser:
         raise ValueError(f"No parser available for bank: {account.bank}")
 
@@ -45,6 +45,8 @@ async def import_statement(
         file_type = "csv"
     elif lower.endswith((".xlsx", ".xls")):
         file_type = "xlsx"
+    elif lower.endswith(".pdf"):
+        file_type = "pdf"
     else:
         file_type = "csv"  # default
 

@@ -10,7 +10,7 @@ from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import NAVCache, Portfolio, Transaction
+from .models import NAVCache, Portfolio, StockPriceCache, Transaction
 
 # Transaction types that add units/value
 BUY_SIDE = {"buy", "sip", "switch_in", "dividend_reinvest"}
@@ -34,9 +34,11 @@ async def compute_holdings(
 
     # Group by scheme_isin + folio
     holdings_map = defaultdict(lambda: {
+        "asset_class": "mutual_fund",
         "scheme_name": "",
         "scheme_isin": None,
         "amfi_code": None,
+        "exchange": None,
         "folio_number": "",
         "total_units": Decimal("0"),
         "invested_amount": Decimal("0"),
@@ -47,9 +49,11 @@ async def compute_holdings(
     for txn in transactions:
         key = (txn.scheme_isin or txn.scheme_name, txn.folio_number)
         h = holdings_map[key]
+        h["asset_class"] = txn.asset_class or "mutual_fund"
         h["scheme_name"] = txn.scheme_name
         h["scheme_isin"] = txn.scheme_isin
         h["amfi_code"] = txn.amfi_code
+        h["exchange"] = getattr(txn, "exchange", None)
         h["folio_number"] = txn.folio_number
 
         if txn.transaction_type in BUY_SIDE:
@@ -63,10 +67,17 @@ async def compute_holdings(
 
         h["transactions"].append(txn)
 
-    # Fetch current NAV for each scheme
+    # Fetch current price for each holding (NAV for MF, stock price for stocks)
     holdings = []
     for key, h in holdings_map.items():
-        current_nav = await _get_latest_nav(session, h["amfi_code"])
+        asset_class = h["asset_class"]
+
+        if asset_class == "stock":
+            current_nav = await _get_latest_stock_price(
+                session, h["amfi_code"], h["exchange"] or "NSE"
+            )
+        else:
+            current_nav = await _get_latest_nav(session, h["amfi_code"])
 
         total_units = h["total_units"]
         invested = h["invested_amount"] - h["redeemed_amount"]
@@ -79,9 +90,11 @@ async def compute_holdings(
         xirr_val = _compute_xirr(h["transactions"], current_value, total_units)
 
         holdings.append({
+            "asset_class": asset_class,
             "scheme_name": h["scheme_name"],
             "scheme_isin": h["scheme_isin"],
             "amfi_code": h["amfi_code"],
+            "exchange": h["exchange"],
             "folio_number": h["folio_number"],
             "total_units": total_units,
             "invested_amount": invested,
@@ -123,7 +136,7 @@ def _compute_xirr(transactions: list, current_value: Decimal | None, total_units
 
 
 async def _get_latest_nav(session: AsyncSession, amfi_code: str | None) -> Decimal | None:
-    """Get the most recent NAV for a scheme from cache."""
+    """Get the most recent NAV for a MF scheme from cache."""
     if not amfi_code:
         return None
 
@@ -133,8 +146,26 @@ async def _get_latest_nav(session: AsyncSession, amfi_code: str | None) -> Decim
         .order_by(NAVCache.nav_date.desc())
         .limit(1)
     )
-    nav = result.scalar_one_or_none()
-    return nav
+    return result.scalar_one_or_none()
+
+
+async def _get_latest_stock_price(
+    session: AsyncSession, symbol: str | None, exchange: str = "NSE"
+) -> Decimal | None:
+    """Get the most recent stock price from cache."""
+    if not symbol:
+        return None
+
+    result = await session.execute(
+        select(StockPriceCache.price)
+        .where(
+            StockPriceCache.symbol == symbol,
+            StockPriceCache.exchange == exchange,
+        )
+        .order_by(StockPriceCache.price_date.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
 
 
 async def compute_portfolio_summary(

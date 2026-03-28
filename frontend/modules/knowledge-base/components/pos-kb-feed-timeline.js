@@ -17,7 +17,7 @@ sheet.replaceSync(`
     display: flex;
     align-items: center;
     gap: var(--pos-space-sm);
-    padding: 0 0 var(--pos-space-sm);
+    padding: var(--pos-space-sm) 0 var(--pos-space-sm);
     flex-wrap: wrap;
   }
 

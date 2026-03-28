@@ -7,8 +7,6 @@ Date format: DD-MM-YYYY or DD/MM/YYYY
 """
 
 import io
-from datetime import datetime
-from decimal import Decimal, InvalidOperation
 
 from .base import BaseParser, ParsedTransaction
 
@@ -20,8 +18,9 @@ except ImportError:
 
 class KotakCSVParser(BaseParser):
     bank_name = "Kotak"
+    date_formats = ["%d-%m-%Y", "%d/%m/%Y", "%d-%m-%y", "%d/%m/%y", "%Y-%m-%d"]
 
-    def detect(self, file_bytes: bytes, filename: str) -> bool:
+    def detect(self, file_bytes: bytes | None, filename: str) -> bool:
         return "kotak" in filename.lower()
 
     def parse(self, file_bytes: bytes, filename: str) -> list[ParsedTransaction]:
@@ -44,7 +43,6 @@ class KotakCSVParser(BaseParser):
             if not header_found:
                 lower_cells = [c.lower().strip() for c in cells]
                 if any("transaction date" in c or "tran date" in c for c in lower_cells):
-                    # Map column positions
                     for i, c in enumerate(lower_cells):
                         if "transaction date" in c or "tran date" in c:
                             col_map["date"] = i
@@ -80,14 +78,8 @@ class KotakCSVParser(BaseParser):
             ref = cells[col_map.get("ref", 2)].strip() if "ref" in col_map else None
             balance_str = cells[col_map.get("balance", 5)].strip() if "balance" in col_map else None
 
-            # Parse date
-            for fmt in ("%d-%m-%Y", "%d/%m/%Y", "%d-%m-%y", "%d/%m/%y", "%Y-%m-%d"):
-                try:
-                    txn_date = datetime.strptime(date_str.split(" ")[0], fmt).date()
-                    break
-                except ValueError:
-                    continue
-            else:
+            txn_date = self._parse_date(date_str)
+            if not txn_date:
                 return None
 
             debit = self._parse_amount(debit_str)
@@ -113,13 +105,4 @@ class KotakCSVParser(BaseParser):
                 balance=balance,
             )
         except (IndexError, ValueError):
-            return None
-
-    def _parse_amount(self, s: str) -> Decimal | None:
-        if not s or s in ("", "None", "nan", "0"):
-            return None
-        try:
-            val = abs(Decimal(s.replace(",", "").strip()))
-            return val if val > 0 else None
-        except (InvalidOperation, ValueError):
             return None

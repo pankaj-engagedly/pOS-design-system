@@ -101,12 +101,13 @@ TABLE_STYLES.replaceSync(`
 
   /* Hover actions inside a cell */
   .pos-table .row-actions {
-    display: none;
+    display: inline-flex;
     align-items: center;
     gap: 2px;
+    visibility: hidden;
   }
   .pos-table tbody tr:hover .row-actions {
-    display: inline-flex;
+    visibility: visible;
   }
   .pos-table .row-action-btn {
     display: flex;

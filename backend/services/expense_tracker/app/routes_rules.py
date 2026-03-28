@@ -25,9 +25,10 @@ async def list_rules(
     user_id: UUID = Depends(get_user_id),
     session: AsyncSession = Depends(get_async_session),
 ):
+    from .models import Category
     result = await session.execute(
         select(CategoryRule)
-        .options(joinedload(CategoryRule.category))
+        .options(joinedload(CategoryRule.category).joinedload(Category.parent))
         .where(CategoryRule.user_id == user_id)
         .order_by(CategoryRule.priority.desc(), CategoryRule.keyword)
     )
@@ -36,6 +37,7 @@ async def list_rules(
         RuleResponse(
             id=r.id, keyword=r.keyword, category_id=r.category_id,
             category_name=r.category.name if r.category else None,
+            parent_category_name=r.category.parent.name if r.category and r.category.parent else None,
             priority=r.priority, source=r.source, created_at=r.created_at,
         )
         for r in rules

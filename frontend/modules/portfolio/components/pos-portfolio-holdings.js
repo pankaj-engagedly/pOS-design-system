@@ -36,6 +36,7 @@ class PosPortfolioHoldings extends HTMLElement {
     this._data = null;
     this._sortKey = 'scheme_name';
     this._sortDir = 'asc';
+    this._hideSold = localStorage.getItem('pos-portfolio-hide-sold') !== 'false';
   }
 
   set data(val) { this._data = val; this._render(); }
@@ -52,7 +53,14 @@ class PosPortfolioHoldings extends HTMLElement {
       return;
     }
 
-    const holdings = this._getSortedHoldings();
+    let holdings = this._getSortedHoldings();
+
+    // Count sold before filtering
+    const soldCount = holdings.filter(h => Number(h.total_units || 0) === 0).length;
+
+    if (this._hideSold) {
+      holdings = holdings.filter(h => Number(h.total_units || 0) > 0);
+    }
 
     // Split by asset class
     const mfHoldings = holdings.filter(h => (h.asset_class || 'mutual_fund') === 'mutual_fund');
@@ -66,20 +74,16 @@ class PosPortfolioHoldings extends HTMLElement {
       <style>
         :host { display: block; }
         .section { margin-bottom: 32px; }
-        .section-header {
-          display: flex; align-items: center; justify-content: space-between;
-          margin-bottom: 12px;
+        .toolbar {
+          display: flex; align-items: center; gap: var(--pos-space-sm);
+          padding: 0 0 var(--pos-space-sm);
         }
-        .section-header h2 {
-          margin: 0; font-size: 15px; font-weight: 600;
-          color: var(--pos-color-text-primary, #1a1a2e);
-          display: flex; align-items: center; gap: 8px;
+        .toggle-label {
+          display: flex; align-items: center; gap: 6px;
+          font-size: var(--pos-font-size-xs); color: var(--pos-color-text-secondary);
+          cursor: pointer; user-select: none;
         }
-        .badge {
-          font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 10px;
-          background: var(--pos-color-background-secondary, #f0f0f5);
-          color: var(--pos-color-text-secondary);
-        }
+        .toggle-label input { margin: 0; cursor: pointer; }
         /* Compact table overrides */
         .pos-table { font-size: var(--pos-font-size-xs); }
         .pos-table td { padding: 8px 12px; }
@@ -88,15 +92,22 @@ class PosPortfolioHoldings extends HTMLElement {
         .pos-table td:first-child { text-align: left; }
         .pos-table th:not(:first-child) { text-align: right; }
         .pos-table td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
-        .fund-name {
+        td.fund-name {
           font-weight: 500; color: var(--pos-color-text-primary, #1a1a2e);
         }
-        .folio-num {
-          font-size: 11px; color: var(--pos-color-text-tertiary, #9b9bb0);
-          margin-top: 2px;
+        td.folio-num {
+          color: var(--pos-color-text-tertiary, #9b9bb0);
         }
       </style>
 
+      ${soldCount > 0 ? `
+        <div class="toolbar">
+          <label class="toggle-label">
+            <input type="checkbox" id="hide-sold" ${this._hideSold ? 'checked' : ''}>
+            Hide fully sold (${soldCount})
+          </label>
+        </div>
+      ` : ''}
       ${stockHoldings.length > 0 ? this._renderSection('Stocks', stockHoldings, totalCurrent) : ''}
       ${mfHoldings.length > 0 ? this._renderSection('Mutual Funds', mfHoldings, totalCurrent) : ''}
     `;
@@ -114,13 +125,11 @@ class PosPortfolioHoldings extends HTMLElement {
 
     return `
       <div class="section">
-        <div class="section-header">
-          <h2>${title} <span class="badge">${items.length}</span></h2>
-        </div>
         <table class="pos-table">
           <thead>
             <tr>
-              <th data-sort="scheme_name" class="${this._sortKey === 'scheme_name' ? 'sorted' : ''}">${nameLabel}<span class="sub-header">${subLabel}</span></th>
+              <th data-sort="scheme_name" class="${this._sortKey === 'scheme_name' ? 'sorted' : ''}">${nameLabel}</th>
+              <th data-sort="folio_number" class="${this._sortKey === 'folio_number' ? 'sorted' : ''}">${subLabel}</th>
               <th data-sort="current_nav" class="${this._sortKey === 'current_nav' ? 'sorted' : ''}">Last Price</th>
               <th data-sort="invested_amount" class="${this._sortKey === 'invested_amount' ? 'sorted' : ''}">Total Cost</th>
               <th data-sort="cost_per_unit" class="${this._sortKey === 'cost_per_unit' ? 'sorted' : ''}">Cost/Unit</th>
@@ -146,10 +155,8 @@ class PosPortfolioHoldings extends HTMLElement {
 
               return `
                 <tr>
-                  <td>
-                    <div class="fund-name">${this._esc(h.scheme_name)}</div>
-                    <div class="folio-num">${this._esc(h.folio_number)}</div>
-                  </td>
+                  <td class="fund-name">${this._esc(h.scheme_name)}</td>
+                  <td class="folio-num">${this._esc(h.folio_number)}</td>
                   <td>${nav > 0 ? formatINR(nav, 2) : '-'}</td>
                   <td>${formatINR(invested)}</td>
                   <td>${costPerUnit > 0 ? formatINR(costPerUnit, 2) : '-'}</td>
@@ -164,6 +171,7 @@ class PosPortfolioHoldings extends HTMLElement {
           <tfoot>
             <tr>
               <td>Subtotal</td>
+              <td></td>
               <td></td>
               <td>${formatINR(sectionInvested)}</td>
               <td></td>
@@ -221,9 +229,17 @@ class PosPortfolioHoldings extends HTMLElement {
         this._sortDir = this._sortDir === 'asc' ? 'desc' : 'asc';
       } else {
         this._sortKey = key;
-        this._sortDir = key === 'scheme_name' ? 'asc' : 'desc';
+        this._sortDir = (key === 'scheme_name' || key === 'folio_number') ? 'asc' : 'desc';
       }
       this._render();
+    });
+
+    this.shadow.addEventListener('change', (e) => {
+      if (e.target.id === 'hide-sold') {
+        this._hideSold = e.target.checked;
+        localStorage.setItem('pos-portfolio-hide-sold', this._hideSold);
+        this._render();
+      }
     });
   }
 

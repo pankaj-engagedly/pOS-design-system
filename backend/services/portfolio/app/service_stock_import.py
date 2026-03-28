@@ -1,4 +1,4 @@
-"""CAS PDF import service — uses cas_parser_adapter for PDF parsing."""
+"""Stock tradebook import service — CSV/Excel file parsing and transaction storage."""
 
 import shutil
 from datetime import datetime
@@ -9,55 +9,60 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .cas_parser_adapter import ParsedCAS, parse_cas_pdf
+from .cas_parser_adapter import ParsedCAS
 from .models import CASImport, Transaction
+from .stock_csv_parser import parse_stock_file
 
 
-async def import_cas_pdf(
+async def import_stock_file(
     session: AsyncSession,
     user_id: UUID,
     portfolio_id: UUID,
     file_path: str,
-    password: str,
     original_filename: str,
+    broker: str | None = None,
 ) -> dict:
-    """Parse a CAS PDF and import transactions.
+    """Parse a stock tradebook CSV/Excel and import transactions.
 
     Returns dict with import summary.
     Raises ValueError on parse failure.
     """
-    # Parse via adapter (library-agnostic)
-    parsed: ParsedCAS = parse_cas_pdf(file_path, password)
+    parsed: ParsedCAS = parse_stock_file(file_path, broker=broker)
 
-    logger.info(f"Parsed CAS PDF: source={parsed.source_type}, file={original_filename}")
+    logger.info(f"Parsed stock file: broker={parsed.source_type}, file={original_filename}")
+
+    # Determine import_type from file extension
+    ext = Path(original_filename).suffix.lower()
+    import_type = "stock_csv" if ext in (".csv", ".txt") else "stock_excel"
 
     # Flatten all transactions with folio/scheme context
     all_transactions = []
-    schemes_found = set()
+    symbols_found = set()
 
     for folio in parsed.folios:
         for scheme in folio.schemes:
-            schemes_found.add(scheme.name)
+            symbols_found.add(scheme.name)
 
             for txn in scheme.transactions:
                 all_transactions.append({
                     "user_id": user_id,
                     "portfolio_id": portfolio_id,
-                    "asset_class": "mutual_fund",
+                    "asset_class": "stock",
                     "folio_number": folio.folio_number,
-                    "amc_name": folio.amc,
-                    "scheme_name": scheme.name,
+                    "amc_name": folio.amc,  # broker name
+                    "scheme_name": scheme.name,  # stock symbol/name
                     "scheme_isin": scheme.isin,
-                    "amfi_code": scheme.amfi_code or scheme.rta_code,
+                    "amfi_code": scheme.amfi_code,  # NSE/BSE symbol
+                    "exchange": "NSE",  # default, could be parsed per-txn
                     "transaction_date": txn.date,
                     "transaction_type": txn.transaction_type,
                     "amount": txn.amount,
                     "units": txn.units,
-                    "nav": txn.nav,
+                    "nav": txn.nav,  # price per share
                     "balance_units": txn.balance,
                 })
 
-    # Insert with dedup
+    # Insert with dedup (same constraint as CAS import)
     imported_count = 0
     duplicates_skipped = 0
 
@@ -81,45 +86,46 @@ async def import_cas_pdf(
         session.add(txn)
         imported_count += 1
 
-    # Store raw PDF
-    raw_file_path = _store_raw_pdf(user_id, file_path, original_filename)
+    # Store raw file
+    raw_file_path = _store_raw_file(user_id, file_path, original_filename)
 
     # Create import record
-    cas_import = CASImport(
+    import_record = CASImport(
         user_id=user_id,
         portfolio_id=portfolio_id,
         filename=original_filename,
-        import_type="cas_pdf",
+        import_type=import_type,
         source_type=parsed.source_type,
         transaction_count=imported_count,
         duplicates_skipped=duplicates_skipped,
         status="completed",
         raw_file_path=raw_file_path,
     )
-    session.add(cas_import)
+    session.add(import_record)
 
     await session.commit()
-    await session.refresh(cas_import)
+    await session.refresh(import_record)
 
     logger.info(
-        f"CAS import complete: {imported_count} imported, "
+        f"Stock import complete: {imported_count} imported, "
         f"{duplicates_skipped} duplicates skipped, "
-        f"{len(schemes_found)} schemes found"
+        f"{len(symbols_found)} symbols found"
     )
 
     return {
-        "import_id": cas_import.id,
+        "import_id": import_record.id,
         "filename": original_filename,
+        "import_type": import_type,
         "source_type": parsed.source_type,
-        "schemes_found": len(schemes_found),
+        "schemes_found": len(symbols_found),
         "transactions_imported": imported_count,
         "duplicates_skipped": duplicates_skipped,
         "status": "completed",
     }
 
 
-def _store_raw_pdf(user_id: UUID, temp_path: str, original_filename: str) -> str:
-    """Copy raw PDF to permanent storage."""
+def _store_raw_file(user_id: UUID, temp_path: str, original_filename: str) -> str:
+    """Copy raw file to permanent storage."""
     storage_dir = Path(f"data/portfolio/{user_id}/imports")
     storage_dir.mkdir(parents=True, exist_ok=True)
 
@@ -127,15 +133,3 @@ def _store_raw_pdf(user_id: UUID, temp_path: str, original_filename: str) -> str
     dest = storage_dir / f"{ts}_{original_filename}"
     shutil.copy2(temp_path, str(dest))
     return str(dest)
-
-
-async def list_imports(
-    session: AsyncSession, user_id: UUID, portfolio_id: UUID
-) -> list[CASImport]:
-    """List all CAS imports for a portfolio."""
-    result = await session.execute(
-        select(CASImport)
-        .where(CASImport.portfolio_id == portfolio_id, CASImport.user_id == user_id)
-        .order_by(CASImport.created_at.desc())
-    )
-    return list(result.scalars().all())

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .db import get_session as get_async_session
 from . import service_holdings as holdings_svc
 from . import service_nav as nav_svc
+from . import service_stock_prices as stock_price_svc
 from . import service_portfolio as portfolio_svc
 from .schemas import (
     FamilyAggregation,
@@ -64,6 +65,19 @@ async def refresh_nav(
 ):
     """Trigger manual NAV refresh from AMFI (only for held schemes)."""
     result = await nav_svc.fetch_nav_for_portfolio_schemes(session, user_id)
+    return result
+
+
+# ── Stock Prices ────────────────────────────────────────
+
+
+@router.post("/stock-prices/refresh")
+async def refresh_stock_prices(
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Trigger manual stock price refresh (only for held stocks)."""
+    result = await stock_price_svc.fetch_prices_for_portfolio_stocks(session, user_id)
     return result
 
 

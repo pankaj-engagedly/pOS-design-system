@@ -117,8 +117,8 @@ class PosExpenseImportDialog extends HTMLElement {
             </select>
           </div>
           <div class="form-group">
-            <label>Statement File (CSV, XLS, XLSX)</label>
-            <input type="file" name="file" accept=".csv,.xls,.xlsx" required>
+            <label>Statement File (CSV, XLS, XLSX, PDF)</label>
+            <input type="file" name="file" accept=".csv,.xls,.xlsx,.pdf" required>
           </div>
           ${this._error ? `<div class="error">${this._error}</div>` : ''}
           <div class="actions">

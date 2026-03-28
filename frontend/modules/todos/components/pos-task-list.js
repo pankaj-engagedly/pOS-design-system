@@ -101,7 +101,7 @@ class PosTaskList extends HTMLElement {
         }
 
         .filters {
-          padding: 0 var(--pos-space-lg) var(--pos-space-md);
+          padding: var(--pos-space-sm) var(--pos-space-lg) var(--pos-space-md);
           flex-shrink: 0;
         }
 

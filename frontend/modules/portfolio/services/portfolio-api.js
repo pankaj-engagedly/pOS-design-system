@@ -70,6 +70,28 @@ export async function importCAS(portfolioId, file, password) {
   return response.json();
 }
 
+export async function importStocks(portfolioId, file, broker) {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (broker) formData.append('broker', broker);
+
+  const { getAccessToken } = await import('../../../shared/services/auth-store.js');
+  const token = getAccessToken();
+
+  const response = await fetch(`/api/portfolio/portfolios/${portfolioId}/import-stocks`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail || `Import failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
 export function getImports(portfolioId) {
   return apiFetch(`/api/portfolio/portfolios/${portfolioId}/imports`);
 }
@@ -95,6 +117,10 @@ export function getTransactions(portfolioId, params = {}) {
 
 export function refreshNAV() {
   return apiFetch('/api/portfolio/nav/refresh', { method: 'POST' });
+}
+
+export function refreshStockPrices() {
+  return apiFetch('/api/portfolio/stock-prices/refresh', { method: 'POST' });
 }
 
 // ── Aggregation ────────────────────────────────────────

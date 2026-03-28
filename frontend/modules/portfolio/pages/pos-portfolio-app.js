@@ -134,10 +134,12 @@ class PosPortfolioApp extends HTMLElement {
     }
 
     if (state.selectedView === 'plan') {
+      const planCount = (state.plans || []).length;
       content.innerHTML = `
-        <div class="content-header">
-          <h2>Investment Plans</h2>
-        </div>
+        <pos-page-header>
+          Investment Plans
+          <span slot="subtitle">${planCount} plan${planCount !== 1 ? 's' : ''}</span>
+        </pos-page-header>
         <pos-portfolio-plan-detail></pos-portfolio-plan-detail>`;
       const detail = content.querySelector('pos-portfolio-plan-detail');
       if (detail) detail.plan = { _trigger: true }; // triggers load of all plans
@@ -176,14 +178,14 @@ class PosPortfolioApp extends HTMLElement {
     const isHoldings = state.contentView === 'holdings';
 
     content.innerHTML = `
-      <div class="content-header">
-        <h2>${breadcrumb}</h2>
-        ${subtitleParts.length > 0 ? `<span class="header-subtitle">${subtitleParts.join(' · ')}</span>` : ''}
-        <div class="header-actions">
+      <pos-page-header>
+        ${breadcrumb}
+        ${subtitleParts.length > 0 ? `<span slot="subtitle">${subtitleParts.join(' · ')}</span>` : ''}
+        <div slot="actions">
           <button class="header-btn" data-action="import">${icon('upload', 14)} Import</button>
           ${isHoldings ? `<button class="header-btn" data-action="refresh-prices">${icon('refresh-cw', 14)} Refresh</button>` : ''}
         </div>
-      </div>
+      </pos-page-header>
       <div class="filter-chips">
         <button class="chip ${isHoldings ? 'active' : ''}" data-tab="holdings">Holdings</button>
         <button class="chip ${!isHoldings ? 'active' : ''}" data-tab="transactions">Transactions</button>
@@ -217,20 +219,6 @@ class PosPortfolioApp extends HTMLElement {
           flex: 1;
           min-height: 0;
           overflow: auto;
-          padding: 20px 24px;
-        }
-        .content-header {
-          display: flex;
-          align-items: baseline;
-          gap: 8px;
-          margin-bottom: var(--pos-space-sm);
-          flex-wrap: wrap;
-        }
-        .content-header h2 {
-          margin: 0;
-          font-size: var(--pos-font-size-lg, 18px);
-          font-weight: 600;
-          color: var(--pos-color-text-primary, #1a1a2e);
         }
         .breadcrumb-link {
           background: none; border: none; padding: 0; cursor: pointer;
@@ -242,14 +230,9 @@ class PosPortfolioApp extends HTMLElement {
           color: var(--pos-color-text-secondary); opacity: 0.5;
           display: inline-flex; align-items: center; padding: 0 2px; vertical-align: middle;
         }
-        .header-subtitle {
-          font-size: var(--pos-font-size-sm);
-          color: var(--pos-color-text-secondary);
-          margin-left: 8px;
-        }
         .filter-chips {
           display: flex; gap: 6px;
-          padding: 0 0 var(--pos-space-sm);
+          padding: var(--pos-space-sm) var(--pos-space-lg) var(--pos-space-sm);
         }
         .chip {
           padding: 3px 10px;
@@ -267,11 +250,6 @@ class PosPortfolioApp extends HTMLElement {
           background: var(--pos-color-action-primary);
           color: white;
           border-color: var(--pos-color-action-primary);
-        }
-        .header-actions {
-          display: flex;
-          gap: 8px;
-          margin-left: auto;
         }
         .header-btn {
           display: inline-flex;
@@ -304,6 +282,13 @@ class PosPortfolioApp extends HTMLElement {
           cursor: pointer;
         }
         .action-btn:hover { opacity: 0.9; }
+        pos-portfolio-holdings,
+        pos-portfolio-transactions,
+        pos-portfolio-plan-detail,
+        pos-portfolio-family-dashboard {
+          display: block;
+          padding: 0 var(--pos-space-lg);
+        }
         .empty-state {
           display: flex;
           flex-direction: column;
