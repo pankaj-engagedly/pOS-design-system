@@ -17,15 +17,15 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
-from pos_contracts.models import UserScopedBase
+from pos_contracts.models import Base, UserScopedBase
+
+from uuid_utils import uuid7
 
 
-# ── Shared securities ───────────────────────────────────────────────────────
-# Security extends UserScopedBase for metadata compatibility but user_id is
-# nullable — securities are shared across all users, not owned by anyone.
+# ── Shared (no user_id) ───────────────────────────────────────────────────────
 
 
-class Security(UserScopedBase):
+class Security(Base):
     """A ticker/instrument — shared across all users. Market data lives here."""
 
     __tablename__ = "securities"
@@ -34,19 +34,26 @@ class Security(UserScopedBase):
         Index("ix_securities_asset_type", "asset_type"),
     )
 
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid7)
     symbol = Column(String(30), nullable=False)
     name = Column(String(500), nullable=False)
     asset_type = Column(String(20), nullable=False)
     exchange = Column(String(20), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default="now()")
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default="now()")
 
 
-class MarketDataCache(UserScopedBase):
+class MarketDataCache(Base):
     """Cached market data for a security — refreshed periodically. Shared across users."""
 
     __tablename__ = "market_data_cache"
     __table_args__ = (
         UniqueConstraint("security_id", name="uq_market_data_cache_security"),
     )
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid7)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default="now()")
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default="now()")
 
     security_id = Column(UUID(as_uuid=True), ForeignKey("securities.id", ondelete="CASCADE"), nullable=False)
 
@@ -139,7 +146,7 @@ class MarketDataCache(UserScopedBase):
     # relationship set up below
 
 
-class MetricSnapshot(UserScopedBase):
+class MetricSnapshot(Base):
     """Daily snapshot of all cached metrics for a security."""
 
     __tablename__ = "metric_snapshots"
@@ -148,12 +155,14 @@ class MetricSnapshot(UserScopedBase):
         Index("ix_metric_snapshots_security_date", "security_id", "recorded_date"),
     )
 
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid7)
     security_id = Column(UUID(as_uuid=True), ForeignKey("securities.id", ondelete="CASCADE"), nullable=False)
     recorded_date = Column(Date, nullable=False)
     metrics = Column(JSONB, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default="now()")
 
 
-class FinancialStatement(UserScopedBase):
+class FinancialStatement(Base):
     """Accumulated financial statement data — one row per statement per fiscal period per frequency."""
 
     __tablename__ = "financial_statements"
@@ -162,6 +171,7 @@ class FinancialStatement(UserScopedBase):
         Index("ix_financial_statements_security_type", "security_id", "statement_type"),
     )
 
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid7)
     security_id = Column(UUID(as_uuid=True), ForeignKey("securities.id", ondelete="CASCADE"), nullable=False)
     statement_type = Column(String(20), nullable=False)
     fiscal_period = Column(Date, nullable=False)
