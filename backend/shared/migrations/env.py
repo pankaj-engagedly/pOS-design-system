@@ -5,8 +5,11 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-# Add shared package root to path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+# Add shared package root to path (for local dev — in Docker, pos_contracts is pip-installed)
+try:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+except IndexError:
+    pass  # Running inside Docker container, packages already installed
 
 from alembic import context
 from sqlalchemy import pool
