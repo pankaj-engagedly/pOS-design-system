@@ -52,3 +52,7 @@ test-results/
 
 # Claude Code — local machine settings (commands/ and skills/ are project config, keep those)
 .claude/settings.local.json
+
+# User data (uploaded/imported files)
+backend/services/*/data/
+backend/data/
