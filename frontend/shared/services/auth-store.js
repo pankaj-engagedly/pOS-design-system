@@ -2,7 +2,7 @@
 
 import { emit } from './event-bus.js';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = '';
 const REFRESH_TOKEN_KEY = 'pos_refresh_token';
 
 let accessToken = null;
