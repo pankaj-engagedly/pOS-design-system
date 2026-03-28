@@ -13,8 +13,8 @@ from pos_contracts.exceptions import NotFoundError
 
 from .models import Attachment
 
-# Base directory for file storage — relative to project root
-STORAGE_BASE = Path(__file__).resolve().parents[3] / "data" / "attachments"
+# Base directory for file storage — configurable via env var for Docker
+STORAGE_BASE = Path(os.environ.get("STORAGE_BASE", Path(__file__).resolve().parents[1] / "data" / "attachments"))
 
 
 async def upload_file(

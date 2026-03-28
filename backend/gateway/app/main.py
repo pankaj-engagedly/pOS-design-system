@@ -18,11 +18,14 @@ class GatewayConfig(BaseServiceConfig):
     SERVICE_NAME: str = "pos-gateway"
     AUTH_SERVICE_URL: str = "http://localhost:8001"
     TODO_SERVICE_URL: str = "http://localhost:8002"
+    ATTACHMENT_SERVICE_URL: str = "http://localhost:8003"
+    NOTES_SERVICE_URL: str = "http://localhost:8004"
     DOCUMENTS_SERVICE_URL: str = "http://localhost:8005"
     VAULT_SERVICE_URL: str = "http://localhost:8006"
     KB_SERVICE_URL: str = "http://localhost:8007"
     PHOTOS_SERVICE_URL: str = "http://localhost:8008"
     WATCHLIST_SERVICE_URL: str = "http://localhost:8009"
+    PORTFOLIO_SERVICE_URL: str = "http://localhost:8010"
     EXPENSE_TRACKER_SERVICE_URL: str = "http://localhost:8011"
 
 
@@ -37,11 +40,14 @@ async def lifespan(app: FastAPI):
     from . import routes as routes_module
     routes_module.AUTH_SERVICE_URL = config.AUTH_SERVICE_URL
     routes_module.TODO_SERVICE_URL = config.TODO_SERVICE_URL
+    routes_module.ATTACHMENT_SERVICE_URL = config.ATTACHMENT_SERVICE_URL
+    routes_module.NOTES_SERVICE_URL = config.NOTES_SERVICE_URL
     routes_module.DOCUMENTS_SERVICE_URL = config.DOCUMENTS_SERVICE_URL
     routes_module.VAULT_SERVICE_URL = config.VAULT_SERVICE_URL
     routes_module.KB_SERVICE_URL = config.KB_SERVICE_URL
     routes_module.PHOTOS_SERVICE_URL = config.PHOTOS_SERVICE_URL
     routes_module.WATCHLIST_SERVICE_URL = config.WATCHLIST_SERVICE_URL
+    routes_module.PORTFOLIO_SERVICE_URL = config.PORTFOLIO_SERVICE_URL
     routes_module.EXPENSE_TRACKER_SERVICE_URL = config.EXPENSE_TRACKER_SERVICE_URL
     logger.info("Gateway ready")
     yield

@@ -65,31 +65,27 @@ def upgrade() -> None:
         postgresql_using="gin",
     )
 
-    op.create_table(
-        "tags",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False, index=True),
-        sa.Column("name", sa.String(100), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.UniqueConstraint("user_id", "name", name="uq_tags_user_name"),
-    )
+    # Tags table — created by shared migrations on fresh DBs, but this migration
+    # predates the shared tag system. Use raw SQL with IF NOT EXISTS for safety.
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS tags (
+            id UUID PRIMARY KEY,
+            user_id UUID NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL,
+            CONSTRAINT uq_tags_user_name UNIQUE (user_id, name)
+        )
+    """)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_tags_user_id ON tags (user_id)")
 
-    op.create_table(
-        "note_tags",
-        sa.Column(
-            "note_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("notes.id", ondelete="CASCADE"),
-            primary_key=True,
-        ),
-        sa.Column(
-            "tag_id",
-            postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("tags.id", ondelete="CASCADE"),
-            primary_key=True,
-        ),
-    )
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS note_tags (
+            note_id UUID REFERENCES notes(id) ON DELETE CASCADE,
+            tag_id UUID REFERENCES tags(id) ON DELETE CASCADE,
+            PRIMARY KEY (note_id, tag_id)
+        )
+    """)
 
 
 def downgrade() -> None:

@@ -1,10 +1,25 @@
-# Production frontend — built assets served by nginx
-# This is a placeholder. Will be implemented in Phase 5.
+# Stage 1: Build design system
+FROM node:20-alpine AS builder
 
+WORKDIR /build
+COPY design-system/package*.json design-system/
+RUN cd design-system && npm ci
+
+COPY design-system/ design-system/
+RUN cd design-system && npm run build
+
+# Stage 2: Serve with nginx
 FROM nginx:alpine
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-# COPY ../../design-system/dist /usr/share/nginx/html/design-system/dist
-# COPY ../../frontend/ /usr/share/nginx/html/frontend/
+# Remove default nginx page so it doesn't shadow our SPA fallback
+RUN rm -rf /usr/share/nginx/html/*
+
+COPY infra/docker/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Design system built assets
+COPY --from=builder /build/design-system/dist/ /usr/share/nginx/html/design-system/dist/
+
+# Frontend source (vanilla JS — no build step needed)
+COPY frontend/ /usr/share/nginx/html/frontend/
 
 EXPOSE 80

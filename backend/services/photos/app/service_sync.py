@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .image_processor import compute_file_hash, generate_thumbnails_from_bytes, process_image
 from .models import Photo, PhotoSource
 
-# Base directory for photo storage — same as service_photos
-STORAGE_BASE = Path(__file__).resolve().parents[3] / "data" / "photos"
+# Base directory for photo storage — configurable via env var for Docker
+STORAGE_BASE = Path(os.environ.get("STORAGE_BASE", Path(__file__).resolve().parents[1] / "data" / "photos"))
 
 # Supported file extensions (case-insensitive)
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".heic", ".heif", ".webp", ".tiff", ".tif", ".gif", ".bmp"}

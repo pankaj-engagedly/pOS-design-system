@@ -88,7 +88,7 @@ def upgrade():
             SELECT DISTINCT ON (security_id, recorded_date) id
             FROM metric_snapshots
             WHERE security_id IS NOT NULL
-            ORDER BY security_id, recorded_date, updated_at DESC NULLS LAST
+            ORDER BY security_id, recorded_date, created_at DESC NULLS LAST
         )
     """)
     op.alter_column("metric_snapshots", "security_id", nullable=False)
@@ -127,8 +127,7 @@ def upgrade():
     op.drop_constraint("uq_watchlist_items_user_symbol", "watchlist_items", type_="unique")
     op.create_unique_constraint("uq_watchlist_items_user_security", "watchlist_items", ["user_id", "security_id"])
 
-    # 8. Update alembic version
-    op.execute("UPDATE alembic_version_watchlist SET version_num = '008'")
+    # Note: Alembic handles version_num update automatically — no manual update needed
 
 
 def downgrade():

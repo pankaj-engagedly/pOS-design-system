@@ -1,0 +1,40 @@
+# Version control
+.git
+.gitignore
+
+# Node
+**/node_modules
+
+# Python
+**/__pycache__
+**/*.pyc
+**/.venv
+backend/.venv
+**/*.egg-info
+
+# IDE
+.vscode
+.idea
+**/.DS_Store
+
+# Data & uploads (never bake user data into images)
+backend/services/*/data/
+backend/data/
+
+# Test files
+backend/services/*/tests/
+
+# Docs & non-essential config
+docs/
+*.md
+!**/requirements.txt
+LICENSE
+CLAUDE.md
+
+# Infrastructure (not needed in app images)
+infra/k8s/
+infra/scripts/
+
+# Design system dev files (built assets are handled in frontend Dockerfile)
+design-system/node_modules
+design-system/tests/

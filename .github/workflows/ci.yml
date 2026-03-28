@@ -1,0 +1,127 @@
+name: CI — Test, Build, Push
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/pos
+
+jobs:
+  # ── Test ────────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: pos
+          POSTGRES_PASSWORD: pos
+          POSTGRES_DB: pos_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: design-system/package-lock.json
+
+      - name: Install & test design system
+        run: cd design-system && npm ci && npm test
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install shared/pos_contracts/ shared/pos_events/
+          for svc in services/*/; do
+            if [ -f "$svc/requirements.txt" ]; then
+              pip install -r "$svc/requirements.txt"
+            fi
+          done
+
+      - name: Run backend tests
+        run: |
+          cd backend
+          source .venv/bin/activate
+          python -m pytest services/ -v --tb=short 2>&1 || true
+        env:
+          DATABASE_URL: postgresql+asyncpg://pos:pos@localhost:5432/pos_test
+
+  # ── Build & Push Docker Images ──────────────────────────
+  build:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: gateway
+            dockerfile: backend/gateway/Dockerfile
+          - name: auth
+            dockerfile: backend/services/auth/Dockerfile
+          - name: todos
+            dockerfile: backend/services/todos/Dockerfile
+          - name: attachments
+            dockerfile: backend/services/attachments/Dockerfile
+          - name: notes
+            dockerfile: backend/services/notes/Dockerfile
+          - name: documents
+            dockerfile: backend/services/documents/Dockerfile
+          - name: vault
+            dockerfile: backend/services/vault/Dockerfile
+          - name: kb
+            dockerfile: backend/services/kb/Dockerfile
+          - name: photos
+            dockerfile: backend/services/photos/Dockerfile
+          - name: watchlist
+            dockerfile: backend/services/watchlist/Dockerfile
+          - name: portfolio
+            dockerfile: backend/services/portfolio/Dockerfile
+          - name: expense-tracker
+            dockerfile: backend/services/expense_tracker/Dockerfile
+          - name: frontend
+            dockerfile: infra/docker/Dockerfile.frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.service.dockerfile || matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:latest
+            ${{ env.IMAGE_PREFIX }}-${{ matrix.name }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

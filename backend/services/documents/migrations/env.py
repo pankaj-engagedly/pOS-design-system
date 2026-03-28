@@ -19,6 +19,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+# Allow DATABASE_URL env var to override alembic.ini (for Docker/production)
+import os
+if db_url := os.environ.get("DATABASE_URL"):
+    config.set_main_option("sqlalchemy.url", db_url)
+
 target_metadata = UserScopedBase.metadata
 
 OWNED_TABLES = {"doc_folders", "documents", "doc_shares", "doc_recent_access"}

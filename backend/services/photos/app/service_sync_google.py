@@ -20,8 +20,9 @@ from .google_photos_client import (
 from .image_processor import compute_file_hash, generate_thumbnails_from_bytes, process_image
 from .models import Album, AlbumPhoto, Photo, PhotoSource
 
-# Base directory for photo storage
-STORAGE_BASE = Path(__file__).resolve().parents[3] / "data" / "photos"
+# Base directory for photo storage — configurable via env var for Docker
+import os
+STORAGE_BASE = Path(os.environ.get("STORAGE_BASE", Path(__file__).resolve().parents[1] / "data" / "photos"))
 
 # MIME type to extension mapping for Google Photos
 MIME_TO_EXT = {

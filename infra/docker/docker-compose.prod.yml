@@ -1,0 +1,218 @@
+# Production Docker Compose for pOS
+# Lives on the server at ~/pos/docker-compose.yml
+# Uses pre-built images from ghcr.io (pushed by CI)
+#
+# Usage:
+#   docker compose pull && docker compose up -d
+#   ./migrate.sh  (first deploy or after migrations)
+
+x-common-env: &common-env
+  DATABASE_URL: postgresql+asyncpg://${DB_USER}:${DB_PASS}@postgres:5432/${DB_NAME}
+  RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@rabbitmq:5672/
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+  APP_SECRET_KEY: ${APP_SECRET_KEY}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+x-common-config: &common-config
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+  # ── Reverse Proxy ───────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy-data:/data
+      - caddy-config:/config
+    <<: *common-config
+
+  # ── Infrastructure ──────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      retries: 5
+    <<: *common-config
+
+  rabbitmq:
+    image: rabbitmq:3.13-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 30s
+      retries: 3
+    <<: *common-config
+
+  # ── Gateway ─────────────────────────────────────────────
+  gateway:
+    image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-gateway:${IMAGE_TAG:-latest}
+    environment:
+      <<: *common-env
+      AUTH_SERVICE_URL: http://auth:8001
+      TODO_SERVICE_URL: http://todos:8002
+      ATTACHMENT_SERVICE_URL: http://attachments:8003
+      NOTES_SERVICE_URL: http://notes:8004
+      DOCUMENTS_SERVICE_URL: http://documents:8005
+      VAULT_SERVICE_URL: http://vault:8006
+      KB_SERVICE_URL: http://kb:8007
+      PHOTOS_SERVICE_URL: http://photos:8008
+      WATCHLIST_SERVICE_URL: http://watchlist:8009
+      PORTFOLIO_SERVICE_URL: http://portfolio:8010
+      EXPENSE_TRACKER_SERVICE_URL: http://expense-tracker:8011
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  # ── Services ────────────────────────────────────────────
+  auth:
+    image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-auth:${IMAGE_TAG:-latest}
+    environment:
+      <<: *common-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  todos:
+    image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-todos:${IMAGE_TAG:-latest}
+    environment:
+      <<: *common-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    <<: *common-config
+
+  attachments:
+    image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-attachments:${IMAGE_TAG:-latest}
+    environment:
+      <<: *common-env
+    volumes:
+      - attachments-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  notes:
+    image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-notes:${IMAGE_TAG:-latest}
+    environment:
+      <<: *common-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    <<: *common-config
+
+  documents:
+    image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-documents:${IMAGE_TAG:-latest}
+    environment:
+      <<: *common-env
+    volumes:
+      - documents-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  vault:
+    image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-vault:${IMAGE_TAG:-latest}
+    environment:
+      <<: *common-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  kb:
+    image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-kb:${IMAGE_TAG:-latest}
+    environment:
+      <<: *common-env
+    volumes:
+      - kb-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    <<: *common-config
+
+  photos:
+    image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-photos:${IMAGE_TAG:-latest}
+    environment:
+      <<: *common-env
+    volumes:
+      - photos-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  watchlist:
+    image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-watchlist:${IMAGE_TAG:-latest}
+    environment:
+      <<: *common-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  portfolio:
+    image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-portfolio:${IMAGE_TAG:-latest}
+    environment:
+      <<: *common-env
+    volumes:
+      - portfolio-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  expense-tracker:
+    image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-expense-tracker:${IMAGE_TAG:-latest}
+    environment:
+      <<: *common-env
+    volumes:
+      - expense-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  frontend:
+    image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-frontend:${IMAGE_TAG:-latest}
+    <<: *common-config
+
+volumes:
+  pgdata:
+  rabbitmq-data:
+  caddy-data:
+  caddy-config:
+  attachments-data:
+  documents-data:
+  kb-data:
+  photos-data:
+  portfolio-data:
+  expense-data:

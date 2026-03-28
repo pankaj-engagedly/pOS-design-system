@@ -1,0 +1,232 @@
+# docker-compose.dev.yml — full pOS stack in containers for local testing
+# Usage: docker compose -f docker-compose.dev.yml up --build
+#
+# This is NOT for production. It builds images locally and uses dev secrets.
+# For production, see docs/deployment-guide.md Phase 3.
+
+x-common-env: &common-env
+  DATABASE_URL: postgresql+asyncpg://pos:pos@postgres:5432/pos
+  RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+  JWT_SECRET_KEY: dev-secret-change-in-production
+  APP_SECRET_KEY: dev-app-secret-change-in-production
+  LOG_LEVEL: INFO
+
+x-common-config: &common-config
+  restart: unless-stopped
+
+x-backend-build: &backend-build
+  context: .
+
+services:
+  # ── Infrastructure ──────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: pos
+      POSTGRES_PASSWORD: pos
+      POSTGRES_DB: pos
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"  # 5433 to avoid conflict with local Homebrew PostgreSQL
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pos"]
+      interval: 5s
+      retries: 5
+    <<: *common-config
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports:
+      - "5673:5672"    # AMQP — offset to avoid local conflict
+      - "15673:15672"  # Management UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      retries: 5
+    <<: *common-config
+
+  # ── Gateway ─────────────────────────────────────────────
+  gateway:
+    build:
+      <<: *backend-build
+      dockerfile: backend/gateway/Dockerfile
+    ports:
+      - "8100:8000"  # Offset ports to avoid conflict with local dev
+    environment:
+      <<: *common-env
+      AUTH_SERVICE_URL: http://auth:8001
+      TODO_SERVICE_URL: http://todos:8002
+      ATTACHMENT_SERVICE_URL: http://attachments:8003
+      NOTES_SERVICE_URL: http://notes:8004
+      DOCUMENTS_SERVICE_URL: http://documents:8005
+      VAULT_SERVICE_URL: http://vault:8006
+      KB_SERVICE_URL: http://kb:8007
+      PHOTOS_SERVICE_URL: http://photos:8008
+      WATCHLIST_SERVICE_URL: http://watchlist:8009
+      PORTFOLIO_SERVICE_URL: http://portfolio:8010
+      EXPENSE_TRACKER_SERVICE_URL: http://expense-tracker:8011
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  # ── Services ────────────────────────────────────────────
+  auth:
+    build:
+      <<: *backend-build
+      dockerfile: backend/services/auth/Dockerfile
+    environment:
+      <<: *common-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  todos:
+    build:
+      <<: *backend-build
+      dockerfile: backend/services/todos/Dockerfile
+    environment:
+      <<: *common-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    <<: *common-config
+
+  attachments:
+    build:
+      <<: *backend-build
+      dockerfile: backend/services/attachments/Dockerfile
+    environment:
+      <<: *common-env
+    volumes:
+      - attachments-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  notes:
+    build:
+      <<: *backend-build
+      dockerfile: backend/services/notes/Dockerfile
+    environment:
+      <<: *common-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    <<: *common-config
+
+  documents:
+    build:
+      <<: *backend-build
+      dockerfile: backend/services/documents/Dockerfile
+    environment:
+      <<: *common-env
+    volumes:
+      - documents-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  vault:
+    build:
+      <<: *backend-build
+      dockerfile: backend/services/vault/Dockerfile
+    environment:
+      <<: *common-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  kb:
+    build:
+      <<: *backend-build
+      dockerfile: backend/services/kb/Dockerfile
+    environment:
+      <<: *common-env
+    volumes:
+      - kb-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    <<: *common-config
+
+  photos:
+    build:
+      <<: *backend-build
+      dockerfile: backend/services/photos/Dockerfile
+    environment:
+      <<: *common-env
+    volumes:
+      - photos-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  watchlist:
+    build:
+      <<: *backend-build
+      dockerfile: backend/services/watchlist/Dockerfile
+    environment:
+      <<: *common-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  portfolio:
+    build:
+      <<: *backend-build
+      dockerfile: backend/services/portfolio/Dockerfile
+    environment:
+      <<: *common-env
+    volumes:
+      - portfolio-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  expense-tracker:
+    build:
+      <<: *backend-build
+      dockerfile: backend/services/expense_tracker/Dockerfile
+    environment:
+      <<: *common-env
+    volumes:
+      - expense-data:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    <<: *common-config
+
+  # ── Frontend ────────────────────────────────────────────
+  frontend:
+    build:
+      <<: *backend-build
+      dockerfile: infra/docker/Dockerfile.frontend
+    ports:
+      - "3002:80"  # Offset to avoid conflict with local dev server on 3001
+    depends_on:
+      - gateway
+    <<: *common-config
+
+volumes:
+  pgdata:
+  attachments-data:
+  documents-data:
+  kb-data:
+  photos-data:
+  portfolio-data:
+  expense-data:
