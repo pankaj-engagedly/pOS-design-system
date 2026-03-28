@@ -43,7 +43,11 @@ jobs:
           cache-dependency-path: design-system/package-lock.json
 
       - name: Install & test design system
-        run: cd design-system && npm ci && npm test
+        run: |
+          cd design-system
+          npm ci
+          npx playwright install --with-deps chromium
+          npm test
 
       - uses: actions/setup-python@v5
         with:
