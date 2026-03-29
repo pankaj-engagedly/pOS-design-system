@@ -87,6 +87,12 @@ class PosAppShell extends HTMLElement {
       await logout();
       navigate('#/login');
     });
+    this.shadow.getElementById('header')?.addEventListener('header-profile', () => {
+      navigate('#/settings');
+    });
+    this.shadow.getElementById('header')?.addEventListener('header-password', () => {
+      navigate('#/settings');
+    });
 
     // Route changes
     on('route:changed', (detail) => {
