@@ -11,7 +11,7 @@ from .parsers import get_parser
 from .parsers.base import ParsedTransaction
 from .schemas import ImportSummary
 from .service_categories import seed_categories
-from .service_transactions import compute_hash
+from .service_transactions import apply_rules_to_uncategorized, compute_hash
 from .service_transfer_detection import detect_transfers
 
 
@@ -106,7 +106,8 @@ async def import_statement(
                 continue
 
             # Auto-categorize
-            category_id = _match_category(p.description, rules)
+            merchant = _extract_merchant(p.description)
+            category_id = _match_category(p.description, merchant, rules)
             if category_id:
                 auto_categorized += 1
 
@@ -114,7 +115,7 @@ async def import_statement(
                 user_id=user_id,
                 date=p.date,
                 description=p.description,
-                merchant=_extract_merchant(p.description),
+                merchant=merchant,
                 amount=p.amount,
                 txn_type=p.txn_type,
                 category_id=category_id,
@@ -129,6 +130,10 @@ async def import_statement(
 
         # Detect transfers
         transfers = await detect_transfers(session, user_id, new_txn_ids)
+
+        # Re-apply rules to ALL uncategorized transactions (not just this import)
+        retroactive = await apply_rules_to_uncategorized(session, user_id)
+        auto_categorized += retroactive
 
         # Update import record
         stmt_import.total_transactions = total_parsed
@@ -171,11 +176,12 @@ async def _load_rules(session: AsyncSession, user_id: UUID) -> list[tuple[str, U
     return [(r.keyword.lower(), r.category_id) for r in result.scalars().all()]
 
 
-def _match_category(description: str, rules: list[tuple[str, UUID]]) -> UUID | None:
-    """Match description against keyword rules. First match wins (sorted by priority)."""
+def _match_category(description: str, merchant: str | None, rules: list[tuple[str, UUID]]) -> UUID | None:
+    """Match description/merchant against keyword rules. First match wins (sorted by priority)."""
     desc_lower = description.lower()
+    merchant_lower = (merchant or "").lower()
     for keyword, category_id in rules:
-        if keyword in desc_lower:
+        if keyword in desc_lower or keyword in merchant_lower:
             return category_id
     return None
 

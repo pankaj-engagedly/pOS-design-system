@@ -68,6 +68,41 @@ async def update_transaction(
     return _txn_response(txn)
 
 
+@router.get("/transactions/{txn_id}/similar-uncategorized")
+async def count_similar(
+    txn_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """After category change, check how many similar uncategorized transactions exist."""
+    return await svc.count_similar_uncategorized(session, user_id, txn_id)
+
+
+@router.post("/transactions/batch-categorize")
+async def batch_categorize(
+    body: dict,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Apply a category to all uncategorized transactions matching a keyword."""
+    keyword = body.get("keyword")
+    category_id = body.get("category_id")
+    if not keyword or not category_id:
+        return {"updated": 0}
+    count = await svc.apply_category_to_similar(session, user_id, keyword, UUID(category_id))
+    return {"updated": count}
+
+
+@router.post("/transactions/apply-rules")
+async def apply_rules(
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Re-apply all rules to uncategorized transactions."""
+    count = await svc.apply_rules_to_uncategorized(session, user_id)
+    return {"updated": count}
+
+
 @router.delete("/transactions/{txn_id}", status_code=204)
 async def delete_transaction(
     txn_id: UUID,

@@ -88,10 +88,10 @@ async def update_transaction(
 
     new_category_id = kwargs.get("category_id")
     if new_category_id and new_category_id != txn.category_id:
-        # Learn user rule from this correction
-        merchant_key = (txn.merchant or txn.description).strip().lower()
-        if merchant_key:
-            await _learn_rule(session, user_id, merchant_key, new_category_id)
+        # Learn user rule from this correction — prefer merchant, fall back to extracted keyword
+        keyword = _best_keyword(txn)
+        if keyword:
+            await _learn_rule(session, user_id, keyword, new_category_id)
 
     for k, v in kwargs.items():
         if v is not None:
@@ -100,6 +100,89 @@ async def update_transaction(
     await session.commit()
     # Re-fetch with relationships
     return await get_transaction(session, user_id, txn_id)
+
+
+async def count_similar_uncategorized(
+    session: AsyncSession, user_id: UUID, txn_id: UUID,
+) -> dict:
+    """After a category change, count how many similar uncategorized transactions exist."""
+    txn = await get_transaction(session, user_id, txn_id)
+    keyword = _best_keyword(txn)
+    if not keyword:
+        return {"keyword": None, "count": 0}
+
+    pattern = f"%{keyword}%"
+    result = await session.execute(
+        select(func.count(Transaction.id)).where(
+            Transaction.user_id == user_id,
+            Transaction.id != txn_id,
+            Transaction.category_id.is_(None),
+            func.lower(Transaction.description).like(pattern)
+            | func.lower(Transaction.merchant).like(pattern),
+        )
+    )
+    count = result.scalar() or 0
+    return {"keyword": keyword, "count": count, "category_id": str(txn.category_id)}
+
+
+async def apply_category_to_similar(
+    session: AsyncSession, user_id: UUID, keyword: str, category_id: UUID,
+) -> int:
+    """Apply a category to all uncategorized transactions matching a keyword."""
+    pattern = f"%{keyword}%"
+    result = await session.execute(
+        select(Transaction).where(
+            Transaction.user_id == user_id,
+            Transaction.category_id.is_(None),
+            func.lower(Transaction.description).like(pattern)
+            | func.lower(Transaction.merchant).like(pattern),
+        )
+    )
+    txns = result.scalars().all()
+    for t in txns:
+        t.category_id = category_id
+    await session.commit()
+    logger.info(f"Batch-categorized {len(txns)} transactions for keyword '{keyword}'")
+    return len(txns)
+
+
+async def apply_rules_to_uncategorized(
+    session: AsyncSession, user_id: UUID,
+) -> int:
+    """Re-apply all rules to uncategorized transactions. Returns count updated."""
+    # Load rules
+    rules_result = await session.execute(
+        select(CategoryRule)
+        .where(CategoryRule.user_id == user_id)
+        .order_by(CategoryRule.priority.desc())
+    )
+    rules = [(r.keyword.lower(), r.category_id) for r in rules_result.scalars().all()]
+    if not rules:
+        return 0
+
+    # Load uncategorized transactions
+    txn_result = await session.execute(
+        select(Transaction).where(
+            Transaction.user_id == user_id,
+            Transaction.category_id.is_(None),
+        )
+    )
+    txns = txn_result.scalars().all()
+
+    updated = 0
+    for txn in txns:
+        desc_lower = txn.description.lower()
+        merchant_lower = (txn.merchant or "").lower()
+        for keyword, cat_id in rules:
+            if keyword in desc_lower or keyword in merchant_lower:
+                txn.category_id = cat_id
+                updated += 1
+                break
+
+    if updated:
+        await session.commit()
+    logger.info(f"Re-applied rules: {updated}/{len(txns)} uncategorized transactions categorized")
+    return updated
 
 
 async def create_transaction(
@@ -126,6 +209,40 @@ async def delete_transaction(session: AsyncSession, user_id: UUID, txn_id: UUID)
     txn = await get_transaction(session, user_id, txn_id)
     await session.delete(txn)
     await session.commit()
+
+
+def _best_keyword(txn: Transaction) -> str | None:
+    """Extract the best reusable keyword for rule matching from a transaction.
+
+    Prefers merchant name (short, reusable like 'swiggy').
+    Falls back to extracting a meaningful part from the description.
+    """
+    # Prefer merchant — it's already a clean extracted name
+    if txn.merchant:
+        return txn.merchant.strip().lower()
+
+    # Try to extract a meaningful keyword from description
+    desc = txn.description.upper().strip()
+
+    # UPI: "UPI-SWIGGY-12345" → "swiggy"
+    if desc.startswith(("UPI-", "UPI/")):
+        parts = desc.replace("/", "-").split("-")
+        if len(parts) >= 2 and len(parts[1].strip()) > 2:
+            return parts[1].strip().lower()
+
+    # NEFT/IMPS/RTGS: "NEFT-MERCHANT-details" → "merchant"
+    for prefix in ("NEFT-", "IMPS-", "RTGS-"):
+        if desc.startswith(prefix):
+            parts = desc[len(prefix):].split("-")
+            if parts and len(parts[0].strip()) > 2:
+                return parts[0].strip().lower()
+
+    # Take first word longer than 3 chars that isn't a number
+    words = [w for w in desc.split() if len(w) > 3 and not w.isdigit() and not w.startswith("XX")]
+    if words:
+        return words[0].lower()
+
+    return None
 
 
 async def _learn_rule(
