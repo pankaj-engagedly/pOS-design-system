@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "pOS Knowledge Base (Dev)",
+  "name": "pOS Knowledge Base (Prod)",
   "version": "1.0.0",
   "description": "Save web pages to your pOS Knowledge Base",
   "action": {
@@ -28,6 +28,6 @@
     "notifications"
   ],
   "host_permissions": [
-    "http://localhost:3001/*"
+    "https://pos.sinsquare.me/*"
   ]
 }

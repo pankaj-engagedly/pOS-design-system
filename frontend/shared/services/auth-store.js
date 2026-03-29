@@ -106,23 +106,34 @@ async function _doRefresh(refreshToken) {
   accessToken = data.access_token;
   // Save new refresh token BEFORE returning — critical for rotation
   localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
+  _scheduleProactiveRefresh(); // reschedule with new token's expiry
   return data.access_token;
 }
 
-// Proactive refresh — schedule before expiry
+// Proactive refresh — schedule 2 minutes before actual JWT expiry
 let _refreshTimer = null;
-function _scheduleProactiveRefresh(expireMinutes) {
+function _scheduleProactiveRefresh() {
   if (_refreshTimer) clearTimeout(_refreshTimer);
-  // Refresh 2 minutes before expiry
-  const ms = Math.max((expireMinutes - 2) * 60000, 60000);
-  _refreshTimer = setTimeout(async () => {
-    try {
-      await refreshAccessToken();
-      _scheduleProactiveRefresh(expireMinutes);
-    } catch {
-      // Silent — will prompt login on next API call
-    }
-  }, ms);
+  if (!accessToken) return;
+
+  // Decode exp from JWT payload (no verification needed, just reading the claim)
+  try {
+    const payload = JSON.parse(atob(accessToken.split('.')[1]));
+    const expiresAt = payload.exp * 1000; // seconds → ms
+    const refreshAt = expiresAt - 2 * 60000; // 2 minutes before expiry
+    const ms = Math.max(refreshAt - Date.now(), 10000); // at least 10s
+
+    _refreshTimer = setTimeout(async () => {
+      try {
+        await refreshAccessToken();
+        _scheduleProactiveRefresh(); // reschedule with new token
+      } catch {
+        // Silent — will prompt login on next API call
+      }
+    }, ms);
+  } catch {
+    // Malformed token — skip scheduling
+  }
 }
 
 export async function tryRestoreSession() {
@@ -137,7 +148,7 @@ export async function tryRestoreSession() {
     });
     if (res.ok) {
       user = await res.json();
-      _scheduleProactiveRefresh(15);
+      _scheduleProactiveRefresh();
       emit('auth:changed', { authenticated: true, user });
       return true;
     }
@@ -152,7 +163,7 @@ function _setTokens(newAccessToken, refreshToken, userData) {
   accessToken = newAccessToken;
   user = userData;
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-  _scheduleProactiveRefresh(15); // match server config
+  _scheduleProactiveRefresh();
   emit('auth:changed', { authenticated: true, user });
 }
 

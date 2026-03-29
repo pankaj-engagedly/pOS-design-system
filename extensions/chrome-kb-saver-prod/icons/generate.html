@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Generate pOS KB Icons</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 24px; background: #f5f5f5; }
+    h1 { font-size: 18px; margin-bottom: 16px; }
+    .icons { display: flex; gap: 24px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 24px; }
+    .icon-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    canvas { border-radius: 22%; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .label { font-size: 12px; color: #666; }
+    .btns { display: flex; gap: 12px; flex-wrap: wrap; }
+    button {
+      padding: 10px 20px; background: #6366f1; color: white; border: none;
+      border-radius: 8px; font-size: 14px; cursor: pointer; font-family: inherit;
+    }
+    button:hover { background: #4f52d6; }
+    p { color: #666; font-size: 13px; margin-top: 16px; }
+  </style>
+</head>
+<body>
+  <h1>pOS KB Extension — Icon Generator</h1>
+  <div class="icons">
+    <div class="icon-wrap">
+      <canvas id="c16" width="16" height="16"></canvas>
+      <span class="label">16×16</span>
+    </div>
+    <div class="icon-wrap">
+      <canvas id="c48" width="48" height="48"></canvas>
+      <span class="label">48×48</span>
+    </div>
+    <div class="icon-wrap">
+      <canvas id="c128" width="128" height="128"></canvas>
+      <span class="label">128×128</span>
+    </div>
+  </div>
+  <div class="btns">
+    <button onclick="download('c16', 'icon16.png')">Download icon16.png</button>
+    <button onclick="download('c48', 'icon48.png')">Download icon48.png</button>
+    <button onclick="download('c128', 'icon128.png')">Download icon128.png</button>
+    <button onclick="downloadAll()">Download All</button>
+  </div>
+  <p>Open this file in a browser, then click the buttons to download the PNG icons into this <code>icons/</code> folder.</p>
+
+  <script>
+    function drawIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      const s = size;
+      const r = s * 0.18; // corner radius
+
+      // Background gradient
+      const grad = ctx.createLinearGradient(0, 0, s, s);
+      grad.addColorStop(0, '#6366f1');
+      grad.addColorStop(1, '#818cf8');
+
+      // Rounded rect background
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(s - r, 0);
+      ctx.quadraticCurveTo(s, 0, s, r);
+      ctx.lineTo(s, s - r);
+      ctx.quadraticCurveTo(s, s, s - r, s);
+      ctx.lineTo(r, s);
+      ctx.quadraticCurveTo(0, s, 0, s - r);
+      ctx.lineTo(0, r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // Bookmark shape
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      const pad = s * 0.22;
+      const bw = s - pad * 2;
+      const bh = s * 0.58;
+      const bx = pad;
+      const by = s * 0.18;
+      const br = s * 0.05;
+      const notchY = by + bh;
+      const midX = bx + bw / 2;
+      const notchDepth = bh * 0.28;
+
+      ctx.beginPath();
+      // Top-left corner
+      ctx.moveTo(bx + br, by);
+      ctx.lineTo(bx + bw - br, by);
+      ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + br);
+      // Right side down
+      ctx.lineTo(bx + bw, notchY);
+      // Bottom notch
+      ctx.lineTo(midX, notchY - notchDepth);
+      ctx.lineTo(bx, notchY);
+      // Left side up
+      ctx.lineTo(bx, by + br);
+      ctx.quadraticCurveTo(bx, by, bx + br, by);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    drawIcon('c16', 16);
+    drawIcon('c48', 48);
+    drawIcon('c128', 128);
+
+    function download(canvasId, filename) {
+      const canvas = document.getElementById(canvasId);
+      const a = document.createElement('a');
+      a.download = filename;
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    }
+
+    function downloadAll() {
+      setTimeout(() => download('c16', 'icon16.png'), 0);
+      setTimeout(() => download('c48', 'icon48.png'), 200);
+      setTimeout(() => download('c128', 'icon128.png'), 400);
+    }
+  </script>
+</body>
+</html>
