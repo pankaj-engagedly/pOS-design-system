@@ -25,6 +25,7 @@ class PosTaskList extends HTMLElement {
     this._viewMode = null;
     this._collapsedGroups = new Set();
     this._addingToGroup = null;
+    this._addingSubtaskToTask = null;
     this._activeFilter = 'all';
   }
 
@@ -190,6 +191,39 @@ class PosTaskList extends HTMLElement {
         .subtask-title.done {
           text-decoration: line-through;
           opacity: 0.6;
+        }
+        .subtask-add-trigger {
+          display: flex;
+          align-items: center;
+          gap: var(--pos-space-sm);
+          padding: 2px var(--pos-space-md) 2px calc(var(--pos-space-md) + 28px);
+          cursor: pointer;
+          opacity: 0;
+          transition: opacity 0.15s;
+        }
+        pos-task-item:hover + .subtask-row + .subtask-add-trigger,
+        pos-task-item:hover + .subtask-add-trigger,
+        .subtask-row:hover + .subtask-add-trigger,
+        .subtask-add-trigger:hover { opacity: 1; }
+        .subtask-add-trigger .subtask-check {
+          border-style: dashed;
+          color: var(--pos-color-text-disabled);
+        }
+        .subtask-add-label {
+          font-size: 11px;
+          color: var(--pos-color-text-disabled);
+        }
+        .subtask-add-row { padding-bottom: var(--pos-space-xs); }
+        .subtask-add-input {
+          flex: 1;
+          font-size: var(--pos-font-size-xs);
+          font-family: inherit;
+          color: var(--pos-color-text-primary);
+          border: none;
+          border-bottom: 1px solid var(--pos-color-action-primary);
+          outline: none;
+          background: transparent;
+          padding: 2px 0;
         }
 
         .group-add {
@@ -369,7 +403,18 @@ class PosTaskList extends HTMLElement {
       </div>
     `).join('');
 
-    return taskHtml + subtaskRows;
+    // Inline add subtask
+    const addSubtaskHtml = this._addingSubtaskToTask === t.id
+      ? `<div class="subtask-row subtask-add-row">
+           <span class="subtask-check"></span>
+           <input class="subtask-add-input" data-add-subtask-for="${t.id}" placeholder="Subtask title…" />
+         </div>`
+      : `<div class="subtask-add-trigger" data-action="add-subtask-inline" data-task-id="${t.id}">
+           <span class="subtask-check">${icon('plus', 9)}</span>
+           <span class="subtask-add-label">Add subtask</span>
+         </div>`;
+
+    return taskHtml + subtaskRows + addSubtaskHtml;
   }
 
   // ─── Events ───────────────────────────────────────────────
@@ -398,6 +443,18 @@ class PosTaskList extends HTMLElement {
       if (addEl) {
         this._addingToGroup = addEl.dataset.groupKey;
         this.render();
+        return;
+      }
+
+      // Inline add subtask trigger
+      const addSubEl = e.target.closest('[data-action="add-subtask-inline"]');
+      if (addSubEl) {
+        this._addingSubtaskToTask = addSubEl.dataset.taskId;
+        this.render();
+        setTimeout(() => {
+          const inp = this.shadow.querySelector(`[data-add-subtask-for="${addSubEl.dataset.taskId}"]`);
+          inp?.focus();
+        }, 0);
         return;
       }
 
@@ -433,6 +490,36 @@ class PosTaskList extends HTMLElement {
       e.stopPropagation();
       this._addingToGroup = null;
       this.render();
+    });
+
+    // Inline subtask input — Enter to submit, Escape to cancel
+    this.shadow.addEventListener('keydown', (e) => {
+      const inp = e.target.closest('[data-add-subtask-for]');
+      if (!inp) return;
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const title = inp.value.trim();
+        if (title) {
+          this.dispatchEvent(new CustomEvent('subtask-add', {
+            bubbles: true, composed: true,
+            detail: { taskId: inp.dataset.addSubtaskFor, title },
+          }));
+          inp.value = '';
+        }
+      }
+      if (e.key === 'Escape') {
+        this._addingSubtaskToTask = null;
+        this.render();
+      }
+    });
+
+    // Inline subtask input — blur to close
+    this.shadow.addEventListener('focusout', (e) => {
+      const inp = e.target.closest('[data-add-subtask-for]');
+      if (inp && !inp.value.trim()) {
+        this._addingSubtaskToTask = null;
+        this.render();
+      }
     });
   }
 

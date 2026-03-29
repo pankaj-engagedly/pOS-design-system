@@ -12,7 +12,7 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from app.models import TodoList, Task, Subtask  # noqa: F401 — registers model metadata
+from app.models import TodoList, Task, Subtask, TaskComment  # noqa: F401 — registers model metadata
 from pos_contracts.models import UserScopedBase
 
 config = context.config
@@ -26,7 +26,7 @@ if db_url := os.environ.get("DATABASE_URL"):
 
 target_metadata = UserScopedBase.metadata
 
-OWNED_TABLES = {"todo_lists", "tasks", "subtasks"}
+OWNED_TABLES = {"todo_lists", "tasks", "subtasks", "task_comments"}
 
 
 def include_object(object, name, type_, reflected, compare_to):

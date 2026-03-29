@@ -16,6 +16,7 @@ class PosTaskDetail extends HTMLElement {
     this._attachments = [];
     this._editingTitle = false;
     this._editingDesc  = false;
+    this._editingCommentId = null;
   }
 
   // ─── Public API ───────────────────────────────────────────
@@ -276,6 +277,112 @@ class PosTaskDetail extends HTMLElement {
         .priority-medium { color: var(--pos-color-priority-medium); }
         .priority-high   { color: var(--pos-color-priority-high); }
         .priority-urgent { color: var(--pos-color-priority-urgent); }
+
+        /* ── Comments ── */
+        .comment-item {
+          padding: var(--pos-space-xs) 0;
+          border-bottom: 1px solid var(--pos-color-border-default);
+        }
+        .comment-item:last-of-type { border-bottom: none; }
+        .comment-meta {
+          display: flex;
+          align-items: center;
+          gap: var(--pos-space-xs);
+          margin-bottom: 2px;
+        }
+        .comment-date {
+          font-size: 10px;
+          color: var(--pos-color-text-disabled);
+        }
+        .comment-actions {
+          margin-left: auto;
+          display: flex;
+          gap: 2px;
+          opacity: 0;
+          transition: opacity 0.1s;
+        }
+        .comment-item:hover .comment-actions { opacity: 1; }
+        .comment-action-btn {
+          background: none; border: none; cursor: pointer;
+          color: var(--pos-color-text-secondary); font-size: 11px;
+          padding: 0 3px; line-height: 1;
+        }
+        .comment-action-btn:hover { color: var(--pos-color-action-primary); }
+        .comment-action-btn.delete:hover { color: var(--pos-color-priority-urgent); }
+        .comment-content {
+          font-size: var(--pos-font-size-xs);
+          color: var(--pos-color-text-primary);
+          line-height: 1.5;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+        .comment-edit-textarea {
+          width: 100%;
+          font-size: var(--pos-font-size-xs);
+          font-family: inherit;
+          color: var(--pos-color-text-primary);
+          border: 1px solid var(--pos-color-action-primary);
+          border-radius: var(--pos-radius-sm);
+          padding: var(--pos-space-xs);
+          outline: none;
+          background: transparent;
+          resize: vertical;
+          min-height: 40px;
+          box-sizing: border-box;
+        }
+        .comment-add {
+          display: flex;
+          gap: var(--pos-space-xs);
+          margin-top: var(--pos-space-xs);
+        }
+        .comment-input {
+          flex: 1;
+          font-size: var(--pos-font-size-xs);
+          font-family: inherit;
+          color: var(--pos-color-text-primary);
+          border: 1px solid var(--pos-color-border-default);
+          border-radius: var(--pos-radius-sm);
+          padding: 5px 8px;
+          outline: none;
+          background: transparent;
+          resize: none;
+          min-height: 32px;
+          box-sizing: border-box;
+        }
+        .comment-input:focus { border-color: var(--pos-color-action-primary); }
+        .comment-submit {
+          align-self: flex-end;
+          padding: 5px 10px;
+          font-size: var(--pos-font-size-xs);
+          font-family: inherit;
+          font-weight: var(--pos-font-weight-medium);
+          color: white;
+          background: var(--pos-color-action-primary);
+          border: none;
+          border-radius: var(--pos-radius-sm);
+          cursor: pointer;
+        }
+        .comment-submit:hover { opacity: 0.9; }
+
+        /* ── Action bar ── */
+        .action-bar {
+          display: flex;
+          gap: var(--pos-space-xs);
+          padding: var(--pos-space-xs) 0;
+        }
+        .action-btn {
+          display: inline-flex; align-items: center; gap: 4px;
+          padding: 3px 8px;
+          border: 1px solid var(--pos-color-border-default);
+          border-radius: var(--pos-radius-sm);
+          background: transparent;
+          font-size: var(--pos-font-size-xs);
+          font-family: inherit;
+          color: var(--pos-color-text-secondary);
+          cursor: pointer;
+          transition: border-color 0.1s, color 0.1s;
+        }
+        .action-btn:hover { border-color: var(--pos-color-action-primary); color: var(--pos-color-action-primary); }
       </style>
 
       <!-- Header -->
@@ -336,6 +443,37 @@ class PosTaskDetail extends HTMLElement {
           `).join('')}
           <button class="attach-btn" id="attach-btn">${icon('plus', 13)} Attach file</button>
           <input type="file" id="file-input" />
+        </div>
+
+        <!-- Comments -->
+        <div class="section">
+          <div class="section-title">Comments (${(t.comments || []).length})</div>
+          ${(t.comments || []).map(c => `
+            <div class="comment-item" data-comment-id="${c.id}">
+              <div class="comment-meta">
+                <span class="comment-date">${this._formatDate(c.created_at)}${c.updated_at !== c.created_at ? ' (edited)' : ''}</span>
+                <span class="comment-actions">
+                  <button class="comment-action-btn edit" data-edit-comment="${c.id}" title="Edit">edit</button>
+                  <button class="comment-action-btn delete" data-delete-comment="${c.id}" title="Delete">×</button>
+                </span>
+              </div>
+              ${this._editingCommentId === c.id
+                ? `<textarea class="comment-edit-textarea" data-editing-comment="${c.id}">${this._esc(c.content)}</textarea>`
+                : `<div class="comment-content">${this._esc(c.content)}</div>`
+              }
+            </div>
+          `).join('')}
+          <div class="comment-add">
+            <textarea class="comment-input" id="comment-input" placeholder="Add a comment..." rows="1"></textarea>
+            <button class="comment-submit" id="comment-submit">Add</button>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="section">
+          <div class="action-bar">
+            <button class="action-btn" id="duplicate-btn">${icon('copy', 13)} Duplicate</button>
+          </div>
         </div>
 
       </div>
@@ -429,6 +567,58 @@ class PosTaskDetail extends HTMLElement {
         this._emit('attachment-remove', { attachmentId: btn.dataset.remove, taskId: t.id });
       });
     });
+
+    // Comments — add
+    const commentInput = this.shadow.getElementById('comment-input');
+    const commentSubmit = this.shadow.getElementById('comment-submit');
+    commentSubmit?.addEventListener('click', () => {
+      const val = commentInput?.value.trim();
+      if (val) {
+        this._emit('comment-add', { taskId: t.id, content: val });
+        commentInput.value = '';
+      }
+    });
+    commentInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        commentSubmit?.click();
+      }
+    });
+
+    // Comments — edit
+    this.shadow.querySelectorAll('[data-edit-comment]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this._editingCommentId = btn.dataset.editComment;
+        this._render(); this._bindEvents();
+        setTimeout(() => {
+          const ta = this.shadow.querySelector(`[data-editing-comment="${btn.dataset.editComment}"]`);
+          ta?.focus();
+        }, 0);
+      });
+    });
+    this.shadow.querySelectorAll('[data-editing-comment]').forEach(ta => {
+      ta.addEventListener('blur', () => {
+        const val = ta.value.trim();
+        if (val) this._emit('comment-update', { commentId: ta.dataset.editingComment, content: val });
+        this._editingCommentId = null;
+        this._render(); this._bindEvents();
+      });
+      ta.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') { this._editingCommentId = null; this._render(); this._bindEvents(); }
+      });
+    });
+
+    // Comments — delete
+    this.shadow.querySelectorAll('[data-delete-comment]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this._emit('comment-delete', { taskId: t.id, commentId: btn.dataset.deleteComment });
+      });
+    });
+
+    // Duplicate
+    this.shadow.getElementById('duplicate-btn')?.addEventListener('click', () => {
+      this._emit('task-duplicate', { taskId: t.id });
+    });
   }
 
   _emit(name, detail = {}) {
@@ -443,6 +633,17 @@ class PosTaskDetail extends HTMLElement {
 
   _escAttr(str) {
     return (str || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  _formatDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 60000) return 'just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
   }
 }
 

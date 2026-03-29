@@ -87,3 +87,29 @@ export function updateSubtask(id, data) {
 export function deleteSubtask(id) {
   return apiFetch(`/api/todos/subtasks/${id}`, { method: 'DELETE' });
 }
+
+// --- Comments ---
+
+export function addComment(taskId, content) {
+  return apiFetch(`/api/todos/tasks/${taskId}/comments`, {
+    method: 'POST',
+    body: JSON.stringify({ content }),
+  });
+}
+
+export function updateComment(id, content) {
+  return apiFetch(`/api/todos/comments/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ content }),
+  });
+}
+
+export function deleteComment(id) {
+  return apiFetch(`/api/todos/comments/${id}`, { method: 'DELETE' });
+}
+
+// --- Duplicate ---
+
+export function duplicateTask(taskId) {
+  return apiFetch(`/api/todos/tasks/${taskId}/duplicate`, { method: 'POST' });
+}

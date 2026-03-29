@@ -9,8 +9,10 @@ from sqlalchemy.orm import selectinload
 from pos_contracts.exceptions import NotFoundError
 from pos_contracts.logging import trace
 
-from .models import Subtask, Task, TodoList
+from .models import Subtask, Task, TaskComment, TodoList
 from .schemas import (
+    CommentCreate,
+    CommentUpdate,
     ListCreate,
     ListUpdate,
     ReorderRequest,
@@ -168,10 +170,10 @@ async def create_task(
 
 @trace
 async def get_task(session: AsyncSession, user_id: UUID, task_id: UUID) -> Task:
-    """Get a single task with subtasks."""
+    """Get a single task with subtasks and comments."""
     result = await session.execute(
         select(Task)
-        .options(selectinload(Task.subtasks))
+        .options(selectinload(Task.subtasks), selectinload(Task.comments))
         .where(Task.id == task_id, Task.user_id == user_id)
     )
     task = result.scalar_one_or_none()
@@ -278,6 +280,93 @@ async def delete_subtask(
         raise NotFoundError(f"Subtask {subtask_id} not found")
     await session.delete(subtask)
     await session.commit()
+
+
+# --- Comments ---
+
+
+async def add_comment(
+    session: AsyncSession, user_id: UUID, task_id: UUID, data: CommentCreate
+) -> TaskComment:
+    await get_task(session, user_id, task_id)
+    comment = TaskComment(user_id=user_id, task_id=task_id, content=data.content)
+    session.add(comment)
+    await session.commit()
+    await session.refresh(comment)
+    return comment
+
+
+async def update_comment(
+    session: AsyncSession, user_id: UUID, comment_id: UUID, data: CommentUpdate
+) -> TaskComment:
+    result = await session.execute(
+        select(TaskComment).where(TaskComment.id == comment_id, TaskComment.user_id == user_id)
+    )
+    comment = result.scalar_one_or_none()
+    if not comment:
+        raise NotFoundError(f"Comment {comment_id} not found")
+    comment.content = data.content
+    await session.commit()
+    await session.refresh(comment)
+    return comment
+
+
+async def delete_comment(session: AsyncSession, user_id: UUID, comment_id: UUID) -> None:
+    result = await session.execute(
+        select(TaskComment).where(TaskComment.id == comment_id, TaskComment.user_id == user_id)
+    )
+    comment = result.scalar_one_or_none()
+    if not comment:
+        raise NotFoundError(f"Comment {comment_id} not found")
+    await session.delete(comment)
+    await session.commit()
+
+
+# --- Duplicate ---
+
+
+async def duplicate_task(
+    session: AsyncSession, user_id: UUID, task_id: UUID
+) -> Task:
+    """Duplicate a task with its subtasks (not comments/attachments)."""
+    source = await get_task(session, user_id, task_id)
+
+    # Get next position in the same list
+    result = await session.execute(
+        select(func.coalesce(func.max(Task.position), -1))
+        .where(Task.user_id == user_id, Task.list_id == source.list_id)
+    )
+    max_pos = result.scalar()
+
+    new_task = Task(
+        user_id=user_id,
+        list_id=source.list_id,
+        title=f"{source.title} (copy)",
+        description=source.description,
+        status="todo",
+        priority=source.priority,
+        due_date=source.due_date,
+        is_important=source.is_important,
+        is_urgent=source.is_urgent,
+        position=max_pos + 1,
+        attachment_ids=[],
+    )
+    session.add(new_task)
+    await session.flush()
+
+    # Duplicate subtasks
+    for s in sorted(source.subtasks, key=lambda x: x.position):
+        new_sub = Subtask(
+            user_id=user_id,
+            task_id=new_task.id,
+            title=s.title,
+            is_completed=False,
+            position=s.position,
+        )
+        session.add(new_sub)
+
+    await session.commit()
+    return await get_task(session, user_id, new_task.id)
 
 
 # --- Helpers ---

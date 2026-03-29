@@ -10,6 +10,9 @@ from .db import get_session as get_async_session
 from . import service
 from .events import publish_list_event, publish_task_event
 from .schemas import (
+    CommentCreate,
+    CommentResponse,
+    CommentUpdate,
     ListCreate,
     ListResponse,
     ListUpdate,
@@ -184,3 +187,47 @@ async def delete_subtask(
     session: AsyncSession = Depends(get_async_session),
 ):
     await service.delete_subtask(session, user_id, subtask_id)
+
+
+# --- Comments ---
+
+
+@router.post("/tasks/{task_id}/comments", response_model=CommentResponse, status_code=201)
+async def add_comment(
+    task_id: UUID,
+    data: CommentCreate,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    return await service.add_comment(session, user_id, task_id, data)
+
+
+@router.patch("/comments/{comment_id}", response_model=CommentResponse)
+async def update_comment(
+    comment_id: UUID,
+    data: CommentUpdate,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    return await service.update_comment(session, user_id, comment_id, data)
+
+
+@router.delete("/comments/{comment_id}", status_code=204)
+async def delete_comment(
+    comment_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    await service.delete_comment(session, user_id, comment_id)
+
+
+# --- Duplicate ---
+
+
+@router.post("/tasks/{task_id}/duplicate", response_model=TaskResponse, status_code=201)
+async def duplicate_task(
+    task_id: UUID,
+    user_id: UUID = Depends(get_user_id),
+    session: AsyncSession = Depends(get_async_session),
+):
+    return await service.duplicate_task(session, user_id, task_id)

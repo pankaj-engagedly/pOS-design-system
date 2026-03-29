@@ -363,7 +363,7 @@ class PosTodosApp extends HTMLElement {
       const { taskId, ...data } = e.detail;
       try {
         await todoApi.updateTask(taskId, data);
-        await this._refreshAll();
+        await Promise.all([this._refreshAll(), this._refreshTaskEdit(taskId)]);
       } catch (err) {
         todoStore.setState({ error: err.message });
       }
@@ -374,7 +374,7 @@ class PosTodosApp extends HTMLElement {
       const { taskId, title } = e.detail;
       try {
         await todoApi.addSubtask(taskId, title);
-        await this._refreshTaskEdit(taskId);
+        await Promise.all([this._refreshTaskEdit(taskId), this._refreshAll()]);
       } catch (err) {
         todoStore.setState({ error: err.message });
       }
@@ -400,6 +400,57 @@ class PosTodosApp extends HTMLElement {
         await todoApi.deleteSubtask(subtaskId);
         if (taskId) await this._refreshTaskEdit(taskId);
         await this._refreshAll();
+      } catch (err) {
+        todoStore.setState({ error: err.message });
+      }
+    });
+
+    // Comment add
+    this.shadow.addEventListener('comment-add', async (e) => {
+      const { taskId, content } = e.detail;
+      try {
+        await todoApi.addComment(taskId, content);
+        await this._refreshTaskEdit(taskId);
+      } catch (err) {
+        todoStore.setState({ error: err.message });
+      }
+    });
+
+    // Comment update
+    this.shadow.addEventListener('comment-update', async (e) => {
+      const { commentId, content } = e.detail;
+      try {
+        await todoApi.updateComment(commentId, content);
+        // Find the task that's open in the flyout
+        const detail = this.shadow.querySelector('pos-task-detail');
+        if (detail?._task) await this._refreshTaskEdit(detail._task.id);
+      } catch (err) {
+        todoStore.setState({ error: err.message });
+      }
+    });
+
+    // Comment delete
+    this.shadow.addEventListener('comment-delete', async (e) => {
+      const { taskId, commentId } = e.detail;
+      try {
+        await todoApi.deleteComment(commentId);
+        await this._refreshTaskEdit(taskId);
+      } catch (err) {
+        todoStore.setState({ error: err.message });
+      }
+    });
+
+    // Duplicate task
+    this.shadow.addEventListener('task-duplicate', async (e) => {
+      const { taskId } = e.detail;
+      try {
+        const newTask = await todoApi.duplicateTask(taskId);
+        await this._refreshAll();
+        // Open the new task in the flyout
+        const detail = this.shadow.querySelector('pos-task-detail');
+        if (detail) {
+          detail.openForTask(newTask);
+        }
       } catch (err) {
         todoStore.setState({ error: err.message });
       }

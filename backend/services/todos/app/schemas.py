@@ -43,6 +43,25 @@ class SubtaskResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# --- Comment schemas ---
+
+class CommentCreate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=10000)
+
+
+class CommentUpdate(BaseModel):
+    content: str = Field(..., min_length=1, max_length=10000)
+
+
+class CommentResponse(BaseModel):
+    id: UUID
+    content: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 # --- List schemas ---
 
 class ListCreate(BaseModel):
@@ -102,6 +121,7 @@ class TaskResponse(BaseModel):
     position: int
     attachment_ids: list[UUID] = []
     subtasks: list[SubtaskResponse] = []
+    comments: list[CommentResponse] = []
     created_at: datetime
     updated_at: datetime
 

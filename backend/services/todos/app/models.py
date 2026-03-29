@@ -36,6 +36,7 @@ class Task(UserScopedBase):
 
     list = relationship("TodoList", back_populates="tasks")
     subtasks = relationship("Subtask", back_populates="task", cascade="all, delete-orphan")
+    comments = relationship("TaskComment", back_populates="task", cascade="all, delete-orphan", order_by="TaskComment.created_at")
 
 
 class Subtask(UserScopedBase):
@@ -49,3 +50,14 @@ class Subtask(UserScopedBase):
     position = Column(Integer, nullable=False, default=0)
 
     task = relationship("Task", back_populates="subtasks")
+
+
+class TaskComment(UserScopedBase):
+    """A comment on a task — append-only history, editable."""
+
+    __tablename__ = "task_comments"
+
+    task_id = Column(UUID(as_uuid=True), ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+
+    task = relationship("Task", back_populates="comments")
