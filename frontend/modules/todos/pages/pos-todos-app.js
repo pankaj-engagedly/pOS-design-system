@@ -405,6 +405,19 @@ class PosTodosApp extends HTMLElement {
       }
     });
 
+    // Task delete
+    this.shadow.addEventListener('task-delete', async (e) => {
+      const { taskId } = e.detail;
+      try {
+        await todoApi.deleteTask(taskId);
+        const detail = this.shadow.querySelector('pos-task-detail');
+        detail?.close();
+        await this._refreshAll();
+      } catch (err) {
+        todoStore.setState({ error: err.message });
+      }
+    });
+
     // Comment add
     this.shadow.addEventListener('comment-add', async (e) => {
       const { taskId, content } = e.detail;

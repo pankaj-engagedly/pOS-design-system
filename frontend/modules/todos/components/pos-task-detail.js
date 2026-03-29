@@ -383,6 +383,7 @@ class PosTaskDetail extends HTMLElement {
           transition: border-color 0.1s, color 0.1s;
         }
         .action-btn:hover { border-color: var(--pos-color-action-primary); color: var(--pos-color-action-primary); }
+        .action-btn.delete:hover { border-color: var(--pos-color-priority-urgent); color: var(--pos-color-priority-urgent); }
       </style>
 
       <!-- Header -->
@@ -473,6 +474,7 @@ class PosTaskDetail extends HTMLElement {
         <div class="section">
           <div class="action-bar">
             <button class="action-btn" id="duplicate-btn">${icon('copy', 13)} Duplicate</button>
+            <button class="action-btn delete" id="delete-btn">${icon('trash-2', 13)} Delete</button>
           </div>
         </div>
 
@@ -618,6 +620,11 @@ class PosTaskDetail extends HTMLElement {
     // Duplicate
     this.shadow.getElementById('duplicate-btn')?.addEventListener('click', () => {
       this._emit('task-duplicate', { taskId: t.id });
+    });
+
+    // Delete
+    this.shadow.getElementById('delete-btn')?.addEventListener('click', () => {
+      this._emit('task-delete', { taskId: t.id });
     });
   }
 
