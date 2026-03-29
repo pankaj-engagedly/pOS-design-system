@@ -34,6 +34,29 @@ export async function login(email, password) {
   }
 
   const data = await res.json();
+
+  // MFA required — return challenge info instead of completing login
+  if (data.requires_mfa) {
+    return { requires_mfa: true, mfa_token: data.mfa_token };
+  }
+
+  _setTokens(data.access_token, data.refresh_token, data.user);
+  return { requires_mfa: false };
+}
+
+export async function verifyTotp(mfaToken, totpCode) {
+  const res = await fetch(`${API_BASE}/api/auth/verify-totp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mfa_token: mfaToken, totp_code: totpCode }),
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.detail || 'Invalid verification code');
+  }
+
+  const data = await res.json();
   _setTokens(data.access_token, data.refresh_token, data.user);
 }
 

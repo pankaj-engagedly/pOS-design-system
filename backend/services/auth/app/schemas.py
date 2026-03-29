@@ -21,6 +21,7 @@ class UserResponse(BaseModel):
     id: UUID
     email: str
     name: str
+    totp_enabled: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -52,3 +53,33 @@ class UserUpdateRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str = Field(..., min_length=8, max_length=128)
+
+
+# --- MFA ---
+
+class MFAPendingResponse(BaseModel):
+    requires_mfa: bool = True
+    mfa_token: str
+
+
+class VerifyTotpRequest(BaseModel):
+    mfa_token: str
+    totp_code: str = Field(..., min_length=6, max_length=6)
+
+
+class SetupTotpResponse(BaseModel):
+    secret: str
+    provisioning_uri: str
+
+
+class ConfirmTotpRequest(BaseModel):
+    totp_code: str = Field(..., min_length=6, max_length=6)
+    password: str
+
+
+class ConfirmTotpResponse(BaseModel):
+    backup_codes: list[str]
+
+
+class DisableTotpRequest(BaseModel):
+    password: str

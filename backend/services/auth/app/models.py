@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 
 from pos_contracts.models import Base
@@ -18,6 +18,9 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     name = Column(String(255), nullable=False)
+    totp_secret = Column(String(255), nullable=True)  # encrypted TOTP secret
+    totp_enabled = Column(Boolean, nullable=False, default=False)
+    backup_codes = Column(Text, nullable=True)  # JSON array of hashed backup codes
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

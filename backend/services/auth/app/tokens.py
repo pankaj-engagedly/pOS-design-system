@@ -50,6 +50,35 @@ def create_refresh_token(
     return jwt.encode(payload, secret_key, algorithm=algorithm)
 
 
+def create_mfa_token(
+    user_id: str,
+    secret_key: str,
+    algorithm: str = "HS256",
+) -> str:
+    """Create a short-lived token for MFA verification (5 minutes)."""
+    expire = datetime.now(timezone.utc) + timedelta(minutes=5)
+    payload = {
+        "sub": user_id,
+        "exp": expire,
+        "type": "mfa_pending",
+    }
+    return jwt.encode(payload, secret_key, algorithm=algorithm)
+
+
+def validate_mfa_token(token: str, secret_key: str, algorithm: str = "HS256") -> str:
+    """Validate an MFA pending token and return the user_id."""
+    try:
+        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
+        if payload.get("type") != "mfa_pending":
+            raise AuthenticationError("Not an MFA token")
+        user_id = payload.get("sub")
+        if user_id is None:
+            raise AuthenticationError("Token missing user identity")
+        return user_id
+    except JWTError as e:
+        raise AuthenticationError(f"Invalid MFA token: {e}")
+
+
 def validate_token(token: str, secret_key: str, algorithm: str = "HS256") -> str:
     """Validate a JWT and return the user_id.
 

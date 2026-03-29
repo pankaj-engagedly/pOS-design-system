@@ -11,10 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pos_contracts.exceptions import AuthenticationError, NotFoundError, ValidationError
 from pos_contracts.logging import trace
 
-from .tokens import create_access_token, create_refresh_token, validate_token
+from .tokens import create_access_token, create_mfa_token, create_refresh_token, validate_mfa_token, validate_token
 
 from .models import RefreshToken, User
-from .schemas import ChangePasswordRequest, RegisterRequest, UserUpdateRequest
+from .schemas import ChangePasswordRequest, ConfirmTotpRequest, RegisterRequest, UserUpdateRequest
 
 
 def _hash_password(password: str) -> str:
@@ -85,7 +85,7 @@ async def authenticate_user(
     access_expire_minutes: int,
     refresh_expire_days: int,
 ) -> dict:
-    """Verify credentials and return tokens."""
+    """Verify credentials and return tokens (or MFA challenge)."""
     result = await session.execute(
         select(User).where(User.email == email)
     )
@@ -93,20 +93,76 @@ async def authenticate_user(
     if not user or not _verify_password(password, user.password_hash):
         raise AuthenticationError("Invalid email or password")
 
+    # If TOTP is enabled, return an MFA challenge instead of full tokens
+    if user.totp_enabled:
+        mfa_token = create_mfa_token(str(user.id), secret_key, algorithm)
+        return {"requires_mfa": True, "mfa_token": mfa_token}
+
+    return await _issue_tokens(session, user, secret_key, algorithm, access_expire_minutes, refresh_expire_days)
+
+
+@trace
+async def verify_totp(
+    session: AsyncSession,
+    mfa_token: str,
+    totp_code: str,
+    secret_key: str,
+    algorithm: str,
+    access_expire_minutes: int,
+    refresh_expire_days: int,
+) -> dict:
+    """Verify TOTP code after password auth and issue full tokens."""
+    import json
+    import pyotp
+
+    user_id = validate_mfa_token(mfa_token, secret_key, algorithm)
+    user = await get_user(session, UUID(user_id))
+
+    if not user.totp_enabled or not user.totp_secret:
+        raise AuthenticationError("TOTP not configured")
+
+    totp = pyotp.TOTP(user.totp_secret)
+
+    # Check TOTP code (with 30s window tolerance)
+    if totp.verify(totp_code, valid_window=1):
+        return await _issue_tokens(session, user, secret_key, algorithm, access_expire_minutes, refresh_expire_days)
+
+    # Check backup codes
+    if user.backup_codes:
+        codes = json.loads(user.backup_codes)
+        code_hash = hashlib.sha256(totp_code.encode()).hexdigest()
+        if code_hash in codes:
+            codes.remove(code_hash)
+            user.backup_codes = json.dumps(codes)
+            await session.commit()
+            return await _issue_tokens(session, user, secret_key, algorithm, access_expire_minutes, refresh_expire_days)
+
+    raise AuthenticationError("Invalid TOTP code")
+
+
+async def _issue_tokens(
+    session: AsyncSession,
+    user: User,
+    secret_key: str,
+    algorithm: str,
+    access_expire_minutes: int,
+    refresh_expire_days: int,
+) -> dict:
+    """Create access + refresh tokens and store refresh hash."""
     user_id = str(user.id)
     access_token = create_access_token(user_id, secret_key, algorithm, access_expire_minutes)
-    refresh_token = create_refresh_token(user_id, secret_key, algorithm, refresh_expire_days)
+    refresh_tok = create_refresh_token(user_id, secret_key, algorithm, refresh_expire_days)
 
     from datetime import datetime, timedelta, timezone
     rt = RefreshToken(
         user_id=user.id,
-        token_hash=_hash_token(refresh_token),
+        token_hash=_hash_token(refresh_tok),
         expires_at=datetime.now(timezone.utc) + timedelta(days=refresh_expire_days),
     )
     session.add(rt)
     await session.commit()
 
-    return {"user": user, "access_token": access_token, "refresh_token": refresh_token}
+    return {"user": user, "access_token": access_token, "refresh_token": refresh_tok}
 
 
 @trace
@@ -197,4 +253,69 @@ async def change_password(
     if not _verify_password(data.current_password, user.password_hash):
         raise AuthenticationError("Current password is incorrect")
     user.password_hash = _hash_password(data.new_password)
+    await session.commit()
+
+
+# --- TOTP MFA ---
+
+
+async def setup_totp(session: AsyncSession, user_id: UUID) -> dict:
+    """Generate a TOTP secret and provisioning URI for QR code."""
+    import pyotp
+
+    user = await get_user(session, user_id)
+    if user.totp_enabled:
+        raise ValidationError("TOTP is already enabled")
+
+    # Generate secret and store it (not yet enabled)
+    secret = pyotp.random_base32()
+    user.totp_secret = secret
+    await session.commit()
+
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(name=user.email, issuer_name="pOS")
+
+    return {"secret": secret, "provisioning_uri": uri}
+
+
+async def confirm_totp(
+    session: AsyncSession, user_id: UUID, data: ConfirmTotpRequest,
+) -> dict:
+    """Verify a TOTP code to confirm setup, then enable MFA and return backup codes."""
+    import json
+    import pyotp
+
+    user = await get_user(session, user_id)
+    if not _verify_password(data.password, user.password_hash):
+        raise AuthenticationError("Incorrect password")
+    if not user.totp_secret:
+        raise ValidationError("TOTP not set up — call /setup-totp first")
+    if user.totp_enabled:
+        raise ValidationError("TOTP is already enabled")
+
+    totp = pyotp.TOTP(user.totp_secret)
+    if not totp.verify(data.totp_code, valid_window=1):
+        raise AuthenticationError("Invalid TOTP code — scan the QR code and try again")
+
+    # Generate backup codes
+    raw_codes = [secrets.token_hex(4) for _ in range(8)]  # 8 codes, 8 hex chars each
+    hashed_codes = [hashlib.sha256(c.encode()).hexdigest() for c in raw_codes]
+
+    user.totp_enabled = True
+    user.backup_codes = json.dumps(hashed_codes)
+    await session.commit()
+
+    return {"backup_codes": raw_codes}
+
+
+async def disable_totp(
+    session: AsyncSession, user_id: UUID, password: str,
+) -> None:
+    """Disable TOTP MFA after verifying password."""
+    user = await get_user(session, user_id)
+    if not _verify_password(password, user.password_hash):
+        raise AuthenticationError("Incorrect password")
+    user.totp_enabled = False
+    user.totp_secret = None
+    user.backup_codes = None
     await session.commit()
