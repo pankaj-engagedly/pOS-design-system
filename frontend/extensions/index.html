@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pOS Browser Extensions</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Inter, system-ui, sans-serif; background: #f8f9fa; color: #1a1a2e; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card { max-width: 560px; width: 100%; margin: 40px 20px; padding: 40px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { color: #64748b; font-size: 14px; margin-bottom: 32px; }
+    .ext-card { padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 16px; }
+    .ext-card h2 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .ext-card p { font-size: 13px; color: #64748b; margin-bottom: 12px; }
+    .download-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 10px 20px; background: #2563eb; color: white;
+      border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
+      font-family: inherit; text-decoration: none; cursor: pointer;
+    }
+    .download-btn:hover { opacity: 0.9; }
+    .steps { margin-top: 32px; }
+    .steps h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+    .steps ol { padding-left: 20px; }
+    .steps li { font-size: 13px; color: #374151; line-height: 1.8; }
+    .steps code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+    .back { display: inline-block; margin-top: 24px; font-size: 13px; color: #2563eb; text-decoration: none; }
+    .back:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>pOS Browser Extensions</h1>
+    <p class="subtitle">Save web pages to your pOS Knowledge Base with one click.</p>
+
+    <div class="ext-card">
+      <h2>pOS Knowledge Base — Chrome Extension</h2>
+      <p>Right-click any page or use the toolbar icon to save URLs, articles, and videos to your KB with tags and collections.</p>
+      <a class="download-btn" href="/frontend/extensions/pos-kb-extension.zip" download>
+        Download Extension (.zip)
+      </a>
+    </div>
+
+    <div class="steps">
+      <h3>Installation (Chrome / Brave / Edge)</h3>
+      <ol>
+        <li>Download and <strong>unzip</strong> the file</li>
+        <li>Open <code>chrome://extensions</code> in your browser</li>
+        <li>Enable <strong>Developer mode</strong> (toggle in top-right)</li>
+        <li>Click <strong>"Load unpacked"</strong></li>
+        <li>Select the unzipped <code>chrome-kb-saver-prod</code> folder</li>
+        <li>Click the extension icon in the toolbar and <strong>sign in</strong> with your pOS account</li>
+      </ol>
+    </div>
+
+    <a class="back" href="/">&larr; Back to pOS</a>
+  </div>
+</body>
+</html>
