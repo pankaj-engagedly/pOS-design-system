@@ -28,10 +28,11 @@ describe('ui-side-panel', () => {
     expect(slot).to.exist;
   });
 
-  it('uses default width of 240px', async () => {
+  it('renders as flex column by default', async () => {
     const el = await fixture(html`<ui-side-panel></ui-side-panel>`);
     const style = getComputedStyle(el);
-    expect(style.minWidth).to.equal('240px');
+    expect(style.display).to.equal('flex');
+    expect(style.flexDirection).to.equal('column');
   });
 
   it('applies custom width via attribute', async () => {
