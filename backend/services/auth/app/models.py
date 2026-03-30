@@ -34,6 +34,25 @@ class User(Base):
     )
 
 
+class ApiKey(Base):
+    """Long-lived API keys for agents and integrations."""
+
+    __tablename__ = "api_keys"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String(255), nullable=False)
+    key_hash = Column(String(255), nullable=False, unique=True)
+    key_prefix = Column(String(12), nullable=False)  # "pos_k_xxxx" — for identification
+    is_active = Column(Boolean, default=True, nullable=False)
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
 class RefreshToken(Base):
     """Stored refresh tokens for session management and revocation."""
 

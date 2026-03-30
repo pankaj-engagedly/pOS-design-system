@@ -9,6 +9,9 @@ from .db import get_session as get_async_session
 
 from . import service
 from .schemas import (
+    ApiKeyCreate,
+    ApiKeyCreatedResponse,
+    ApiKeyResponse,
     AuthResponse,
     ChangePasswordRequest,
     ConfirmTotpRequest,
@@ -189,3 +192,53 @@ async def disable_totp(
     """Disable TOTP MFA. Requires password confirmation."""
     user_id = UUID(request.state.user_id)
     await service.disable_totp(session, user_id, data.password)
+
+
+# --- API Keys ---
+
+
+@router.post("/api-keys", response_model=ApiKeyCreatedResponse, status_code=201)
+async def create_api_key(
+    data: ApiKeyCreate,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Create a new API key. The raw key is returned only once."""
+    user_id = UUID(request.state.user_id)
+    result = await service.create_api_key(session, user_id, data.name)
+    return ApiKeyCreatedResponse(
+        **ApiKeyResponse.model_validate(result["api_key"]).model_dump(),
+        raw_key=result["raw_key"],
+    )
+
+
+@router.get("/api-keys", response_model=list[ApiKeyResponse])
+async def list_api_keys(
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+):
+    user_id = UUID(request.state.user_id)
+    return await service.list_api_keys(session, user_id)
+
+
+@router.delete("/api-keys/{key_id}", status_code=204)
+async def revoke_api_key(
+    key_id: UUID,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+):
+    user_id = UUID(request.state.user_id)
+    await service.revoke_api_key(session, user_id, key_id)
+
+
+@router.post("/api-keys/validate")
+async def validate_api_key_endpoint(
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """Internal: validate an API key and return user_id. Used by gateway."""
+    body = await request.json()
+    user_id = await service.validate_api_key(session, body.get("key", ""))
+    if not user_id:
+        return {"valid": False}
+    return {"valid": True, "user_id": user_id}

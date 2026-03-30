@@ -83,3 +83,25 @@ class ConfirmTotpResponse(BaseModel):
 
 class DisableTotpRequest(BaseModel):
     password: str
+
+
+# --- API Keys ---
+
+class ApiKeyCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=255)
+
+
+class ApiKeyResponse(BaseModel):
+    id: UUID
+    name: str
+    key_prefix: str
+    is_active: bool
+    last_used_at: datetime | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ApiKeyCreatedResponse(ApiKeyResponse):
+    """Returned only on creation — includes the raw key (shown once)."""
+    raw_key: str

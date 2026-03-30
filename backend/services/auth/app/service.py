@@ -13,7 +13,7 @@ from pos_contracts.logging import trace
 
 from .tokens import create_access_token, create_mfa_token, create_refresh_token, validate_mfa_token, validate_token
 
-from .models import RefreshToken, User
+from .models import ApiKey, RefreshToken, User
 from .schemas import ChangePasswordRequest, ConfirmTotpRequest, RegisterRequest, UserUpdateRequest
 
 
@@ -319,3 +319,63 @@ async def disable_totp(
     user.totp_secret = None
     user.backup_codes = None
     await session.commit()
+
+
+# --- API Keys ---
+
+
+async def create_api_key(session: AsyncSession, user_id: UUID, name: str) -> dict:
+    """Create a new API key. Returns the raw key (shown once)."""
+    raw_key = f"pos_k_{secrets.token_hex(24)}"  # 48 hex chars = 192 bits
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    key_prefix = raw_key[:12]  # "pos_k_xxxxxx" for identification
+
+    api_key = ApiKey(
+        user_id=user_id,
+        name=name,
+        key_hash=key_hash,
+        key_prefix=key_prefix,
+    )
+    session.add(api_key)
+    await session.commit()
+    await session.refresh(api_key)
+
+    return {"api_key": api_key, "raw_key": raw_key}
+
+
+async def list_api_keys(session: AsyncSession, user_id: UUID) -> list[ApiKey]:
+    """List all API keys for a user."""
+    result = await session.execute(
+        select(ApiKey)
+        .where(ApiKey.user_id == user_id)
+        .order_by(ApiKey.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def revoke_api_key(session: AsyncSession, user_id: UUID, key_id: UUID) -> None:
+    """Revoke (deactivate) an API key."""
+    result = await session.execute(
+        select(ApiKey).where(ApiKey.id == key_id, ApiKey.user_id == user_id)
+    )
+    key = result.scalar_one_or_none()
+    if not key:
+        raise NotFoundError("API key not found")
+    key.is_active = False
+    await session.commit()
+
+
+async def validate_api_key(session: AsyncSession, raw_key: str) -> str | None:
+    """Validate an API key and return user_id. Updates last_used_at."""
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    result = await session.execute(
+        select(ApiKey).where(ApiKey.key_hash == key_hash, ApiKey.is_active == True)
+    )
+    api_key = result.scalar_one_or_none()
+    if not api_key:
+        return None
+
+    from datetime import datetime, timezone
+    api_key.last_used_at = datetime.now(timezone.utc)
+    await session.commit()
+    return str(api_key.user_id)

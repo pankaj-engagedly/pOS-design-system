@@ -11,6 +11,7 @@ class PosSettingsApp extends HTMLElement {
     this._totpSetup = null;
     this._backupCodes = null;
     this._message = null;
+    this._newApiKey = null;
     this._eventsBound = false;
   }
 
@@ -160,8 +161,30 @@ class PosSettingsApp extends HTMLElement {
           </div>
           ${u.totp_enabled ? this._renderMfaEnabled() : this._renderMfaDisabled()}
         </div>
+
+        <!-- API Keys -->
+        <div class="section">
+          <div class="section-title">${icon('key', 16)} API Keys</div>
+          <p class="mfa-step-text" style="margin-bottom: var(--pos-space-sm)">
+            API keys allow agents and integrations to access pOS on your behalf. Keys are shown once on creation.
+          </p>
+          <div id="api-keys-list"></div>
+          <div class="form-row" style="margin-top: var(--pos-space-sm)">
+            <input class="form-input" id="new-key-name" placeholder="Key name (e.g. Claude Agent, OpenClaw)" />
+            <button class="btn btn-primary" id="create-api-key">Create Key</button>
+          </div>
+          ${this._newApiKey ? `
+            <div class="msg msg-success" style="margin-top: var(--pos-space-sm)">
+              <strong>Key created!</strong> Copy it now — it won't be shown again.<br>
+              <code style="font-size: 13px; user-select: all; word-break: break-all;">${this._newApiKey}</code>
+            </div>
+          ` : ''}
+        </div>
       </div>
     `;
+
+    // Load API keys list
+    this._loadApiKeys();
   }
 
   _renderMfaDisabled() {
@@ -260,6 +283,8 @@ class PosSettingsApp extends HTMLElement {
         if (form) form.classList.remove('visible');
       }
       if (id === 'confirm-disable-totp') return this._disableTotp();
+      if (id === 'create-api-key') return this._createApiKey();
+      if (btn.dataset.revokeKey) return this._revokeApiKey(btn.dataset.revokeKey);
     });
   }
 
@@ -330,6 +355,52 @@ class PosSettingsApp extends HTMLElement {
     this._message = { type, text };
     this._render();
     if (type === 'success') setTimeout(() => { if (this._message?.type === 'success') { this._message = null; this._render(); } }, 5000);
+  }
+
+  async _loadApiKeys() {
+    const container = this.shadow.getElementById('api-keys-list');
+    if (!container) return;
+    try {
+      const keys = await apiFetch('/api/auth/api-keys');
+      if (keys.length === 0) {
+        container.innerHTML = '<p class="hint">No API keys yet.</p>';
+        return;
+      }
+      container.innerHTML = keys.map(k => `
+        <div class="form-row" style="padding: 6px 0; border-bottom: 1px solid var(--pos-color-border-default);">
+          <span style="flex:1; font-size: var(--pos-font-size-xs);">
+            <strong>${this._esc(k.name)}</strong>
+            <span class="hint" style="margin-left: 8px;">${k.key_prefix}...</span>
+            ${k.last_used_at ? `<span class="hint" style="margin-left: 8px;">Last used: ${new Date(k.last_used_at).toLocaleDateString()}</span>` : ''}
+          </span>
+          ${k.is_active
+            ? `<button class="btn btn-danger" data-revoke-key="${k.id}" style="padding: 4px 10px; font-size: 11px;">Revoke</button>`
+            : `<span class="mfa-badge mfa-off" style="font-size: 10px;">Revoked</span>`
+          }
+        </div>
+      `).join('');
+    } catch { container.innerHTML = ''; }
+  }
+
+  async _createApiKey() {
+    const nameInput = this.shadow.getElementById('new-key-name');
+    const name = nameInput?.value.trim();
+    if (!name) return this._showMsg('error', 'Enter a name for the key');
+    try {
+      const data = await apiFetch('/api/auth/api-keys', {
+        method: 'POST', body: JSON.stringify({ name }),
+      });
+      this._newApiKey = data.raw_key;
+      nameInput.value = '';
+      this._render();
+    } catch (err) { this._showMsg('error', err.message); }
+  }
+
+  async _revokeApiKey(keyId) {
+    try {
+      await apiFetch(`/api/auth/api-keys/${keyId}`, { method: 'DELETE' });
+      this._loadApiKeys();
+    } catch (err) { this._showMsg('error', err.message); }
   }
 
   async _renderQrCode() {
