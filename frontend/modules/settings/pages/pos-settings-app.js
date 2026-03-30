@@ -178,13 +178,20 @@ class PosSettingsApp extends HTMLElement {
     }
 
     if (this._totpSetup) {
+      // Generate QR code after render
+      setTimeout(() => this._renderQrCode(), 0);
+
       return `
         <div class="mfa-step">
           <span class="mfa-step-num">1</span>
-          <span class="mfa-step-text">Open your authenticator app and add this account manually with the secret below:</span>
+          <span class="mfa-step-text">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.):</span>
         </div>
-        <div class="secret-display">${this._totpSetup.secret}</div>
-        <p class="hint">Account: ${this._esc(this._user.email)} &middot; Issuer: pOS</p>
+        <div id="qr-container" style="margin: var(--pos-space-sm) 0; min-height: 200px;"></div>
+        <details style="margin-bottom: var(--pos-space-sm);">
+          <summary class="hint" style="cursor: pointer;">Can't scan? Enter this key manually</summary>
+          <div class="secret-display">${this._totpSetup.secret}</div>
+          <p class="hint">Account: ${this._esc(this._user.email)} &middot; Type: Time-based &middot; Issuer: pOS</p>
+        </details>
 
         <div class="mfa-step">
           <span class="mfa-step-num">2</span>
@@ -323,6 +330,33 @@ class PosSettingsApp extends HTMLElement {
     this._message = { type, text };
     this._render();
     if (type === 'success') setTimeout(() => { if (this._message?.type === 'success') { this._message = null; this._render(); } }, 5000);
+  }
+
+  async _renderQrCode() {
+    const container = this.shadow.getElementById('qr-container');
+    if (!container || !this._totpSetup?.provisioning_uri) return;
+
+    // Load qrcode-generator from CDN (runs client-side, secret never leaves browser)
+    if (!window.qrcode) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    const qr = window.qrcode(0, 'M');
+    qr.addData(this._totpSetup.provisioning_uri);
+    qr.make();
+
+    container.innerHTML = qr.createSvgTag({ cellSize: 5, margin: 4 });
+    const svg = container.querySelector('svg');
+    if (svg) {
+      svg.style.borderRadius = '8px';
+      svg.style.border = '1px solid var(--pos-color-border-default, #e2e8f0)';
+    }
   }
 
   _esc(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
