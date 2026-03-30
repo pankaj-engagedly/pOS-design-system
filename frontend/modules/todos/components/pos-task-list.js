@@ -214,6 +214,13 @@ class PosTaskList extends HTMLElement {
           color: var(--pos-color-text-disabled);
         }
         .subtask-add-row { padding-bottom: var(--pos-space-xs); }
+        .task-drag-wrapper {
+          transition: opacity 0.15s;
+        }
+        .task-drag-wrapper.drag-over {
+          border-top: 2px solid var(--pos-color-action-primary);
+        }
+
         .subtask-add-input {
           flex: 1;
           font-size: var(--pos-font-size-xs);
@@ -374,6 +381,7 @@ class PosTaskList extends HTMLElement {
 
   _renderTaskWithSubtasks(t, isSmartView) {
     const taskHtml = `
+      <div class="task-drag-wrapper" draggable="true" data-drag-task-id="${t.id}">
       <pos-task-item
         task-id="${t.id}"
         title="${this._escAttr(t.title)}"
@@ -388,7 +396,7 @@ class PosTaskList extends HTMLElement {
 
     // Render inline subtask rows if full subtask objects are available
     const subtasks = t.subtasks;
-    if (!subtasks || subtasks.length === 0) return taskHtml;
+    if (!subtasks || subtasks.length === 0) return taskHtml + `</div>`;
 
     const subtaskRows = subtasks.map(s => `
       <div class="subtask-row"
@@ -414,7 +422,7 @@ class PosTaskList extends HTMLElement {
            <span class="subtask-add-label">Add subtask</span>
          </div>`;
 
-    return taskHtml + subtaskRows + addSubtaskHtml;
+    return taskHtml + subtaskRows + addSubtaskHtml + `</div>`;
   }
 
   // ─── Events ───────────────────────────────────────────────
@@ -490,6 +498,58 @@ class PosTaskList extends HTMLElement {
       e.stopPropagation();
       this._addingToGroup = null;
       this.render();
+    });
+
+    // Task drag & drop reorder
+    this.shadow.addEventListener('dragstart', (e) => {
+      const wrapper = e.target.closest('[data-drag-task-id]');
+      if (!wrapper) return;
+      this._dragTaskId = wrapper.dataset.dragTaskId;
+      e.dataTransfer.effectAllowed = 'move';
+      wrapper.style.opacity = '0.4';
+    });
+
+    this.shadow.addEventListener('dragend', (e) => {
+      const wrapper = e.target.closest('[data-drag-task-id]');
+      if (wrapper) wrapper.style.opacity = '1';
+      this._dragTaskId = null;
+      this.shadow.querySelectorAll('.task-drag-wrapper').forEach(w => w.classList.remove('drag-over'));
+    });
+
+    this.shadow.addEventListener('dragover', (e) => {
+      const wrapper = e.target.closest('[data-drag-task-id]');
+      if (!wrapper || !this._dragTaskId) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      this.shadow.querySelectorAll('.task-drag-wrapper').forEach(w => w.classList.remove('drag-over'));
+      wrapper.classList.add('drag-over');
+    });
+
+    this.shadow.addEventListener('drop', (e) => {
+      const wrapper = e.target.closest('[data-drag-task-id]');
+      if (!wrapper || !this._dragTaskId) return;
+      e.preventDefault();
+      wrapper.classList.remove('drag-over');
+
+      const fromId = this._dragTaskId;
+      const toId = wrapper.dataset.dragTaskId;
+      if (fromId === toId) return;
+
+      // Reorder locally and emit
+      const tasks = [...this._tasks];
+      const fromIdx = tasks.findIndex(t => t.id === fromId);
+      const toIdx = tasks.findIndex(t => t.id === toId);
+      if (fromIdx < 0 || toIdx < 0) return;
+
+      const [moved] = tasks.splice(fromIdx, 1);
+      tasks.splice(toIdx, 0, moved);
+      this._tasks = tasks;
+      this.render();
+
+      this.dispatchEvent(new CustomEvent('task-reorder', {
+        bubbles: true, composed: true,
+        detail: { orderedIds: tasks.map(t => t.id), listId: tasks[0]?.list_id },
+      }));
     });
 
     // Inline subtask input — Enter to submit, Escape to cancel

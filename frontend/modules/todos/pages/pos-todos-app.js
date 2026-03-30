@@ -369,6 +369,18 @@ class PosTodosApp extends HTMLElement {
       }
     });
 
+    // Task reorder (drag & drop)
+    this.shadow.addEventListener('task-reorder', async (e) => {
+      const { orderedIds, listId } = e.detail;
+      if (!listId || !orderedIds?.length) return;
+      try {
+        await todoApi.reorderTasks(listId, orderedIds);
+      } catch (err) {
+        todoStore.setState({ error: err.message });
+        await this._refreshAll(); // revert on failure
+      }
+    });
+
     // Subtask add
     this.shadow.addEventListener('subtask-add', async (e) => {
       const { taskId, title } = e.detail;
@@ -398,6 +410,33 @@ class PosTodosApp extends HTMLElement {
       const { subtaskId, taskId } = e.detail;
       try {
         await todoApi.deleteSubtask(subtaskId);
+        if (taskId) await this._refreshTaskEdit(taskId);
+        await this._refreshAll();
+      } catch (err) {
+        todoStore.setState({ error: err.message });
+      }
+    });
+
+    // Subtask update (title edit)
+    this.shadow.addEventListener('subtask-update', async (e) => {
+      const { subtaskId, taskId, title } = e.detail;
+      try {
+        await todoApi.updateSubtask(subtaskId, { title });
+        if (taskId) await this._refreshTaskEdit(taskId);
+        await this._refreshAll();
+      } catch (err) {
+        todoStore.setState({ error: err.message });
+      }
+    });
+
+    // Subtask reorder
+    this.shadow.addEventListener('subtask-reorder', async (e) => {
+      const { taskId, orderedIds } = e.detail;
+      try {
+        // Update positions via individual PATCH calls
+        for (let i = 0; i < orderedIds.length; i++) {
+          await todoApi.updateSubtask(orderedIds[i], { position: i });
+        }
         if (taskId) await this._refreshTaskEdit(taskId);
         await this._refreshAll();
       } catch (err) {

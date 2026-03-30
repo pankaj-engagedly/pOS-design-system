@@ -31,6 +31,7 @@ class SubtaskCreate(BaseModel):
 class SubtaskUpdate(BaseModel):
     title: str | None = Field(None, min_length=1, max_length=500)
     is_completed: bool | None = None
+    position: int | None = None
 
 
 class SubtaskResponse(BaseModel):
