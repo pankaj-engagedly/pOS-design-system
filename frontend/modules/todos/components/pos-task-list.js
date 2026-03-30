@@ -215,14 +215,16 @@ class PosTaskList extends HTMLElement {
         }
         .subtask-add-row { padding-bottom: var(--pos-space-xs); }
         .task-drag-wrapper {
-          display: flex; align-items: flex-start;
           transition: opacity 0.15s;
           border-bottom: 1px solid var(--pos-color-border-default);
           padding-bottom: var(--pos-space-xs);
           margin-bottom: var(--pos-space-xs);
         }
         .task-drag-wrapper:last-of-type { border-bottom: none; }
-        .task-drag-wrapper pos-task-item { flex: 1; }
+        .task-row {
+          display: flex; align-items: flex-start;
+        }
+        .task-row pos-task-item { flex: 1; }
         .task-drag-wrapper.drag-over {
           border-top: 2px solid var(--pos-color-action-primary);
         }
@@ -396,6 +398,7 @@ class PosTaskList extends HTMLElement {
   _renderTaskWithSubtasks(t, isSmartView) {
     const taskHtml = `
       <div class="task-drag-wrapper" draggable="true" data-drag-task-id="${t.id}">
+      <div class="task-row">
       <span class="task-drag-handle" title="Drag to reorder">⠿</span>
       <pos-task-item
         task-id="${t.id}"
@@ -407,6 +410,7 @@ class PosTaskList extends HTMLElement {
         ${t.attachment_ids?.length ? `attachment-count="${t.attachment_ids.length}"` : ''}
         ${isSmartView && t.list_name ? `list-name="${this._escAttr(t.list_name)}"` : ''}
       ></pos-task-item>
+      </div>
     `;
 
     // Render inline subtask rows if full subtask objects are available
