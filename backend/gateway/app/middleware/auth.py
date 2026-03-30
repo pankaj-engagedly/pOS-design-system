@@ -15,6 +15,7 @@ PUBLIC_PATHS = {
     "/api/auth/login",
     "/api/auth/register",
     "/api/auth/refresh",
+    "/api/auth/verify-totp",
     "/api/photos/sources/google/callback",
     "/docs",
     "/openapi.json",

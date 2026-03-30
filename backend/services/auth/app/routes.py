@@ -34,7 +34,7 @@ def _get_config(request: Request):
     return request.app.state.config
 
 
-@router.post("/register", response_model=AuthResponse, status_code=201)
+@router.post("/register", status_code=201)
 async def register(
     data: RegisterRequest,
     request: Request,
@@ -48,7 +48,11 @@ async def register(
         access_expire_minutes=config.JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
         refresh_expire_days=config.JWT_REFRESH_TOKEN_EXPIRE_DAYS,
     )
-    return result
+    return AuthResponse(
+        user=UserResponse.model_validate(result["user"]),
+        access_token=result["access_token"],
+        refresh_token=result["refresh_token"],
+    )
 
 
 @router.post("/login")
@@ -65,7 +69,15 @@ async def login(
         access_expire_minutes=config.JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
         refresh_expire_days=config.JWT_REFRESH_TOKEN_EXPIRE_DAYS,
     )
-    return result  # Returns AuthResponse or MFAPendingResponse
+    # MFA pending — no user data, just the challenge token
+    if result.get("requires_mfa"):
+        return MFAPendingResponse(**result)
+    # Full auth — filter user through schema to exclude sensitive fields
+    return AuthResponse(
+        user=UserResponse.model_validate(result["user"]),
+        access_token=result["access_token"],
+        refresh_token=result["refresh_token"],
+    )
 
 
 @router.post("/refresh", response_model=TokenRefreshResponse)
@@ -140,7 +152,11 @@ async def verify_totp(
         access_expire_minutes=config.JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
         refresh_expire_days=config.JWT_REFRESH_TOKEN_EXPIRE_DAYS,
     )
-    return result
+    return AuthResponse(
+        user=UserResponse.model_validate(result["user"]),
+        access_token=result["access_token"],
+        refresh_token=result["refresh_token"],
+    )
 
 
 @router.post("/setup-totp", response_model=SetupTotpResponse)
