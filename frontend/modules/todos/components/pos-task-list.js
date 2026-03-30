@@ -215,11 +215,21 @@ class PosTaskList extends HTMLElement {
         }
         .subtask-add-row { padding-bottom: var(--pos-space-xs); }
         .task-drag-wrapper {
+          display: flex; align-items: flex-start;
           transition: opacity 0.15s;
         }
+        .task-drag-wrapper pos-task-item { flex: 1; }
         .task-drag-wrapper.drag-over {
           border-top: 2px solid var(--pos-color-action-primary);
         }
+        .task-drag-handle {
+          cursor: grab; color: var(--pos-color-text-disabled);
+          font-size: 12px; padding: 8px 2px 0 var(--pos-space-sm);
+          opacity: 0; transition: opacity 0.1s; user-select: none;
+          flex-shrink: 0;
+        }
+        .task-drag-wrapper:hover .task-drag-handle { opacity: 1; }
+        .task-drag-handle:active { cursor: grabbing; }
 
         .subtask-add-input {
           flex: 1;
@@ -382,6 +392,7 @@ class PosTaskList extends HTMLElement {
   _renderTaskWithSubtasks(t, isSmartView) {
     const taskHtml = `
       <div class="task-drag-wrapper" draggable="true" data-drag-task-id="${t.id}">
+      <span class="task-drag-handle" title="Drag to reorder">⠿</span>
       <pos-task-item
         task-id="${t.id}"
         title="${this._escAttr(t.title)}"
