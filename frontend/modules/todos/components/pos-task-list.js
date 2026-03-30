@@ -217,7 +217,11 @@ class PosTaskList extends HTMLElement {
         .task-drag-wrapper {
           display: flex; align-items: flex-start;
           transition: opacity 0.15s;
+          border-bottom: 1px solid var(--pos-color-border-default);
+          padding-bottom: var(--pos-space-xs);
+          margin-bottom: var(--pos-space-xs);
         }
+        .task-drag-wrapper:last-of-type { border-bottom: none; }
         .task-drag-wrapper pos-task-item { flex: 1; }
         .task-drag-wrapper.drag-over {
           border-top: 2px solid var(--pos-color-action-primary);
@@ -407,7 +411,19 @@ class PosTaskList extends HTMLElement {
 
     // Render inline subtask rows if full subtask objects are available
     const subtasks = t.subtasks;
-    if (!subtasks || subtasks.length === 0) return taskHtml + `</div>`;
+    if (!subtasks || subtasks.length === 0) {
+      // Still show "Add subtask" trigger for tasks with no subtasks
+      const addHtml = this._addingSubtaskToTask === t.id
+        ? `<div class="subtask-row subtask-add-row">
+             <span class="subtask-check"></span>
+             <input class="subtask-add-input" data-add-subtask-for="${t.id}" placeholder="Subtask title…" />
+           </div>`
+        : `<div class="subtask-add-trigger" data-action="add-subtask-inline" data-task-id="${t.id}">
+             <span class="subtask-check">${icon('plus', 9)}</span>
+             <span class="subtask-add-label">Add subtask</span>
+           </div>`;
+      return taskHtml + addHtml + `</div>`;
+    }
 
     const subtaskRows = subtasks.map(s => `
       <div class="subtask-row"

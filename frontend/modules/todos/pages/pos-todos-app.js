@@ -394,11 +394,19 @@ class PosTodosApp extends HTMLElement {
 
     // Subtask toggle
     this.shadow.addEventListener('subtask-toggle', async (e) => {
-      const { subtaskId, completed } = e.detail;
+      const { subtaskId, taskId, completed } = e.detail;
       try {
         await todoApi.updateSubtask(subtaskId, { is_completed: completed });
-        // Refresh the task being edited to update subtask list + counts
-        if (e.detail.taskId) await this._refreshTaskEdit(e.detail.taskId);
+        // Auto-comment when subtask is completed
+        if (completed && taskId) {
+          // Find subtask title from current task data
+          const allTasks = todoStore.getState().allTasks || todoStore.getState().tasks || [];
+          const task = allTasks.find(t => t.id === taskId);
+          const subtask = task?.subtasks?.find(s => s.id === subtaskId);
+          const title = subtask?.title || 'Subtask';
+          await todoApi.addComment(taskId, `Completed: ${title}`);
+        }
+        if (taskId) await this._refreshTaskEdit(taskId);
         await this._refreshAll();
       } catch (err) {
         todoStore.setState({ error: err.message });
