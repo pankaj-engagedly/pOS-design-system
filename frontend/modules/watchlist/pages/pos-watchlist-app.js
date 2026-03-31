@@ -307,6 +307,7 @@ class PosWatchlistApp extends HTMLElement {
         table.columns = ac.columns;
         const prefs = getColumnPrefs(state.selectedAssetClass);
         table.visibleColumnKeys = prefs || ac.default_columns;
+        table.themes = state.themes || [];
         table.items = filteredItems;
       }
     }

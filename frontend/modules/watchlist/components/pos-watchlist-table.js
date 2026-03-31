@@ -61,6 +61,35 @@ sheet.replaceSync(`
     color: var(--pos-color-text-tertiary);
     font-size: var(--pos-font-size-sm);
   }
+  .group-header {
+    background: var(--pos-color-background-secondary);
+    font-weight: 600;
+    font-size: var(--pos-font-size-xs);
+    cursor: pointer;
+    user-select: none;
+  }
+  .group-header td {
+    padding: 8px 12px;
+  }
+  .group-header .toggle {
+    display: inline-block; width: 16px;
+    transition: transform 0.15s;
+  }
+  .group-header .toggle.collapsed { transform: rotate(-90deg); }
+  .group-count {
+    font-weight: normal;
+    color: var(--pos-color-text-secondary);
+    margin-left: 8px;
+  }
+  .subgroup-header {
+    background: var(--pos-color-background-primary);
+    font-weight: 500;
+    font-size: var(--pos-font-size-xs);
+    cursor: pointer;
+  }
+  .subgroup-header td {
+    padding: 6px 12px 6px 28px;
+  }
 `);
 
 class PosWatchlistTable extends HTMLElement {
@@ -73,11 +102,14 @@ class PosWatchlistTable extends HTMLElement {
     this._visibleColumnKeys = []; // keys to show
     this._sortKey = null;
     this._sortDir = 'asc';
+    this._themes = [];
+    this._collapsedGroups = new Set();
   }
 
   set items(val) { this._items = val || []; this._render(); }
   set columns(val) { this._columns = val || []; this._render(); }
   set visibleColumnKeys(val) { this._visibleColumnKeys = val || []; this._render(); }
+  set themes(val) { this._themes = val || []; this._render(); }
 
   connectedCallback() {
     this._render();
@@ -96,6 +128,8 @@ class PosWatchlistTable extends HTMLElement {
     const cols = this._getVisibleColumns();
     const items = this._getSortedItems(cols);
 
+    const useGrouping = this._shouldGroup(items);
+
     this.shadow.innerHTML = `
       ${items.length === 0
         ? '<div class="empty">No items in this view. Click "Add" to search and add.</div>'
@@ -109,7 +143,9 @@ class PosWatchlistTable extends HTMLElement {
             `).join('')}
           </tr></thead>
           <tbody>
-            ${items.map(item => this._renderRow(item, cols)).join('')}
+            ${useGrouping
+              ? this._renderGroupedRows(items, cols)
+              : items.map(item => this._renderRow(item, cols)).join('')}
           </tbody>
         </table>`
       }
@@ -122,6 +158,161 @@ class PosWatchlistTable extends HTMLElement {
         try { el.data = JSON.parse(data); } catch {}
       }
     });
+  }
+
+  _shouldGroup(items) {
+    if (!this._themes.length || !items.length) return false;
+    // Build a set of theme IDs that items actually use
+    const usedThemeIds = new Set(items.map(i => i.theme_id).filter(Boolean));
+    // Don't group if all items are in one theme (or no themes at all)
+    if (usedThemeIds.size <= 1 && items.every(i => i.theme_id)) return false;
+    return usedThemeIds.size > 0;
+  }
+
+  _renderGroupedRows(items, cols) {
+    const colSpan = cols.length;
+    // Build theme lookup: id -> theme object (including children)
+    const themeMap = new Map();
+    const parentThemes = [];
+    for (const t of this._themes) {
+      themeMap.set(t.id, t);
+      parentThemes.push(t);
+      if (t.children) {
+        for (const c of t.children) {
+          themeMap.set(c.id, c);
+        }
+      }
+    }
+
+    // Group items: parent_theme_id -> sub_theme_id -> items
+    // Items whose theme_id matches a parent go directly under parent
+    // Items whose theme_id matches a child go under that child's parent
+    const groups = new Map(); // parentId -> { theme, subgroups: Map<subId, {theme, items}>, directItems: [] }
+    const uncategorized = [];
+
+    for (const item of items) {
+      if (!item.theme_id) {
+        uncategorized.push(item);
+        continue;
+      }
+      const theme = themeMap.get(item.theme_id);
+      if (!theme) {
+        uncategorized.push(item);
+        continue;
+      }
+
+      // Is this a child theme?
+      const parentId = theme.parent_id || theme.id;
+      const isChild = !!theme.parent_id;
+
+      if (!groups.has(parentId)) {
+        const parentTheme = themeMap.get(parentId) || { id: parentId, name: 'Unknown' };
+        groups.set(parentId, { theme: parentTheme, subgroups: new Map(), directItems: [] });
+      }
+      const group = groups.get(parentId);
+
+      if (isChild) {
+        if (!group.subgroups.has(theme.id)) {
+          group.subgroups.set(theme.id, { theme, items: [] });
+        }
+        group.subgroups.get(theme.id).items.push(item);
+      } else {
+        group.directItems.push(item);
+      }
+    }
+
+    let html = '';
+
+    // Render each parent theme group in the order they appear in _themes
+    for (const pt of parentThemes) {
+      const group = groups.get(pt.id);
+      if (!group) continue;
+
+      const totalItems = group.directItems.length +
+        Array.from(group.subgroups.values()).reduce((sum, sg) => sum + sg.items.length, 0);
+      const collapsed = this._collapsedGroups.has(pt.id);
+
+      html += `<tr class="group-header" data-group-id="${pt.id}">
+        <td colspan="${colSpan}">
+          <span class="toggle ${collapsed ? 'collapsed' : ''}">&#9660;</span>
+          ${this._esc(pt.name)}<span class="group-count">${totalItems}</span>
+        </td>
+      </tr>`;
+
+      if (!collapsed) {
+        // Direct items (items assigned to parent theme itself)
+        for (const item of group.directItems) {
+          html += this._renderRow(item, cols);
+        }
+        // Sub-theme groups
+        for (const [subId, sg] of group.subgroups) {
+          const subCollapsed = this._collapsedGroups.has(subId);
+          html += `<tr class="subgroup-header" data-group-id="${subId}">
+            <td colspan="${colSpan}">
+              <span class="toggle ${subCollapsed ? 'collapsed' : ''}">&#9660;</span>
+              ${this._esc(sg.theme.name)}<span class="group-count">${sg.items.length}</span>
+            </td>
+          </tr>`;
+          if (!subCollapsed) {
+            for (const item of sg.items) {
+              html += this._renderRow(item, cols);
+            }
+          }
+        }
+      }
+    }
+
+    // Also render groups for themes not in parentThemes order (safety)
+    for (const [parentId, group] of groups) {
+      if (parentThemes.some(pt => pt.id === parentId)) continue;
+      const totalItems = group.directItems.length +
+        Array.from(group.subgroups.values()).reduce((sum, sg) => sum + sg.items.length, 0);
+      const collapsed = this._collapsedGroups.has(parentId);
+      html += `<tr class="group-header" data-group-id="${parentId}">
+        <td colspan="${colSpan}">
+          <span class="toggle ${collapsed ? 'collapsed' : ''}">&#9660;</span>
+          ${this._esc(group.theme.name)}<span class="group-count">${totalItems}</span>
+        </td>
+      </tr>`;
+      if (!collapsed) {
+        for (const item of group.directItems) {
+          html += this._renderRow(item, cols);
+        }
+        for (const [subId, sg] of group.subgroups) {
+          const subCollapsed = this._collapsedGroups.has(subId);
+          html += `<tr class="subgroup-header" data-group-id="${subId}">
+            <td colspan="${colSpan}">
+              <span class="toggle ${subCollapsed ? 'collapsed' : ''}">&#9660;</span>
+              ${this._esc(sg.theme.name)}<span class="group-count">${sg.items.length}</span>
+            </td>
+          </tr>`;
+          if (!subCollapsed) {
+            for (const item of sg.items) {
+              html += this._renderRow(item, cols);
+            }
+          }
+        }
+      }
+    }
+
+    // Uncategorized group
+    if (uncategorized.length) {
+      const uncatId = '__uncategorized__';
+      const collapsed = this._collapsedGroups.has(uncatId);
+      html += `<tr class="group-header" data-group-id="${uncatId}">
+        <td colspan="${colSpan}">
+          <span class="toggle ${collapsed ? 'collapsed' : ''}">&#9660;</span>
+          Uncategorized<span class="group-count">${uncategorized.length}</span>
+        </td>
+      </tr>`;
+      if (!collapsed) {
+        for (const item of uncategorized) {
+          html += this._renderRow(item, cols);
+        }
+      }
+    }
+
+    return html;
   }
 
   _renderRow(item, cols) {
@@ -227,6 +418,19 @@ class PosWatchlistTable extends HTMLElement {
 
   _bindEvents() {
     this.shadow.addEventListener('click', (e) => {
+      // Group header toggle
+      const groupRow = e.target.closest('.group-header, .subgroup-header');
+      if (groupRow) {
+        const groupId = groupRow.dataset.groupId;
+        if (this._collapsedGroups.has(groupId)) {
+          this._collapsedGroups.delete(groupId);
+        } else {
+          this._collapsedGroups.add(groupId);
+        }
+        this._render();
+        return;
+      }
+
       // Sort header
       const th = e.target.closest('th[data-sort]');
       if (th) {
