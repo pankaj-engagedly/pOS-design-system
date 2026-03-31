@@ -64,6 +64,29 @@ class PosAppShell extends HTMLElement {
           margin: 0 0 var(--pos-space-sm);
           font-size: var(--pos-font-size-lg);
         }
+
+        /* ── Mobile: single-column layout ── */
+        @media (max-width: 768px) {
+          :host {
+            grid-template-columns: 1fr;
+          }
+
+          pos-app-sidebar {
+            grid-row: auto;
+            grid-column: 1;
+          }
+
+          pos-app-header {
+            grid-row: 1;
+            grid-column: 1;
+          }
+
+          main {
+            grid-row: 2;
+            grid-column: 1;
+            padding-bottom: 60px;
+          }
+        }
       </style>
 
       ${this._authenticated ? '<pos-app-header id="header"></pos-app-header>' : ''}

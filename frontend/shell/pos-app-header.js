@@ -92,6 +92,18 @@ class PosAppHeader extends HTMLElement {
           outline: 2px solid var(--pos-color-action-primary);
           outline-offset: 2px;
         }
+
+        /* ── Mobile ── */
+        @media (max-width: 768px) {
+          :host {
+            padding: 0 var(--pos-space-sm);
+            gap: var(--pos-space-sm);
+          }
+
+          .center {
+            display: none;
+          }
+        }
       </style>
 
       <div class="left"></div>

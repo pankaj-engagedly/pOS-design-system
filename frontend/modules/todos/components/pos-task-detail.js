@@ -390,6 +390,13 @@ class PosTaskDetail extends HTMLElement {
         }
         .action-btn:hover { border-color: var(--pos-color-action-primary); color: var(--pos-color-action-primary); }
         .action-btn.delete:hover { border-color: var(--pos-color-priority-urgent); color: var(--pos-color-priority-urgent); }
+
+        @media (max-width: 768px) {
+          :host {
+            width: 100% !important;
+            left: 0;
+          }
+        }
       </style>
 
       <!-- Header -->

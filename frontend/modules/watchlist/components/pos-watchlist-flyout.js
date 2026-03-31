@@ -278,6 +278,13 @@ class PosWatchlistFlyout extends HTMLElement {
         .fav-btn.active { color: #f59e0b; border-color: #f59e0b; }
         .fav-btn svg, .open-btn svg { pointer-events: none; }
         .open-btn { margin-left: auto; }
+
+        @media (max-width: 768px) {
+          :host {
+            width: 100% !important;
+            left: 0;
+          }
+        }
       </style>
     `;
   }

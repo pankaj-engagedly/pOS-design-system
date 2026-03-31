@@ -6,6 +6,14 @@
       "env": {
         "FIGMA_API_KEY": "${FIGMA_API_KEY}"
       }
+    },
+    "pos": {
+      "command": "/Users/pankaj/Projects/pOS-design-system/backend/mcp-server/.venv/bin/python3",
+      "args": ["/Users/pankaj/Projects/pOS-design-system/backend/mcp-server/server.py"],
+      "env": {
+        "POS_BASE_URL": "https://pos.sinsquare.me",
+        "POS_API_KEY": "pos_k_220f0c23eaa89be465c261857b87252cca6c6f01282bfa98"
+      }
     }
   }
 }

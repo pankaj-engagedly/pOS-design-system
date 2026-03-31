@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## pOS API Access
+
+Production API key for reading/writing tasks, notes, and other pOS data:
+- **Base URL**: `https://pos.sinsquare.me`
+- **API Key**: `pos_k_220f0c23eaa89be465c261857b87252cca6c6f01282bfa98`
+- **Usage**: `curl -H "X-API-Key: pos_k_..." https://pos.sinsquare.me/api/todos/lists`
+
 ## Commands
 
 ```bash

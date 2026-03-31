@@ -837,6 +837,23 @@ class PosDocumentPreview extends HTMLElement {
           background: #f1f5f9;
           margin: 0 -16px;
         }
+
+        @media (max-width: 768px) {
+          .info-panel {
+            position: fixed;
+            top: 48px;
+            right: 0;
+            bottom: 0;
+            width: 280px;
+            transform: translateX(100%);
+            transition: transform 0.2s ease;
+            z-index: 2001;
+          }
+          .info-panel:not(.hidden) {
+            transform: translateX(0);
+          }
+          .nav-btn { display: none; }
+        }
       </style>
 
       <div class="overlay" data-role="overlay">

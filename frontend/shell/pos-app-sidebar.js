@@ -29,6 +29,12 @@ class PosAppSidebar extends HTMLElement {
     this.shadow.querySelectorAll('.nav-item').forEach(item => {
       item.classList.toggle('active', item.dataset.path === path);
     });
+    // Highlight "More" tab if active path is a secondary route
+    const moreTab = this.shadow.getElementById('more-tab');
+    if (moreTab) {
+      const primaryPaths = ['/overview', '/todos', '/notes', '/knowledge-base'];
+      moreTab.classList.toggle('active', !primaryPaths.includes(path));
+    }
   }
 
   _render() {
@@ -235,6 +241,120 @@ class PosAppSidebar extends HTMLElement {
         :host([collapsed]) .nav-item-wrap:hover .nav-tooltip { opacity: 1; }
         /* Never show tooltip in expanded mode */
         :host(:not([collapsed])) .nav-tooltip { display: none; }
+
+        /* ── Mobile: fixed bottom tab bar ── */
+        @media (max-width: 768px) {
+          :host, :host([collapsed]) {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100% !important;
+            height: 56px;
+            z-index: 100;
+            flex-direction: row;
+            border-right: none;
+            border-top: 1px solid var(--pos-color-border-default);
+            overflow: visible;
+          }
+
+          .brand { display: none; }
+
+          nav {
+            flex-direction: row;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+          }
+
+          /* Hide all nav items except the 5 primary tabs */
+          .nav-item-wrap { display: none; }
+          .nav-item-wrap[data-mobile-tab] {
+            display: flex;
+            flex: 1;
+            justify-content: center;
+          }
+
+          .nav-divider { display: none; }
+
+          .nav-item {
+            flex-direction: column;
+            gap: 2px;
+            padding: 6px 0;
+            font-size: 10px;
+            justify-content: center;
+            align-items: center;
+          }
+
+          .nav-icon { width: 22px; }
+
+          .nav-label {
+            display: block !important;
+            font-size: 10px;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 64px;
+            white-space: nowrap;
+          }
+
+          /* Hide collapsed-mode overrides */
+          :host([collapsed]) .nav-label { display: block !important; }
+
+          .nav-tooltip { display: none !important; }
+
+          /* ── "More" popup ── */
+          .more-popup {
+            display: none;
+            position: absolute;
+            bottom: 56px;
+            right: 0;
+            width: 200px;
+            background: var(--pos-color-background-secondary);
+            border: 1px solid var(--pos-color-border-default);
+            border-radius: var(--pos-radius-md) var(--pos-radius-md) 0 0;
+            box-shadow: 0 -4px 16px rgba(0,0,0,0.12);
+            padding: var(--pos-space-xs) 0;
+            z-index: 200;
+          }
+
+          .more-popup.open { display: block; }
+
+          .more-popup .nav-item {
+            flex-direction: row;
+            gap: var(--pos-space-sm);
+            padding: 10px 16px;
+            font-size: var(--pos-font-size-sm);
+            justify-content: flex-start;
+            align-items: center;
+            border-radius: 0;
+          }
+          .more-popup .nav-item:hover {
+            background: var(--pos-color-background-primary);
+          }
+          .more-popup .nav-label {
+            font-size: var(--pos-font-size-sm);
+            text-align: left;
+          }
+
+          .more-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 150;
+          }
+          .more-overlay.open { display: block; }
+        }
+
+        /* Hide mobile-only elements on desktop */
+        @media (min-width: 769px) {
+          .mobile-more-tab { display: none !important; }
+          .more-popup { display: none !important; }
+          .more-overlay { display: none !important; }
+        }
       </style>
 
       <div class="brand">
@@ -252,8 +372,10 @@ class PosAppSidebar extends HTMLElement {
         ${routes.map((r, i) => {
           const prevGroup = i > 0 ? routes[i - 1].group : null;
           const divider = prevGroup && r.group && r.group !== prevGroup ? '<div class="nav-divider"></div>' : '';
+          const mobileTabs = ['/overview', '/todos', '/notes', '/knowledge-base'];
+          const isMobileTab = mobileTabs.includes(r.path);
           return `${divider}
-          <div class="nav-item-wrap">
+          <div class="nav-item-wrap" ${isMobileTab ? 'data-mobile-tab' : ''}>
             <div class="nav-item ${this._activePath === r.path ? 'active' : ''}" data-path="${r.path}" tabindex="0" role="button">
               <span class="nav-icon">${icon(r.icon, 16)}</span>
               <span class="nav-label">${r.label}</span>
@@ -261,7 +383,25 @@ class PosAppSidebar extends HTMLElement {
             <span class="nav-tooltip">${r.label}</span>
           </div>`;
         }).join('')}
+        <!-- Mobile "More" tab -->
+        <div class="nav-item-wrap mobile-more-tab" data-mobile-tab>
+          <div class="nav-item" id="more-tab" tabindex="0" role="button">
+            <span class="nav-icon">${icon('more-horizontal', 16)}</span>
+            <span class="nav-label">More</span>
+          </div>
+        </div>
       </nav>
+
+      <!-- Mobile "More" popup overlay + menu -->
+      <div class="more-overlay" id="more-overlay"></div>
+      <div class="more-popup" id="more-popup">
+        ${routes.filter(r => !['/overview', '/todos', '/notes', '/knowledge-base'].includes(r.path)).map(r => `
+          <div class="nav-item ${this._activePath === r.path ? 'active' : ''}" data-path="${r.path}" tabindex="0" role="button">
+            <span class="nav-icon">${icon(r.icon, 16)}</span>
+            <span class="nav-label">${r.label}</span>
+          </div>
+        `).join('')}
+      </div>
     `;
 
     this._applyCollapsed();
@@ -271,11 +411,26 @@ class PosAppSidebar extends HTMLElement {
     // Nav item clicks
     this.shadow.addEventListener('click', (e) => {
       const item = e.target.closest('.nav-item');
+
+      // "More" tab toggle
+      if (item && item.id === 'more-tab') {
+        this._toggleMorePopup();
+        return;
+      }
+
       if (item?.dataset.path) {
+        // Close "More" popup if open
+        this._closeMorePopup();
         this.dispatchEvent(new CustomEvent('sidebar-navigate', {
           bubbles: true, composed: true,
           detail: { path: item.dataset.path },
         }));
+      }
+
+      // "More" overlay dismiss
+      if (e.target.closest('#more-overlay')) {
+        this._closeMorePopup();
+        return;
       }
 
       // Toggle button
@@ -300,6 +455,23 @@ class PosAppSidebar extends HTMLElement {
         }
       }
     });
+  }
+
+  _toggleMorePopup() {
+    const popup = this.shadow.getElementById('more-popup');
+    const overlay = this.shadow.getElementById('more-overlay');
+    if (popup && overlay) {
+      const isOpen = popup.classList.contains('open');
+      popup.classList.toggle('open', !isOpen);
+      overlay.classList.toggle('open', !isOpen);
+    }
+  }
+
+  _closeMorePopup() {
+    const popup = this.shadow.getElementById('more-popup');
+    const overlay = this.shadow.getElementById('more-overlay');
+    if (popup) popup.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
   }
 
   _applyCollapsed() {
