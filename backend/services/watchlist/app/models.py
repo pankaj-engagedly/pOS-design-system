@@ -155,6 +155,7 @@ class MetricSnapshot(UserScopedBase):
     )
 
     user_id = None
+    updated_at = None
 
     security_id = Column(UUID(as_uuid=True), ForeignKey("securities.id", ondelete="CASCADE"), nullable=False)
     recorded_date = Column(Date, nullable=False)
@@ -171,6 +172,7 @@ class FinancialStatement(UserScopedBase):
     )
 
     user_id = None
+    updated_at = None
 
     security_id = Column(UUID(as_uuid=True), ForeignKey("securities.id", ondelete="CASCADE"), nullable=False)
     statement_type = Column(String(20), nullable=False)
