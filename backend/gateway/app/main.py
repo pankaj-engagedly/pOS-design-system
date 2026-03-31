@@ -64,8 +64,8 @@ app = FastAPI(
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3001"],
-    allow_credentials=True,
+    allow_origins=["http://localhost:3001", "https://pos.sinsquare.me", "*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
