@@ -76,12 +76,17 @@ async def _build_merged_spec() -> dict:
 
         merged["tags"].append({"name": tag_label})
 
+        # Rewrite $ref pointers BEFORE merging to avoid double-prefixing
+        service_paths = spec.get("paths", {})
+        service_schemas = spec.get("components", {}).get("schemas", {})
+        _rewrite_refs(service_paths, name)
+        _rewrite_refs(service_schemas, name)
+
         # Merge paths — tag all operations with the service name
-        for path, methods in spec.get("paths", {}).items():
+        for path, methods in service_paths.items():
             for method, operation in methods.items():
                 if isinstance(operation, dict):
                     operation["tags"] = [tag_label]
-                    # Prefix operationId to avoid collisions
                     if "operationId" in operation:
                         operation["operationId"] = f"{name}_{operation['operationId']}"
 
@@ -90,13 +95,10 @@ async def _build_merged_spec() -> dict:
             else:
                 merged["paths"][path] = methods
 
-        # Merge component schemas with service prefix to avoid collisions
-        for schema_name, schema_def in spec.get("components", {}).get("schemas", {}).items():
+        # Merge component schemas with service prefix
+        for schema_name, schema_def in service_schemas.items():
             prefixed = f"{name}__{schema_name}"
             merged["components"]["schemas"][prefixed] = schema_def
-
-        # Rewrite $ref pointers in paths to use prefixed schema names
-        _rewrite_refs(merged["paths"], name)
 
     return merged
 
