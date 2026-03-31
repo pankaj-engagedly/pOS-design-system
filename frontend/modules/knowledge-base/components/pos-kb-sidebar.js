@@ -30,6 +30,10 @@ kbSheet.replaceSync(`
     border-color: var(--pos-color-action-primary);
     color: var(--pos-color-action-primary);
   }
+  .ext-link {
+    text-decoration: none;
+    color: inherit;
+  }
   .new-collection-input {
     width: 100%;
     padding: 6px var(--pos-space-sm);
@@ -146,6 +150,11 @@ class PosKBSidebar extends HTMLElement {
           ${icon('tag', 15)}
           <span class="nav-label">Manage Tags</span>
         </div>
+
+        <a class="nav-item ext-link" href="/frontend/extensions/index.html" target="_blank" rel="noopener">
+          ${icon('download', 15)}
+          <span class="nav-label">Browser Extension</span>
+        </a>
 
       </pos-sidebar>
     `;
