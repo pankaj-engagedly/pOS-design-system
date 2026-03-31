@@ -323,36 +323,42 @@ class PosTaskDetail extends HTMLElement {
           color: var(--pos-color-text-primary);
           border: 1px solid var(--pos-color-action-primary);
           border-radius: var(--pos-radius-sm);
-          padding: var(--pos-space-xs);
+          padding: 8px;
           outline: none;
           background: transparent;
           resize: vertical;
-          min-height: 40px;
+          min-height: 60px;
+          max-height: 200px;
           box-sizing: border-box;
+          line-height: 1.5;
         }
         .comment-add {
-          display: flex;
-          gap: var(--pos-space-xs);
           margin-top: var(--pos-space-xs);
         }
         .comment-input {
-          flex: 1;
+          width: 100%;
           font-size: var(--pos-font-size-xs);
           font-family: inherit;
           color: var(--pos-color-text-primary);
           border: 1px solid var(--pos-color-border-default);
           border-radius: var(--pos-radius-sm);
-          padding: 5px 8px;
+          padding: 8px;
           outline: none;
           background: transparent;
-          resize: none;
-          min-height: 32px;
+          resize: vertical;
+          min-height: 60px;
+          max-height: 200px;
           box-sizing: border-box;
+          line-height: 1.5;
         }
         .comment-input:focus { border-color: var(--pos-color-action-primary); }
+        .comment-actions-row {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: var(--pos-space-xs);
+        }
         .comment-submit {
-          align-self: flex-end;
-          padding: 5px 10px;
+          padding: 5px 12px;
           font-size: var(--pos-font-size-xs);
           font-family: inherit;
           font-weight: var(--pos-font-weight-medium);
@@ -465,8 +471,10 @@ class PosTaskDetail extends HTMLElement {
             </div>
           `).join('')}
           <div class="comment-add">
-            <textarea class="comment-input" id="comment-input" placeholder="Add a comment..." rows="1"></textarea>
-            <button class="comment-submit" id="comment-submit">Add</button>
+            <textarea class="comment-input" id="comment-input" placeholder="Add a comment..." rows="3"></textarea>
+            <div class="comment-actions-row">
+              <button class="comment-submit" id="comment-submit">Add Comment</button>
+            </div>
           </div>
         </div>
 
