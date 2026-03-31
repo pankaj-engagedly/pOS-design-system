@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>pOS — Save to KB Bookmarklet</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Inter, system-ui, sans-serif; background: #f8f9fa; color: #1a1a2e; min-height: 100vh; padding: 20px; }
+    .container { max-width: 560px; margin: 0 auto; }
+    .card { padding: 32px; background: white; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+    .subtitle { color: #64748b; font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
+    h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+    h3 { font-size: 14px; font-weight: 600; margin: 16px 0 8px; color: #374151; }
+
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; color: #374151; }
+    input { width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-family: inherit; }
+    input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .hint { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+
+    .bookmarklet-btn {
+      display: inline-block; padding: 14px 28px;
+      background: #2563eb; color: white; border-radius: 10px;
+      font-size: 16px; font-weight: 700; text-decoration: none;
+      text-align: center; width: 100%;
+      box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+      -webkit-touch-callout: default;
+    }
+    .bookmarklet-btn:active { opacity: 0.9; }
+
+    .steps { counter-reset: step; margin: 16px 0; }
+    .step { display: flex; gap: 12px; margin-bottom: 16px; align-items: flex-start; }
+    .step-num {
+      counter-increment: step;
+      display: flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: #2563eb; color: white; font-size: 13px; font-weight: 700;
+      flex-shrink: 0;
+    }
+    .step-num::after { content: counter(step); }
+    .step-text { font-size: 13px; color: #374151; line-height: 1.6; padding-top: 4px; }
+    .step-text strong { color: #1a1a2e; }
+
+    .code-box {
+      background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 12px; font-family: monospace; font-size: 11px;
+      word-break: break-all; line-height: 1.5; color: #475569;
+      margin: 8px 0; position: relative;
+    }
+    .copy-btn {
+      position: absolute; top: 8px; right: 8px;
+      padding: 4px 10px; background: #2563eb; color: white;
+      border: none; border-radius: 6px; font-size: 11px; font-weight: 600;
+      font-family: inherit; cursor: pointer;
+    }
+    .copy-btn:active { opacity: 0.8; }
+
+    .success-msg {
+      display: none; padding: 12px; background: #f0fdf4; color: #16a34a;
+      border: 1px solid #bbf7d0; border-radius: 8px; font-size: 13px;
+      font-weight: 500; text-align: center; margin-top: 12px;
+    }
+    .success-msg.visible { display: block; }
+
+    .tabs { display: flex; gap: 0; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; }
+    .tab {
+      padding: 8px 16px; font-size: 13px; font-weight: 600; color: #94a3b8;
+      cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px;
+    }
+    .tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .back { display: inline-block; margin-bottom: 16px; font-size: 13px; color: #2563eb; text-decoration: none; }
+    .back:hover { text-decoration: underline; }
+
+    .test-area { margin-top: 16px; padding: 16px; background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; }
+    .test-btn {
+      padding: 10px 20px; background: #7c3aed; color: white; border: none;
+      border-radius: 8px; font-size: 14px; font-weight: 600; font-family: inherit;
+      cursor: pointer; width: 100%;
+    }
+    .test-btn:active { opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a class="back" href="/frontend/extensions/">&larr; Back to Extensions</a>
+
+    <div class="card">
+      <h1>Save to KB — Bookmarklet</h1>
+      <p class="subtitle">
+        Save any web page to your pOS Knowledge Base with one tap.
+        Works on <strong>iOS Safari, iOS Chrome, Android</strong>, and desktop browsers.
+        No extension needed.
+      </p>
+
+      <!-- API Key Input -->
+      <div class="form-group">
+        <label for="api-key">Your pOS API Key</label>
+        <input type="text" id="api-key" placeholder="pos_k_..." value="">
+        <p class="hint">Find this in pOS → Settings → API Keys. The key stays in your bookmark — never sent to us.</p>
+      </div>
+
+      <div id="setup-section" style="display:none;">
+
+        <!-- Generated Bookmarklet Link -->
+        <h2>Your Bookmarklet</h2>
+        <p style="font-size:13px; color:#64748b; margin-bottom:12px;">
+          This button saves the current page to your KB. Set it up once, use it forever.
+        </p>
+
+        <a id="bookmarklet-link" class="bookmarklet-btn" href="#">📚 Save to pOS KB</a>
+
+        <div id="success-msg" class="success-msg"></div>
+
+        <!-- Setup Instructions -->
+        <div class="tabs" style="margin-top:24px;">
+          <div class="tab active" data-tab="ios-safari">iOS Safari</div>
+          <div class="tab" data-tab="ios-chrome">iOS Chrome</div>
+          <div class="tab" data-tab="desktop">Desktop</div>
+        </div>
+
+        <div id="tab-ios-safari" class="tab-content active">
+          <div class="steps">
+            <div class="step"><div class="step-num"></div><div class="step-text">
+              <strong>Long-press</strong> the blue "Save to pOS KB" button above and select <strong>"Copy Link"</strong>
+            </div></div>
+            <div class="step"><div class="step-num"></div><div class="step-text">
+              Bookmark <strong>any page</strong> in Safari (tap Share → Add Bookmark)
+            </div></div>
+            <div class="step"><div class="step-num"></div><div class="step-text">
+              Go to <strong>Bookmarks</strong> (book icon) → find the bookmark → <strong>Edit</strong>
+            </div></div>
+            <div class="step"><div class="step-num"></div><div class="step-text">
+              <strong>Clear the URL</strong> field and <strong>paste</strong> the copied link
+            </div></div>
+            <div class="step"><div class="step-num"></div><div class="step-text">
+              Rename it to <strong>"Save to KB"</strong> and tap Done
+            </div></div>
+            <div class="step"><div class="step-num"></div><div class="step-text">
+              <strong>Done!</strong> Now when browsing any article, tap the bookmark to save it to KB
+            </div></div>
+          </div>
+        </div>
+
+        <div id="tab-ios-chrome" class="tab-content">
+          <div class="steps">
+            <div class="step"><div class="step-num"></div><div class="step-text">
+              <strong>Copy</strong> the bookmarklet code below (tap the Copy button)
+            </div></div>
+            <div class="step"><div class="step-num"></div><div class="step-text">
+              Bookmark <strong>any page</strong> in Chrome (⋯ menu → Bookmark)
+            </div></div>
+            <div class="step"><div class="step-num"></div><div class="step-text">
+              Go to <strong>Bookmarks</strong> (⋯ → Bookmarks) → find it → tap <strong>Edit</strong>
+            </div></div>
+            <div class="step"><div class="step-num"></div><div class="step-text">
+              <strong>Clear the URL</strong> and <strong>paste</strong> the copied code
+            </div></div>
+            <div class="step"><div class="step-num"></div><div class="step-text">
+              Rename to <strong>"Save to KB"</strong> and save
+            </div></div>
+            <div class="step"><div class="step-num"></div><div class="step-text">
+              <strong>To use:</strong> type "Save" in the address bar → tap the bookmark suggestion
+            </div></div>
+          </div>
+        </div>
+
+        <div id="tab-desktop" class="tab-content">
+          <div class="steps">
+            <div class="step"><div class="step-num"></div><div class="step-text">
+              Simply <strong>drag</strong> the blue "Save to pOS KB" button to your <strong>bookmarks bar</strong>
+            </div></div>
+            <div class="step"><div class="step-num"></div><div class="step-text">
+              <strong>Done!</strong> Click it on any page to save to KB
+            </div></div>
+          </div>
+        </div>
+
+        <!-- Raw code for copy -->
+        <h3>Bookmarklet Code</h3>
+        <div class="code-box">
+          <button class="copy-btn" id="copy-btn">Copy</button>
+          <code id="code-display"></code>
+        </div>
+
+        <!-- Test -->
+        <div class="test-area">
+          <p style="font-size:13px; color:#6d28d9; margin-bottom:8px; font-weight:600;">Test it</p>
+          <p style="font-size:12px; color:#7c3aed; margin-bottom:12px;">Save this page to your KB to verify it works:</p>
+          <button class="test-btn" id="test-btn">🧪 Test Save This Page</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const apiKeyInput = document.getElementById('api-key');
+    const setupSection = document.getElementById('setup-section');
+    const bookmarkletLink = document.getElementById('bookmarklet-link');
+    const codeDisplay = document.getElementById('code-display');
+    const successMsg = document.getElementById('success-msg');
+
+    function buildBookmarklet(apiKey) {
+      return `javascript:void(fetch('https://pos.sinsquare.me/api/kb/items/save-url',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':'${apiKey}'},body:JSON.stringify({url:location.href,title:document.title,item_type:'url'})}).then(r=>{if(r.ok){alert('✅ Saved to pOS KB!')}else{r.text().then(t=>alert('❌ Error: '+t))}}).catch(e=>alert('❌ Network error: '+e.message)))`;
+    }
+
+    function updateBookmarklet() {
+      const key = apiKeyInput.value.trim();
+      if (!key.startsWith('pos_k_')) {
+        setupSection.style.display = 'none';
+        return;
+      }
+      setupSection.style.display = 'block';
+      const code = buildBookmarklet(key);
+      bookmarkletLink.href = code;
+      codeDisplay.textContent = code;
+    }
+
+    apiKeyInput.addEventListener('input', updateBookmarklet);
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Copy button
+    document.getElementById('copy-btn').addEventListener('click', () => {
+      navigator.clipboard.writeText(codeDisplay.textContent).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 2000);
+      });
+    });
+
+    // Test button
+    document.getElementById('test-btn').addEventListener('click', async () => {
+      const key = apiKeyInput.value.trim();
+      if (!key) return alert('Enter your API key first');
+      try {
+        const res = await fetch('https://pos.sinsquare.me/api/kb/items/save-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-API-Key': key },
+          body: JSON.stringify({ url: location.href, title: document.title, item_type: 'url' }),
+        });
+        if (res.ok) {
+          successMsg.textContent = '✅ Saved! Check your pOS Knowledge Base.';
+          successMsg.classList.add('visible');
+        } else {
+          const text = await res.text();
+          successMsg.textContent = '❌ Error: ' + text;
+          successMsg.classList.add('visible');
+        }
+      } catch (e) {
+        successMsg.textContent = '❌ Network error: ' + e.message;
+        successMsg.classList.add('visible');
+      }
+    });
+
+    // Auto-fill if key is in URL hash
+    const hash = location.hash.slice(1);
+    if (hash.startsWith('pos_k_')) {
+      apiKeyInput.value = hash;
+      updateBookmarklet();
+    }
+  </script>
+</body>
+</html>
