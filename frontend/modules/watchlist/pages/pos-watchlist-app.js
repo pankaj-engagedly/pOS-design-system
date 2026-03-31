@@ -469,7 +469,7 @@ class PosWatchlistApp extends HTMLElement {
       const { view, assetClass } = e.detail;
       store.setState({
         selectedView: view,
-        selectedAssetClass: assetClass || store.getState().selectedAssetClass,
+        selectedAssetClass: view === 'asset' ? assetClass : null,
         selectedItemId: null,
         detailView: false,
         flyoutItemId: null,

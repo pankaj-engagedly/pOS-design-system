@@ -70,11 +70,15 @@ class PosWatchlistDetail extends HTMLElement {
 
   async _loadFinancials(id, freq) {
     const frequency = freq || this._financialFreq;
+    const empty = { income: [], balance: [], cashflow: [], periods: [] };
     try {
-      this._financials = await getFinancials(id, frequency).catch(() => null);
+      this._financials = await getFinancials(id, frequency).catch(() => empty);
+      if (!this._financials) this._financials = empty;
       this._renderFinancialsSection();
       this._renderFinTrends();
     } catch (err) {
+      this._financials = empty;
+      this._renderFinancialsSection();
       console.error('Failed to load financials', err);
     }
   }
