@@ -129,7 +129,7 @@ def fetch_mf_data(scheme_code: str) -> dict:
     if not nav_data:
         return {}
 
-    nav = _safe_float(nav_data.get("scheme_nav"))
+    nav = _safe_float(nav_data.get("nav") or nav_data.get("scheme_nav"))
 
     # Get scheme details for metadata
     details = {}
