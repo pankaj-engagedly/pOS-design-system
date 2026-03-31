@@ -11,6 +11,7 @@ from pos_contracts.logging import setup_logging
 from pos_contracts.schemas import HealthResponse
 
 from .middleware.auth import AuthMiddleware
+from .docs import router as docs_router
 from .routes import AUTH_SERVICE_URL, TODO_SERVICE_URL, router
 
 
@@ -73,6 +74,7 @@ app.add_middleware(
 app.add_middleware(AuthMiddleware, config=config)
 
 # Routes
+app.include_router(docs_router)
 app.include_router(router)
 
 
