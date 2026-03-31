@@ -72,7 +72,7 @@ class PosWatchlistSidebar extends HTMLElement {
 
         ${this._assetClasses.map(ac => {
           const count = stats.by_asset_type?.[ac.slug] || 0;
-          const active = this._selectedView !== 'all' && this._selectedView !== 'favourites' && this._selectedAssetClass === ac.slug;
+          const active = this._selectedView === 'asset' && this._selectedAssetClass === ac.slug;
           return `
             <div class="nav-item ${active ? 'active' : ''}" data-view="asset" data-asset="${ac.slug}">
               <span class="asset-icon">${icon(ac.icon, 15)}</span>
