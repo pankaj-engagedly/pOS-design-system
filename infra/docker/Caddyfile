@@ -1,4 +1,10 @@
 {$DOMAIN:localhost} {
+    # MCP server (SSE transport for AI agents)
+    handle /mcp/* {
+        uri strip_prefix /mcp
+        reverse_proxy mcp:8020
+    }
+
     # API requests -> gateway
     handle /api/* {
         reverse_proxy gateway:8000

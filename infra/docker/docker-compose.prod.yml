@@ -205,6 +205,17 @@ services:
     image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-frontend:${IMAGE_TAG:-latest}
     <<: *common-config
 
+  # ── MCP Server ──────────────────────────────────────────
+  mcp:
+    image: ${IMAGE_PREFIX:-ghcr.io/pankaj-engagedly/pos}-mcp:${IMAGE_TAG:-latest}
+    environment:
+      POS_BASE_URL: http://gateway:8000
+      POS_API_KEY: ${MCP_API_KEY:-}
+      MCP_PORT: "8020"
+    depends_on:
+      - gateway
+    <<: *common-config
+
 volumes:
   pgdata:
   rabbitmq-data:
