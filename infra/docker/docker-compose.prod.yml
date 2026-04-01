@@ -212,6 +212,7 @@ services:
       POS_BASE_URL: http://gateway:8000
       POS_API_KEY: ${MCP_API_KEY:-}
       MCP_PORT: "8020"
+      MCP_MESSAGE_PATH: "/mcp/messages"
     depends_on:
       - gateway
     <<: *common-config

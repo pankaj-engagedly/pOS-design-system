@@ -37,7 +37,9 @@ logger = logging.getLogger("pos-mcp-sse")
 PORT = int(os.environ.get("MCP_PORT", "8020"))
 
 # SSE transport — bridges HTTP↔MCP protocol
-sse = SseServerTransport("/messages")
+# Use /mcp/messages as the advertised path since Caddy proxies /mcp/* and strips the prefix
+MESSAGE_PATH = os.environ.get("MCP_MESSAGE_PATH", "/messages")
+sse = SseServerTransport(MESSAGE_PATH)
 
 
 async def handle_sse(request):
