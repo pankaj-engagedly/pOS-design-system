@@ -41,6 +41,124 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent, Resource
 
+import re
+
+
+# ── Markdown → Tiptap JSON ────────────────────────────────────────────────────
+
+
+def _markdown_to_tiptap(md: str) -> dict:
+    """Convert markdown text to Tiptap-compatible JSON document structure."""
+    lines = md.split("\n")
+    nodes = []
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+
+        # Code block (```)
+        if line.strip().startswith("```"):
+            lang = line.strip()[3:].strip()
+            code_lines = []
+            i += 1
+            while i < len(lines) and not lines[i].strip().startswith("```"):
+                code_lines.append(lines[i])
+                i += 1
+            i += 1  # skip closing ```
+            nodes.append({
+                "type": "codeBlock",
+                "attrs": {"language": lang or "text"},
+                "content": [{"type": "text", "text": "\n".join(code_lines)}],
+            })
+            continue
+
+        # Heading (# ## ###)
+        heading_match = re.match(r"^(#{1,3})\s+(.+)$", line)
+        if heading_match:
+            level = len(heading_match.group(1))
+            text = heading_match.group(2)
+            nodes.append({
+                "type": "heading",
+                "attrs": {"level": level},
+                "content": _parse_inline(text),
+            })
+            i += 1
+            continue
+
+        # Bullet list (- item or * item)
+        if re.match(r"^\s*[-*]\s+", line):
+            items = []
+            while i < len(lines) and re.match(r"^\s*[-*]\s+", lines[i]):
+                item_text = re.sub(r"^\s*[-*]\s+", "", lines[i])
+                items.append({
+                    "type": "listItem",
+                    "content": [{"type": "paragraph", "content": _parse_inline(item_text)}],
+                })
+                i += 1
+            nodes.append({"type": "bulletList", "content": items})
+            continue
+
+        # Ordered list (1. item)
+        if re.match(r"^\s*\d+\.\s+", line):
+            items = []
+            while i < len(lines) and re.match(r"^\s*\d+\.\s+", lines[i]):
+                item_text = re.sub(r"^\s*\d+\.\s+", "", lines[i])
+                items.append({
+                    "type": "listItem",
+                    "content": [{"type": "paragraph", "content": _parse_inline(item_text)}],
+                })
+                i += 1
+            nodes.append({"type": "orderedList", "content": items})
+            continue
+
+        # Empty line → skip
+        if not line.strip():
+            i += 1
+            continue
+
+        # Regular paragraph
+        nodes.append({"type": "paragraph", "content": _parse_inline(line)})
+        i += 1
+
+    return {"type": "doc", "content": nodes or [{"type": "paragraph"}]}
+
+
+def _parse_inline(text: str) -> list:
+    """Parse inline markdown (bold, italic, code) into Tiptap text nodes."""
+    nodes = []
+    # Pattern: **bold**, *italic*, `code`
+    pattern = re.compile(r"(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`)")
+    last_end = 0
+
+    for match in pattern.finditer(text):
+        # Text before the match
+        if match.start() > last_end:
+            plain = text[last_end:match.start()]
+            if plain:
+                nodes.append({"type": "text", "text": plain})
+
+        if match.group(2):  # **bold**
+            nodes.append({"type": "text", "marks": [{"type": "bold"}], "text": match.group(2)})
+        elif match.group(3):  # *italic*
+            nodes.append({"type": "text", "marks": [{"type": "italic"}], "text": match.group(3)})
+        elif match.group(4):  # `code`
+            nodes.append({"type": "text", "marks": [{"type": "code"}], "text": match.group(4)})
+
+        last_end = match.end()
+
+    # Remaining text after last match
+    if last_end < len(text):
+        remaining = text[last_end:]
+        if remaining:
+            nodes.append({"type": "text", "text": remaining})
+
+    # If no inline formatting found, return plain text
+    if not nodes and text:
+        nodes.append({"type": "text", "text": text})
+
+    return nodes
+
+
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 POS_BASE_URL = os.environ.get("POS_BASE_URL", "https://pos.sinsquare.me")
@@ -229,7 +347,7 @@ async def list_tools() -> list[Tool]:
                 "type": "object",
                 "properties": {
                     "title": {"type": "string", "description": "Note title"},
-                    "content": {"type": "string", "description": "Note content (plain text)"},
+                    "content": {"type": "string", "description": "Note content in markdown format. Supports headings (#, ##), bullet lists (- item), numbered lists (1. item), bold (**text**), italic (*text*), code blocks (```lang), inline code (`code`), and paragraphs separated by blank lines."},
                     "folder_id": {"type": "string", "description": "Optional folder UUID"},
                 },
                 "required": ["title"],
@@ -333,12 +451,11 @@ async def _dispatch_tool(name: str, args: dict) -> dict | list:
     if name == "create_note":
         body = {"title": args["title"]}
         if args.get("content"):
-            # Convert plain text to minimal Tiptap JSON
-            body["content"] = {
-                "type": "doc",
-                "content": [{"type": "paragraph", "content": [{"type": "text", "text": args["content"]}]}]
-            }
-            body["preview_text"] = args["content"][:200]
+            body["content"] = _markdown_to_tiptap(args["content"])
+            # Preview text: strip markdown markers
+            import re
+            plain = re.sub(r'[#*`\[\]()-]', '', args["content"])
+            body["preview_text"] = ' '.join(plain.split())[:200]
         if args.get("folder_id"):
             body["folder_id"] = args["folder_id"]
         return await pos_api("POST", "/api/notes/notes", json=body)
